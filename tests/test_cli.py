@@ -25,3 +25,4 @@ def test_cli_exit(monkeypatch, capsys):
     asyncio.run(run())
     out = capsys.readouterr().out
     assert "Comandos disponíveis" in out
+    assert "/ls" in out
