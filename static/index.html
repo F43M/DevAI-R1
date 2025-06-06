@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>DevAI Interface</title>
+<style>
+  body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; }
+  #sidebar { width: 250px; background: #f5f5f5; overflow-y: auto; border-right: 1px solid #ccc; padding: 10px; }
+  #chat { flex: 1; display: flex; flex-direction: column; }
+  #messages { flex: 1; padding: 10px; overflow-y: auto; white-space: pre-wrap; }
+  #input { display: flex; padding: 10px; border-top: 1px solid #ccc; }
+  #input textarea { flex: 1; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h3>Arquivos</h3>
+  <ul id="fileList"></ul>
+</div>
+<div id="chat">
+  <div id="messages"></div>
+  <div id="input">
+    <textarea id="query" rows="3"></textarea>
+    <button id="send">Enviar</button>
+  </div>
+</div>
+<script>
+async function refreshFiles(path="") {
+  const res = await fetch('/files?path=' + encodeURIComponent(path));
+  const files = await res.json();
+  const list = document.getElementById('fileList');
+  list.innerHTML = '';
+  files.forEach(f => {
+    const li = document.createElement('li');
+    li.textContent = f;
+    li.style.cursor = 'pointer';
+    li.onclick = () => openFile(f);
+    list.appendChild(li);
+  });
+}
+async function openFile(file) {
+  const res = await fetch('/file?file=' + encodeURIComponent(file));
+  const data = await res.json();
+  alert(data.lines.join('\n'));
+}
+async function send() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+  const res = await fetch('/analyze?query=' + encodeURIComponent(q), {method: 'POST'});
+  const text = await res.text();
+  const div = document.createElement('div');
+  div.textContent = '> ' + q + '\n' + text;
+  document.getElementById('messages').appendChild(div);
+  document.getElementById('query').value = '';
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+}
+document.getElementById('send').onclick = send;
+refreshFiles();
+</script>
+</body>
+</html>

@@ -11,6 +11,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Monitoramento de logs** detectando padrões de erro
 - **Execução de testes automatizados e análise estática**
 - **API FastAPI** e **interface de linha de comando**
+- **Interface web opcional** em `/static/index.html` para conversar com a IA e explorar arquivos
 - Métricas expostas em `/metrics`
 
 ## Configuração
@@ -31,6 +32,8 @@ API_PORT: 8000
 ```bash
 python -m devai --api
 ```
+
+Com o servidor ativo, acesse `http://localhost:8000/static/index.html` para utilizar a interface web.
 
 - **Interface de linha de comando**:
 
