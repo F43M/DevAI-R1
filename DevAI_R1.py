@@ -38,7 +38,9 @@ class Config:
         self.LOG_DIR = "./logs"
         self.API_PORT = 8000
         self.LEARNING_LOOP_INTERVAL = 300  # 5 minutos
-        self.MAX_CONTEXT_LENGTH = 4000
+        # Ajustado para aproveitar o limite de 160k tokens oferecido pela API
+        # da OpenRouter.
+        self.MAX_CONTEXT_LENGTH = 160000
         self.OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 config = Config()
@@ -716,7 +718,7 @@ class AIModel:
         self.session = aiohttp.ClientSession()
         logger.info("Modelo DeepSeek-R1 configurado via OpenRouter")
     
-    async def generate(self, prompt: str, max_length: int = 1024) -> str:
+    async def generate(self, prompt: str, max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
         headers = {
             "Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
             "Content-Type": "application/json"
@@ -725,7 +727,9 @@ class AIModel:
         payload = {
             "model": config.MODEL_NAME,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": min(max_length, 4000),
+            # Utiliza a configuração de contexto máximo, respeitando o limite
+            # de 160k tokens da API.
+            "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
             "temperature": 0.7
         }
         
@@ -878,7 +882,8 @@ Pergunta: {query}
 Analise cuidadosamente, considere as dependências e histórico antes de responder:
 Resposta:"""
             
-            response = await self.ai_model.generate(prompt)
+            # Solicita uma resposta utilizando todo o limite de contexto
+            response = await self.ai_model.generate(prompt, max_length=config.MAX_CONTEXT_LENGTH)
             
             self.memory.save({
                 "type": "qa",
