@@ -46,20 +46,33 @@ class CodeAnalyzer:
 
     async def scan_app(self):
         tasks = []
-        for file_path in self.code_root.rglob("*.py"):
-            if file_path.is_file():
-                tasks.append(self.parse_file(file_path))
+        patterns = ["*.py", "*.js", "*.ts", "*.cpp", "*.hpp", "*.html"]
+        for pat in patterns:
+            for file_path in self.code_root.rglob(pat):
+                if file_path.is_file():
+                    tasks.append(self.parse_file(file_path))
         await asyncio.gather(*tasks)
         logger.info("Aplicativo escaneado", files_processed=len(tasks))
 
     async def parse_file(self, file_path: Path):
         try:
-            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+            async with aiofiles.open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = await f.read()
             file_hash = hashlib.md5(content.encode()).hexdigest()
             if str(file_path) in self.file_hashes and self.file_hashes[str(file_path)] == file_hash:
                 return
             self.file_hashes[str(file_path)] = file_hash
+            if file_path.suffix == ".py":
+                await self._parse_python(content, file_path, file_hash)
+            else:
+                await self._parse_generic(content, file_path, file_hash)
+        except SyntaxError as e:
+            logger.error("Erro de sintaxe", file=str(file_path), error=str(e))
+        except Exception as e:
+            logger.error("Erro ao analisar arquivo", file=str(file_path), error=str(e))
+
+    async def _parse_python(self, content: str, file_path: Path, file_hash: str):
+        try:
             tree = ast.parse(content)
             chunks = []
             for node in ast.walk(tree):
@@ -107,10 +120,65 @@ class CodeAnalyzer:
                     "tags": ["code", chunk['type'].lower(), os.path.basename(chunk['file'])],
                 }
                 self.memory.save(memory_entry)
-        except SyntaxError as e:
-            logger.error("Erro de sintaxe", file=str(file_path), error=str(e))
         except Exception as e:
             logger.error("Erro ao analisar arquivo", file=str(file_path), error=str(e))
+
+    async def _parse_generic(self, content: str, file_path: Path, file_hash: str):
+        chunks = []
+        pattern = None
+        ftype = file_path.suffix.lower().lstrip(".")
+        if ftype in {"js", "ts"}:
+            pattern = re.compile(r"function\s+(\w+)\s*\(")
+        elif ftype in {"cpp", "hpp"}:
+            pattern = re.compile(r"[\w:]+\s+(\w+)\s*\([^)]*\)\s*{", re.MULTILINE)
+        if pattern:
+            for m in pattern.finditer(content):
+                name = m.group(1)
+                chunk = {
+                    "name": name,
+                    "type": ftype + "_func",
+                    "code": "",
+                    "file": str(file_path),
+                    "hash": file_hash,
+                    "last_modified": datetime.now().isoformat(),
+                    "dependencies": [],
+                    "calls": [],
+                    "external_deps": [],
+                    "docstring": "",
+                    "line_start": content[: m.start()].count("\n") + 1,
+                    "line_end": content[: m.end()].count("\n") + 1,
+                    "complexity": 1,
+                }
+                chunks.append(chunk)
+                self.code_graph.add_node(name, **chunk)
+        else:
+            name = file_path.stem
+            chunk = {
+                "name": name,
+                "type": ftype + "_file",
+                "code": content,
+                "file": str(file_path),
+                "hash": file_hash,
+                "last_modified": datetime.now().isoformat(),
+                "dependencies": [],
+                "calls": [],
+                "external_deps": [],
+                "docstring": "",
+                "line_start": 1,
+                "line_end": content.count("\n") + 1,
+                "complexity": 1,
+            }
+            chunks.append(chunk)
+            self.code_graph.add_node(name, **chunk)
+
+        self.code_chunks.update({c["name"]: c for c in chunks})
+        for chunk in chunks:
+            self.memory.save({
+                "type": "code_chunk",
+                "content": f"{chunk['type']} {chunk['name']} em {chunk['file']}",
+                "metadata": chunk,
+                "tags": ["code", ftype, os.path.basename(chunk['file'])],
+            })
 
     def _get_dependencies(self, node):
         deps = set()

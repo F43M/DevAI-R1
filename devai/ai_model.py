@@ -1,23 +1,69 @@
 import asyncio
+from collections import OrderedDict
 from datetime import datetime
+from difflib import SequenceMatcher
 
 import aiohttp
 
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    AutoModelForCausalLM = None
+    AutoTokenizer = None
+
 from .config import config, logger, metrics
+
+
+class PromptCache:
+    """Cache prompts and responses using fuzzy matching."""
+
+    def __init__(self, max_size: int = 100):
+        self.cache: "OrderedDict[str, str]" = OrderedDict()
+        self.max_size = max_size
+
+    def get(self, prompt: str) -> str | None:
+        for stored, resp in list(self.cache.items()):
+            if SequenceMatcher(None, stored, prompt).ratio() > 0.9:
+                self.cache.move_to_end(stored)
+                return resp
+        return None
+
+    def add(self, prompt: str, response: str) -> None:
+        self.cache[prompt] = response
+        self.cache.move_to_end(prompt)
+        if len(self.cache) > self.max_size:
+            self.cache.popitem(last=False)
 
 
 class AIModel:
     def __init__(self):
         self.session = aiohttp.ClientSession()
-        self.models = config.MODELS or {"default": {
-            "name": config.MODEL_NAME,
-            "api_key": config.OPENROUTER_API_KEY,
-            "url": config.OPENROUTER_URL,
-        }}
+        self.models = config.MODELS or {
+            "default": {
+                "name": config.MODEL_NAME,
+                "api_key": config.OPENROUTER_API_KEY,
+                "url": config.OPENROUTER_URL,
+            }
+        }
+        if config.LOCAL_MODEL:
+            self.models.setdefault("local", {"name": config.LOCAL_MODEL, "local": True})
         self.current = "default"
-        if not any(m.get("api_key") for m in self.models.values()):
+        self.cache = PromptCache()
+        if not any(m.get("api_key") for m in self.models.values() if not m.get("local")):
             logger.error("Nenhuma chave de modelo configurada")
         logger.info("Modelos disponíveis", models=list(self.models.keys()))
+
+        if config.LOCAL_MODEL and AutoModelForCausalLM:
+            try:
+                self.local_tokenizer = AutoTokenizer.from_pretrained(config.LOCAL_MODEL)
+                self.local_model = AutoModelForCausalLM.from_pretrained(config.LOCAL_MODEL)
+            except Exception as e:  # pragma: no cover - heavy dep
+                logger.error("Erro ao carregar modelo local", error=str(e))
+                self.local_model = None
+                self.local_tokenizer = None
+        else:
+            self.local_model = None
+            self.local_tokenizer = None
 
     def set_model(self, name: str) -> None:
         if name in self.models:
@@ -27,6 +73,21 @@ class AIModel:
             logger.error("Modelo não encontrado", model=name)
 
     async def generate(self, prompt: str, max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
+        cached = self.cache.get(prompt)
+        if cached is not None:
+            return cached
+
+        if self.current == "local" and self.local_model and self.local_tokenizer:
+            try:
+                input_ids = self.local_tokenizer.encode(prompt, return_tensors="pt")
+                output = self.local_model.generate(input_ids, max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH))
+                text = self.local_tokenizer.decode(output[0], skip_special_tokens=True)
+                self.cache.add(prompt, text)
+                metrics.record_call(0)
+                return text
+            except Exception as e:  # pragma: no cover - heavy dep
+                logger.error("Erro no modelo local", error=str(e))
+
         model_cfg = self.models.get(self.current, {})
         headers = {
             "Authorization": f"Bearer {model_cfg.get('api_key', '')}",
@@ -48,7 +109,9 @@ class AIModel:
             ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    return data["choices"][0]["message"]["content"]
+                    text = data["choices"][0]["message"]["content"]
+                    self.cache.add(prompt, text)
+                    return text
                 error = await resp.text()
                 metrics.record_error()
                 logger.error("Erro na chamada ao OpenRouter", status=resp.status, error=error)

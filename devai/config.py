@@ -33,6 +33,7 @@ class Config:
             "INDEX_FILE": "faiss.index",
             "INDEX_IDS_FILE": "faiss_ids.json",
             "NOTIFY_EMAIL": os.getenv("NOTIFY_EMAIL", ""),
+            "LOCAL_MODEL": os.getenv("LOCAL_MODEL", ""),
         }
         cfg = load_config(path, defaults)
         for key, value in cfg.items():
