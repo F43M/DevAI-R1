@@ -1,0 +1,18 @@
+impact_analysis:
+  name: Análise de Impacto
+  type: analysis
+  scope: dependents
+  condition: "True"
+  description: Analisa o impacto de mudanças em funções
+
+code_review:
+  name: Revisão de Código
+  type: verification
+  scope: all
+  condition: "'🚩' in findings or '⚠️' in findings"
+  description: Revisão geral de qualidade de código
+
+lint:
+  name: Lint
+  type: lint
+  description: Verifica TODOs no código

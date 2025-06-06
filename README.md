@@ -13,7 +13,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 
 ## Configuração
 
-1. Crie um arquivo `config.yaml` na raiz (opcional) e defina os caminhos desejados:
+1. Utilize `config.example.yaml` e `tasks.example.yaml` como base. Copie-os para `config.yaml` e `tasks.yaml` e ajuste conforme necessário:
 
 ```yaml
 CODE_ROOT: ./app
@@ -58,6 +58,7 @@ O código foi dividido em módulos dentro do pacote `devai/`, facilitando a incl
 - `ai_model.py` – comunicação com o OpenRouter
 - `core.py` – orquestração principal
 - `cli.py` – interface de linha de comando
+- `lint.py` – checagem simples de TODOs
 
 Sinta‑se livre para expandir cada módulo conforme necessário.
 ## Roadmap

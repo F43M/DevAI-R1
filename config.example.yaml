@@ -1,0 +1,4 @@
+CODE_ROOT: ./app
+API_PORT: 8000
+LOG_DIR: ./logs
+MODEL_NAME: deepseek/deepseek-r1-0528:free
