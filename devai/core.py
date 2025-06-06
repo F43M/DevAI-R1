@@ -46,8 +46,21 @@ class CodeMemoryAI:
             task.add_done_callback(self.background_tasks.discard)
 
     def _setup_api_routes(self):
+        try:
+            import jwt  # type: ignore
+        except Exception:  # pragma: no cover - optional dependency
+            jwt = None
+
         def _auth(token: str) -> bool:
-            return not config.API_TOKEN or token == config.API_TOKEN
+            if not config.API_SECRET:
+                return True
+            if jwt:
+                try:
+                    jwt.decode(token, config.API_SECRET, algorithms=["HS256"])
+                    return True
+                except Exception:
+                    return False
+            return token == config.API_SECRET
 
         @self.app.post("/analyze")
         async def analyze_code(query: str):

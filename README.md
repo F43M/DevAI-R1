@@ -1,6 +1,6 @@
 # DevAI-R1
 
-Assistente de desenvolvimento baseado em IA com suporte a contextos de até **160k tokens** via OpenRouter.
+Assistente de desenvolvimento baseado em IA com suporte a contextos de até **160k tokens** via OpenRouter. Agora inclui validação de configuração e autenticação com tokens JWT.
 
 ## Principais recursos
 
@@ -37,6 +37,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 ```yaml
 CODE_ROOT: ./app
 API_PORT: 8000
+API_SECRET: "sua-chave"
 ```
 
 2. Defina a variável de ambiente `OPENROUTER_API_KEY` com sua chave de acesso.
@@ -76,6 +77,8 @@ Instale as dependências de desenvolvimento e execute:
 ```bash
 pytest
 ```
+
+O projeto inclui um arquivo `pyproject.toml` para facilitar a instalação das dependências e um arquivo `.pre-commit-config.yaml` com linters automáticos. Após instalar o `pre-commit`, execute `pre-commit install` para habilitar as verificações antes de cada commit.
 
 ## Plugins
 
@@ -130,3 +133,5 @@ Melhorias em andamento:
 - Monitoramento de complexidade ao longo do tempo
   (histórico salvo em `complexity_history.json`)
 - (adicione novas ideias aqui)
+
+Uma versão resumida deste documento está disponível em `README_en.md` para facilitar contribuições internacionais.

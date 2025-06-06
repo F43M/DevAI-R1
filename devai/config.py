@@ -1,6 +1,7 @@
 import os
 import logging
 import logging.handlers
+from dataclasses import dataclass, field, fields, MISSING
 from typing import Dict, Any
 try:
     import psutil  # type: ignore
@@ -12,33 +13,48 @@ except Exception:  # pragma: no cover - optional
     structlog = None
 from config_utils import load_config
 
+@dataclass(init=False)
 class Config:
-    """Load configuration from YAML merging with defaults."""
-    def __init__(self, path: str = "config.yaml"):
-        defaults = {
-            "OPENROUTER_API_KEY": os.getenv("OPENROUTER_API_KEY", ""),
-            "MODEL_NAME": "deepseek/deepseek-r1-0528:free",
-            "MODELS": {},
-            "CODE_ROOT": "./app",
-            "MEMORY_DB": "memory.sqlite",
-            "EMBEDDING_MODEL": "all-MiniLM-L6-v2",
-            "TASK_DEFINITIONS": "tasks.yaml",
-            "LOG_DIR": "./logs",
-            "FILE_HISTORY": "file_history.json",
-            "API_TOKEN": os.getenv("API_TOKEN", ""),
-            "API_PORT": 8000,
-            "LEARNING_LOOP_INTERVAL": 300,
-            "MAX_CONTEXT_LENGTH": 160000,
-            "OPENROUTER_URL": "https://openrouter.ai/api/v1/chat/completions",
-            "INDEX_FILE": "faiss.index",
-            "INDEX_IDS_FILE": "faiss_ids.json",
-            "NOTIFY_EMAIL": os.getenv("NOTIFY_EMAIL", ""),
-            "LOCAL_MODEL": os.getenv("LOCAL_MODEL", ""),
-            "COMPLEXITY_HISTORY": "complexity_history.json",
-        }
+    """Application configuration loaded from YAML with simple validation."""
+
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    MODEL_NAME: str = "deepseek/deepseek-r1-0528:free"
+    MODELS: Dict[str, Any] = field(default_factory=dict)
+    CODE_ROOT: str = "./app"
+    MEMORY_DB: str = "memory.sqlite"
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    TASK_DEFINITIONS: str = "tasks.yaml"
+    LOG_DIR: str = "./logs"
+    FILE_HISTORY: str = "file_history.json"
+    API_SECRET: str = os.getenv("API_SECRET", "")
+    API_PORT: int = 8000
+    LEARNING_LOOP_INTERVAL: int = 300
+    MAX_CONTEXT_LENGTH: int = 160000
+    OPENROUTER_URL: str = "https://openrouter.ai/api/v1/chat/completions"
+    INDEX_FILE: str = "faiss.index"
+    INDEX_IDS_FILE: str = "faiss_ids.json"
+    NOTIFY_EMAIL: str = os.getenv("NOTIFY_EMAIL", "")
+    LOCAL_MODEL: str = os.getenv("LOCAL_MODEL", "")
+    COMPLEXITY_HISTORY: str = "complexity_history.json"
+    LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
+
+    def __init__(self, path: str = "config.yaml") -> None:
+        defaults: Dict[str, Any] = {}
+        for f in fields(self.__class__):
+            if f.default is not MISSING:
+                defaults[f.name] = f.default
+            elif f.default_factory is not MISSING:  # type: ignore
+                defaults[f.name] = f.default_factory()  # type: ignore
         cfg = load_config(path, defaults)
         for key, value in cfg.items():
             setattr(self, key, value)
+        self._validate()
+
+    def _validate(self) -> None:
+        if not isinstance(self.API_PORT, int):
+            raise ValueError("API_PORT must be integer")
+        if not isinstance(self.LEARNING_LOOP_INTERVAL, int):
+            raise ValueError("LEARNING_LOOP_INTERVAL must be integer")
 
 
 class Metrics:
@@ -92,7 +108,7 @@ class Metrics:
         return data
 
 
-def configure_logging(log_dir: str):
+def configure_logging(log_dir: str, aggregator: str = ""):
     os.makedirs(log_dir, exist_ok=True)
     if structlog:
         structlog.configure(
@@ -128,10 +144,13 @@ def configure_logging(log_dir: str):
 
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)
+    if aggregator:
+        http_handler = logging.handlers.HTTPHandler(aggregator, "/", method="POST")
+        root_logger.addHandler(http_handler)
     root_logger.setLevel(logging.INFO)
     return logger_obj
 
 
 config = Config()
-logger = configure_logging(config.LOG_DIR)
+logger = configure_logging(config.LOG_DIR, config.LOG_AGGREGATOR_URL)
 metrics = Metrics()

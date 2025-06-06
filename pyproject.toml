@@ -1,0 +1,17 @@
+[project]
+name = "devai"
+version = "0.1.0"
+description = "AI powered development assistant"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name="DevAI"}]
+
+[project.dependencies]
+fastapi = "*"
+uvicorn = "*"
+aiofiles = "*"
+aiohttp = "*"
+structlog = "*"
+
+[tool.pytest.ini_options]
+addopts = "-q"
