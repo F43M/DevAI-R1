@@ -14,4 +14,5 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Relatórios de cobertura**: integrar ferramentas como `coverage.py` ao processo de testes.
 - **Análise de segurança**: incorporar `bandit` para detectar vulnerabilidades.
 - **Integração contínua**: rodar tarefas de teste e análise estática automaticamente em um pipeline CI.
+- **Métricas avançadas**: monitorar uso de CPU e memória do assistente.
 

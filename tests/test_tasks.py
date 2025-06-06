@@ -51,3 +51,20 @@ def test_run_test_and_static_tasks(monkeypatch):
     assert r1 == ["ok"]
     assert r2 == ["lint ok"]
 
+
+def test_security_analysis_task(monkeypatch):
+    analyzer = DummyAnalyzer()
+    mem = DummyMemory()
+    tm = TaskManager("missing.yaml", analyzer, mem)
+
+    async def fake_sec_task(task, *args):
+        return ["secure"]
+
+    monkeypatch.setattr(tm, "_perform_security_analysis_task", fake_sec_task)
+
+    async def run():
+        return await tm.run_task("security_analysis")
+
+    res = asyncio.run(run())
+    assert res == ["secure"]
+
