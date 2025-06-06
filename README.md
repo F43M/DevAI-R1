@@ -9,11 +9,14 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Cache de embeddings** para acelerar consultas repetidas
 - **Limpeza automática de memórias** e feedback de uso
 - **Análise de código** com construção de grafo de dependências
+- **Parser multilíngue** (Python, JS, C++, HTML)
 - **Métricas de complexidade** das funções analisadas
 - **Monitoramento de logs** detectando padrões de erro
 - **Execução de testes automatizados e análise estática**
 - **Tarefas extras** com pylint e mypy
 - **Análise de segurança com Bandit**
+- **Cache inteligente de prompts** reaproveitando respostas similares
+- **Integração opcional com modelo local** para geração offline
 - **API FastAPI** e **interface de linha de comando**
 - **Interface web opcional** em `/static/index.html` para conversar com a IA e explorar arquivos
 - Métricas expostas em `/metrics` (CPU e memória)
