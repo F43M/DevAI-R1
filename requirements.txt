@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+aiofiles
+aiohttp
+structlog
+networkx
+numpy
+scikit-learn
+sentence-transformers
+faiss-cpu
+transformers
+psutil
+PyYAML
+PyJWT
