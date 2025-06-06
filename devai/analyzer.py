@@ -21,9 +21,10 @@ from .memory import MemoryManager
 class CodeAnalyzer:
     """Parse source files and build dependency graphs."""
 
-    def __init__(self, code_root: str, memory: MemoryManager):
+    def __init__(self, code_root: str, memory: MemoryManager, history=None):
         self.code_root = Path(code_root)
         self.memory = memory
+        self.history = history
         self.code_chunks: Dict[str, Dict] = {}
         self.code_graph = nx.DiGraph()
         self.vectorizer = TfidfVectorizer()
@@ -242,8 +243,64 @@ class CodeAnalyzer:
             lines = f.readlines()
         if not 1 <= line_no <= len(lines):
             return False
+        old = lines[line_no - 1].rstrip("\n")
         lines[line_no - 1] = new_content + "\n"
         with open(path, "w", encoding="utf-8") as f:
             f.writelines(lines)
+        if self.history:
+            self.history.record(str(path.relative_to(self.code_root)), "edit", [old], [new_content])
         await self.parse_file(path)
         return True
+
+    async def create_file(self, file_path: str, content: str = "") -> bool:
+        path = (self.code_root / file_path).resolve()
+        if not str(path).startswith(str(self.code_root.resolve())):
+            return False
+        if path.exists():
+            return False
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        if self.history:
+            self.history.record(str(path.relative_to(self.code_root)), "create", new=content.splitlines())
+        if path.suffix == ".py":
+            await self.parse_file(path)
+        return True
+
+    async def delete_file(self, file_path: str) -> bool:
+        path = (self.code_root / file_path).resolve()
+        if not path.is_file() or not str(path).startswith(str(self.code_root.resolve())):
+            return False
+        with open(path, "r", encoding="utf-8") as f:
+            old = f.read().splitlines()
+        path.unlink()
+        if self.history:
+            self.history.record(str(path.relative_to(self.code_root)), "delete", old=old)
+        self.code_chunks = {k: v for k, v in self.code_chunks.items() if v.get("file") != str(path)}
+        return True
+
+    async def create_directory(self, dir_path: str) -> bool:
+        path = (self.code_root / dir_path).resolve()
+        if not str(path).startswith(str(self.code_root.resolve())):
+            return False
+        if path.exists():
+            return False
+        path.mkdir(parents=True, exist_ok=False)
+        if self.history:
+            self.history.record(str(path.relative_to(self.code_root)), "mkdir")
+        return True
+
+    async def delete_directory(self, dir_path: str) -> bool:
+        path = (self.code_root / dir_path).resolve()
+        if not path.is_dir() or not str(path).startswith(str(self.code_root.resolve())):
+            return False
+        import shutil
+        shutil.rmtree(path)
+        if self.history:
+            self.history.record(str(path.relative_to(self.code_root)), "rmdir")
+        return True
+
+    async def get_history(self, file_path: str):
+        if self.history:
+            return self.history.history(file_path)
+        return []

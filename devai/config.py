@@ -19,6 +19,8 @@ class Config:
             "EMBEDDING_MODEL": "all-MiniLM-L6-v2",
             "TASK_DEFINITIONS": "tasks.yaml",
             "LOG_DIR": "./logs",
+            "FILE_HISTORY": "file_history.json",
+            "API_TOKEN": os.getenv("API_TOKEN", ""),
             "API_PORT": 8000,
             "LEARNING_LOOP_INTERVAL": 300,
             "MAX_CONTEXT_LENGTH": 160000,

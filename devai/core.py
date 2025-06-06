@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import config, logger, metrics
 from .memory import MemoryManager
 from .analyzer import CodeAnalyzer
+from .file_history import FileHistory
 from .tasks import TaskManager
 from .log_monitor import LogMonitor
 from .ai_model import AIModel
@@ -22,7 +23,8 @@ from .ai_model import AIModel
 class CodeMemoryAI:
     def __init__(self):
         self.memory = MemoryManager(config.MEMORY_DB, config.EMBEDDING_MODEL)
-        self.analyzer = CodeAnalyzer(config.CODE_ROOT, self.memory)
+        self.history = FileHistory(config.FILE_HISTORY)
+        self.analyzer = CodeAnalyzer(config.CODE_ROOT, self.memory, self.history)
         self.ai_model = AIModel()
         self.tasks = TaskManager(config.TASK_DEFINITIONS, self.analyzer, self.memory, ai_model=self.ai_model)
         self.log_monitor = LogMonitor(self.memory, config.LOG_DIR)
@@ -41,6 +43,9 @@ class CodeMemoryAI:
             task.add_done_callback(self.background_tasks.discard)
 
     def _setup_api_routes(self):
+        def _auth(token: str) -> bool:
+            return not config.API_TOKEN or token == config.API_TOKEN
+
         @self.app.post("/analyze")
         async def analyze_code(query: str):
             return await self.generate_response(query)
@@ -94,9 +99,45 @@ class CodeMemoryAI:
             return {"file": file, "lines": lines}
 
         @self.app.post("/file/edit")
-        async def edit_file(file: str, line: int, content: str):
+        async def edit_file(file: str, line: int, content: str, token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
             ok = await self.analyzer.edit_line(file, line, content)
             return {"status": "ok" if ok else "error"}
+
+        @self.app.post("/file/create")
+        async def create_file(file: str, content: str = "", token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            ok = await self.analyzer.create_file(file, content)
+            return {"status": "ok" if ok else "error"}
+
+        @self.app.post("/file/delete")
+        async def delete_file(file: str, token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            ok = await self.analyzer.delete_file(file)
+            return {"status": "ok" if ok else "error"}
+
+        @self.app.post("/dir/create")
+        async def create_dir(path: str, token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            ok = await self.analyzer.create_directory(path)
+            return {"status": "ok" if ok else "error"}
+
+        @self.app.post("/dir/delete")
+        async def delete_dir(path: str, token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            ok = await self.analyzer.delete_directory(path)
+            return {"status": "ok" if ok else "error"}
+
+        @self.app.get("/history")
+        async def get_history(file: str, token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            return self.history.history(file)
 
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
