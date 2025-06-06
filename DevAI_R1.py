@@ -42,8 +42,33 @@ class Config:
         # da OpenRouter.
         self.MAX_CONTEXT_LENGTH = 160000
         self.OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+        self.INDEX_FILE = "faiss.index"
+        self.INDEX_IDS_FILE = "faiss_ids.json"
 
 config = Config()
+
+# --- Métricas simples para monitoramento ---
+class Metrics:
+    def __init__(self):
+        self.api_calls = 0
+        self.total_response_time = 0.0
+        self.errors = 0
+
+    def record_call(self, duration: float):
+        self.api_calls += 1
+        self.total_response_time += duration
+
+    def record_error(self):
+        self.errors += 1
+
+    def summary(self) -> Dict[str, Any]:
+        avg_time = self.total_response_time / self.api_calls if self.api_calls else 0
+        return {
+            "api_calls": self.api_calls,
+            "avg_response_time": avg_time,
+            "errors": self.errors,
+        }
+
 
 # --- Configuração de Logging Avançada ---
 def configure_logging():
@@ -74,6 +99,7 @@ def configure_logging():
     root_logger.setLevel(logging.INFO)
 
 logger = structlog.get_logger()
+metrics = Metrics()
 
 # --- Módulo de Memória Avançado ---
 class MemoryManager:
@@ -121,21 +147,50 @@ class MemoryManager:
                 FOREIGN KEY (memory_id) REFERENCES memory (id)
             )
         """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_feedback ON memory(feedback_score)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_access ON memory(access_count)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag)")
         self.conn.commit()
     
     def _load_index(self):
+        if os.path.exists(config.INDEX_FILE) and os.path.exists(config.INDEX_IDS_FILE):
+            self.index = faiss.read_index(config.INDEX_FILE)
+            with open(config.INDEX_IDS_FILE, "r") as f:
+                self.indexed_ids = json.load(f)
+            logger.info("Índice de memória carregado do disco", items=len(self.indexed_ids))
+            return
+
         cursor = self.conn.cursor()
         cursor.execute("SELECT id, embedding FROM memory WHERE embedding IS NOT NULL")
         embeddings = []
-        
         for row in cursor.fetchall():
             self.indexed_ids.append(row[0])
             embedding = np.frombuffer(row[1], dtype=np.float32).reshape(1, -1)
             embeddings.append(embedding)
-        
+
         if embeddings:
             self.index.add(np.concatenate(embeddings))
+
+        self._persist_index()
         logger.info("Índice de memória carregado", items=len(self.indexed_ids))
+
+    def _persist_index(self):
+        faiss.write_index(self.index, config.INDEX_FILE)
+        with open(config.INDEX_IDS_FILE, "w") as f:
+            json.dump(self.indexed_ids, f)
+
+    def _rebuild_index(self):
+        self.index = faiss.IndexFlatL2(self.dimension)
+        self.indexed_ids = []
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id, embedding FROM memory WHERE embedding IS NOT NULL")
+        embeddings = []
+        for row in cursor.fetchall():
+            self.indexed_ids.append(row[0])
+            embeddings.append(np.frombuffer(row[1], dtype=np.float32).reshape(1, -1))
+        if embeddings:
+            self.index.add(np.concatenate(embeddings))
+        self._persist_index()
     
     def save(self, entry: Dict, update_feedback: bool = False):
         entry["metadata"] = json.dumps(entry.get("metadata", {}))
@@ -173,9 +228,11 @@ class MemoryManager:
             
             self.index.add(np.frombuffer(embedding, dtype=np.float32).reshape(1, -1))
             self.indexed_ids.append(entry_id)
-        
+
+        self._persist_index()
+
         self.conn.commit()
-        logger.info("Memória salva" if not update_feedback else "Feedback atualizado", 
+        logger.info("Memória salva" if not update_feedback else "Feedback atualizado",
                    entry_type=entry.get("type"))
     
     def _generate_content_for_embedding(self, entry: Dict) -> str:
@@ -275,8 +332,29 @@ class MemoryManager:
                 "strength": row[10],
                 "tags": row[11].split(", ") if row[11] else []
             })
-        
+
         return results
+
+    def cleanup(self, max_age_days: int = 30, min_access_count: int = 0):
+        cutoff = (datetime.now() - timedelta(days=max_age_days)).isoformat()
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT id FROM memory WHERE created_at < ? AND access_count <= ?",
+            (cutoff, min_access_count),
+        )
+        ids = [row[0] for row in cursor.fetchall()]
+        if not ids:
+            return
+        placeholders = ",".join(["?"] * len(ids))
+        cursor.execute(f"DELETE FROM memory WHERE id IN ({placeholders})", ids)
+        cursor.execute(f"DELETE FROM tags WHERE memory_id IN ({placeholders})", ids)
+        cursor.execute(
+            f"DELETE FROM semantic_relations WHERE source_id IN ({placeholders}) OR target_id IN ({placeholders})",
+            ids * 2,
+        )
+        self.conn.commit()
+        self._rebuild_index()
+        logger.info("Limpeza de memória executada", removed=len(ids))
     
     def record_feedback(self, memory_id: int, is_positive: bool):
         score_change = 1 if is_positive else -1
@@ -716,6 +794,8 @@ class TaskManager:
 class AIModel:
     def __init__(self):
         self.session = aiohttp.ClientSession()
+        if not config.OPENROUTER_API_KEY:
+            logger.error("Chave OPENROUTER_API_KEY não configurada")
         logger.info("Modelo DeepSeek-R1 configurado via OpenRouter")
     
     async def generate(self, prompt: str, max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
@@ -733,18 +813,32 @@ class AIModel:
             "temperature": 0.7
         }
         
+        start = datetime.now()
         try:
-            async with self.session.post(config.OPENROUTER_URL, headers=headers, json=payload) as resp:
+            async with self.session.post(
+                config.OPENROUTER_URL,
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=60),
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     return data['choices'][0]['message']['content']
                 else:
                     error = await resp.text()
+                    metrics.record_error()
                     logger.error("Erro na chamada ao OpenRouter", status=resp.status, error=error)
                     return f"Erro na API: {resp.status} - {error}"
+        except asyncio.TimeoutError:
+            metrics.record_error()
+            logger.error("Timeout na chamada ao OpenRouter")
+            return "Erro: tempo limite excedido ao chamar a API"
         except Exception as e:
+            metrics.record_error()
             logger.error("Erro na conexão com OpenRouter", error=str(e))
             return f"Erro de conexão: {str(e)}"
+        finally:
+            metrics.record_call((datetime.now() - start).total_seconds())
     
     async def close(self):
         await self.session.close()
@@ -807,25 +901,34 @@ class CodeMemoryAI:
                 "learned_rules": len(self.analyzer.learned_rules),
                 "last_activity": self.analyzer.last_analysis_time.isoformat()
             }
+
+        @self.app.get("/metrics")
+        async def get_metrics():
+            return metrics.summary()
         
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
     
     async def _learning_loop(self):
+        error_count = 0
         while True:
             try:
                 await self.analyzer.scan_app()
                 await self.log_monitor.monitor_logs()
                 await self._run_scheduled_tasks()
                 await self._generate_automatic_insights()
+                error_count = 0
                 await asyncio.sleep(config.LEARNING_LOOP_INTERVAL)
             except Exception as e:
-                logger.error("Erro no loop de aprendizado", error=str(e))
-                await asyncio.sleep(30)
+                error_count += 1
+                logger.error("Erro no loop de aprendizado", error=str(e), count=error_count)
+                wait_time = min(30 * error_count, 300)
+                await asyncio.sleep(wait_time)
     
     async def _run_scheduled_tasks(self):
         if datetime.now().hour == 3:
             await self.tasks.run_task("code_review")
+            self.memory.cleanup()
     
     async def _generate_automatic_insights(self):
         complex_functions = []
