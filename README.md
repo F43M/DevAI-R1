@@ -17,6 +17,8 @@ longas quando necessário.
   timeout e contagem de erros para maior estabilidade.
 - **Métricas de uso**: número de chamadas à API e tempo médio de resposta estão
   disponíveis em `/metrics`.
+- **Diretórios ignorados**: defina `EXCLUDE_DIRS` para que a varredura pule
+  pastas indesejadas, acelerando a análise de grandes projetos.
 
 ## Configuração
 
@@ -26,6 +28,10 @@ configurações. Exemplo:
 ```yaml
 CODE_ROOT: ./app
 API_PORT: 8000
+EXCLUDE_DIRS:
+  - venv
+  - __pycache__
+  - node_modules
 ```
 
 Variáveis de ambiente ainda podem sobrescrever `OPENROUTER_API_KEY`.

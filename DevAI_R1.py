@@ -44,6 +44,7 @@ class Config:
             "OPENROUTER_URL": "https://openrouter.ai/api/v1/chat/completions",
             "INDEX_FILE": "faiss.index",
             "INDEX_IDS_FILE": "faiss_ids.json",
+            "EXCLUDE_DIRS": ["venv", "__pycache__", "node_modules"],
         }
 
         cfg = load_config(path, defaults)
@@ -376,11 +377,14 @@ class CodeAnalyzer:
     def __init__(self, code_root: str, memory: MemoryManager):
         self.code_root = Path(code_root)
         self.memory = memory
+        self.embedding_model = memory.embedding_model
         self.code_chunks = {}
+        self.chunk_embeddings = {}
         self.code_graph = nx.DiGraph()
         self.vectorizer = TfidfVectorizer()
         self.file_hashes = {}
         self.external_dependencies = set()
+        self.module_map = defaultdict(list)
         self.learned_rules = {}
         self.last_analysis_time = datetime.now()
     
@@ -396,9 +400,12 @@ class CodeAnalyzer:
     async def scan_app(self):
         tasks = []
         for file_path in self.code_root.rglob("*.py"):
+            if any(part in config.EXCLUDE_DIRS for part in file_path.parts):
+                continue
             if file_path.is_file():
                 tasks.append(self.parse_file(file_path))
         await asyncio.gather(*tasks)
+        self.last_analysis_time = datetime.now()
         logger.info("Aplicativo escaneado", files_processed=len(tasks))
     
     async def parse_file(self, file_path: Path):
@@ -430,7 +437,15 @@ class CodeAnalyzer:
                         "line_start": node.lineno,
                         "line_end": node.end_lineno
                     }
-                    
+
+                    chunk_embedding = self.embedding_model.encode(
+                        f"{chunk['name']} {chunk['docstring']}"
+                    ).astype(np.float32)
+                    self.chunk_embeddings[chunk['name']] = chunk_embedding
+                    chunk["embedding"] = chunk_embedding
+
+                    self.module_map[file_path.stem].append(chunk['name'])
+
                     self.code_graph.add_node(node.name, **chunk)
                     for dep in chunk["dependencies"]:
                         self.code_graph.add_edge(node.name, dep)
@@ -1046,14 +1061,17 @@ Resposta:"""
         
         if exact_matches:
             return exact_matches
-        
+
         query_embedding = self.analyzer.embedding_model.encode(query).astype(np.float32)
-        
+
         similarities = []
         for name, chunk in self.analyzer.code_chunks.items():
-            chunk_embedding = self.analyzer.embedding_model.encode(
-                f"{chunk['name']} {chunk['docstring']}"
-            ).astype(np.float32)
+            chunk_embedding = self.analyzer.chunk_embeddings.get(name)
+            if chunk_embedding is None:
+                chunk_embedding = self.analyzer.embedding_model.encode(
+                    f"{chunk['name']} {chunk['docstring']}"
+                ).astype(np.float32)
+                self.analyzer.chunk_embeddings[name] = chunk_embedding
             similarity = np.dot(query_embedding, chunk_embedding) / (
                 np.linalg.norm(query_embedding) * np.linalg.norm(chunk_embedding)
             )
