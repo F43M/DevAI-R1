@@ -2,6 +2,7 @@ import os
 import ast
 import json
 import yaml
+from config_utils import load_config
 import sqlite3
 import re
 from pathlib import Path
@@ -28,22 +29,26 @@ import logging.handlers
 
 # --- Configuração ---
 class Config:
-    def __init__(self):
-        self.OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-        self.MODEL_NAME = "deepseek/deepseek-r1-0528:free"
-        self.CODE_ROOT = "./app"
-        self.MEMORY_DB = "memory.sqlite"
-        self.EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-        self.TASK_DEFINITIONS = "tasks.yaml"
-        self.LOG_DIR = "./logs"
-        self.API_PORT = 8000
-        self.LEARNING_LOOP_INTERVAL = 300  # 5 minutos
-        # Ajustado para aproveitar o limite de 160k tokens oferecido pela API
-        # da OpenRouter.
-        self.MAX_CONTEXT_LENGTH = 160000
-        self.OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-        self.INDEX_FILE = "faiss.index"
-        self.INDEX_IDS_FILE = "faiss_ids.json"
+    def __init__(self, path: str = "config.yaml"):
+        defaults = {
+            "OPENROUTER_API_KEY": os.getenv("OPENROUTER_API_KEY", ""),
+            "MODEL_NAME": "deepseek/deepseek-r1-0528:free",
+            "CODE_ROOT": "./app",
+            "MEMORY_DB": "memory.sqlite",
+            "EMBEDDING_MODEL": "all-MiniLM-L6-v2",
+            "TASK_DEFINITIONS": "tasks.yaml",
+            "LOG_DIR": "./logs",
+            "API_PORT": 8000,
+            "LEARNING_LOOP_INTERVAL": 300,
+            "MAX_CONTEXT_LENGTH": 160000,
+            "OPENROUTER_URL": "https://openrouter.ai/api/v1/chat/completions",
+            "INDEX_FILE": "faiss.index",
+            "INDEX_IDS_FILE": "faiss_ids.json",
+        }
+
+        cfg = load_config(path, defaults)
+        for key, value in cfg.items():
+            setattr(self, key, value)
 
 config = Config()
 
@@ -546,6 +551,17 @@ class CodeAnalyzer:
             "links": [{"source": u, "target": v} for u, v in self.code_graph.edges()]
         }
 
+    async def watch_app_directory(self, interval: int = 5):
+        """Monitor directory for changes and trigger scanning."""
+        logger.info("Iniciando monitoramento da pasta de código", path=str(self.code_root))
+        while True:
+            try:
+                await self.scan_app()
+                await asyncio.sleep(interval)
+            except Exception as e:
+                logger.error("Erro no monitoramento da pasta", error=str(e))
+                await asyncio.sleep(interval)
+
 # --- Módulo de Monitoramento de Logs ---
 class LogMonitor:
     def __init__(self, memory: MemoryManager, log_dir: str = "./logs"):
@@ -860,7 +876,10 @@ class CodeMemoryAI:
         self.background_tasks = set()
         self._start_background_tasks()
         
-        logger.info("CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter")
+        logger.info(
+            "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter",
+            code_root=config.CODE_ROOT,
+        )
     
     def _start_background_tasks(self):
         task = asyncio.create_task(self._learning_loop())
@@ -872,6 +891,10 @@ class CodeMemoryAI:
         task.add_done_callback(self.background_tasks.discard)
         
         task = asyncio.create_task(self.analyzer.deep_scan_app())
+        self.background_tasks.add(task)
+        task.add_done_callback(self.background_tasks.discard)
+
+        task = asyncio.create_task(self.analyzer.watch_app_directory())
         self.background_tasks.add(task)
         task.add_done_callback(self.background_tasks.discard)
     
@@ -905,6 +928,18 @@ class CodeMemoryAI:
         @self.app.get("/metrics")
         async def get_metrics():
             return metrics.summary()
+
+        @self.app.get("/admin")
+        async def admin_panel():
+            return {
+                "files_indexed": len(self.analyzer.code_chunks),
+                "last_scan": self.analyzer.last_analysis_time.isoformat(),
+            }
+
+        @self.app.post("/admin/rescan")
+        async def admin_rescan():
+            await self.analyzer.deep_scan_app()
+            return {"status": "rescanned"}
         
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")

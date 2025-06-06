@@ -17,3 +17,24 @@ longas quando necessário.
   timeout e contagem de erros para maior estabilidade.
 - **Métricas de uso**: número de chamadas à API e tempo médio de resposta estão
   disponíveis em `/metrics`.
+
+## Configuração
+
+Crie um arquivo `config.yaml` na raiz para personalizar caminhos e outras
+configurações. Exemplo:
+
+```yaml
+CODE_ROOT: ./app
+API_PORT: 8000
+```
+
+Variáveis de ambiente ainda podem sobrescrever `OPENROUTER_API_KEY`.
+
+## Monitoramento da pasta `./app`
+
+O aplicativo verifica periodicamente a pasta especificada em `CODE_ROOT` e se
+atualiza automaticamente sempre que novos arquivos Python são adicionados ou
+modificados.
+
+Uma interface de administração em `/admin` permite acionar uma nova varredura
+manual e exibe informações sobre o último escaneamento.
