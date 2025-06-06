@@ -51,8 +51,8 @@ class CodeMemoryAI:
             return await self.generate_response(query)
 
         @self.app.get("/memory")
-        async def search_memory(query: str, top_k: int = 5):
-            return self.memory.search(query, top_k)
+        async def search_memory(query: str, top_k: int = 5, level: str | None = None):
+            return self.memory.search(query, top_k, level=level)
 
         @self.app.post("/feedback")
         async def submit_feedback(memory_id: int, is_positive: bool):
@@ -184,7 +184,7 @@ class CodeMemoryAI:
 
     async def generate_response(self, query: str) -> str:
         try:
-            contextual_memories = self.memory.search(query)
+            contextual_memories = self.memory.search(query, level="short")
             memory_context = "\n".join(
                 f"// Memória [{m['similarity_score']:.2f}]: {m['content']}\n// Tags: {', '.join(m.get('tags', []))}\n"
                 for m in contextual_memories[:3]

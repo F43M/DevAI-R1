@@ -77,6 +77,7 @@ class CodeAnalyzer:
                         "docstring": ast.get_docstring(node) or "",
                         "line_start": node.lineno,
                         "line_end": node.end_lineno,
+                        "complexity": self._compute_complexity(node),
                     }
                     self.code_graph.add_node(node.name, **chunk)
                     for dep in chunk["dependencies"]:
@@ -140,6 +141,14 @@ class CodeAnalyzer:
             elif isinstance(child, ast.ImportFrom) and child.module:
                 deps.add(child.module.split(".")[0])
         return list(deps)
+
+    def _compute_complexity(self, node) -> int:
+        """Rudimentary cyclomatic complexity estimation."""
+        complexity = 1
+        for child in ast.walk(node):
+            if isinstance(child, (ast.If, ast.For, ast.While, ast.Match, ast.With, ast.Try)):
+                complexity += 1
+        return complexity
 
     async def _build_semantic_relations(self):
         logger.info("Construindo relações semânticas")

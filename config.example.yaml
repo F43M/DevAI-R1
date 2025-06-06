@@ -2,3 +2,10 @@ CODE_ROOT: ./app
 API_PORT: 8000
 LOG_DIR: ./logs
 MODEL_NAME: deepseek/deepseek-r1-0528:free
+MODELS:
+  default:
+    name: deepseek/deepseek-r1-0528:free
+    api_key: ${OPENROUTER_API_KEY}
+    url: https://openrouter.ai/api/v1/chat/completions
+# E-mail para notificações (opcional)
+NOTIFY_EMAIL: ''

@@ -28,6 +28,20 @@ def foo():
     assert {"function": "bar", "line": 6} in calls
 
 
+def test_compute_complexity():
+    code = """
+def foo(x):
+    if x:
+        for i in range(3):
+            print(i)
+    return x
+"""
+    tree = ast.parse(code)
+    node = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)][0]
+    analyzer = CodeAnalyzer(".", DummyMemory())
+    assert analyzer._compute_complexity(node) >= 3
+
+
 def test_file_operations(tmp_path):
     root = tmp_path / "app"
     root.mkdir()

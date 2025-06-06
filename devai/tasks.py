@@ -12,6 +12,8 @@ from .config import logger
 from .analyzer import CodeAnalyzer
 from .memory import MemoryManager
 from .ai_model import AIModel
+from .plugin_manager import PluginManager
+from .notifier import Notifier
 
 
 class TaskManager:
@@ -21,7 +23,14 @@ class TaskManager:
         self.memory = memory
         self.ai_model = ai_model
         self.aeval = Interpreter()
+        self.history: List[Dict[str, Any]] = []
         self._setup_default_tasks()
+        self.plugins = PluginManager(self)
+        self.notifier = Notifier()
+
+    def get_history(self) -> List[Dict[str, Any]]:
+        """Return list of executed tasks."""
+        return list(self.history)
 
     def _load_tasks(self, task_file: str) -> Dict:
         if os.path.exists(task_file):
@@ -51,6 +60,18 @@ class TaskManager:
                 "name": "Lint",
                 "type": "lint",
                 "description": "Verifica TODOs no código",
+            }
+        if "pylint" not in self.tasks:
+            self.tasks["pylint"] = {
+                "name": "Pylint",
+                "type": "pylint",
+                "description": "Roda pylint para checar estilo",
+            }
+        if "type_check" not in self.tasks:
+            self.tasks["type_check"] = {
+                "name": "Type Check",
+                "type": "type_check",
+                "description": "Executa mypy para verificação de tipos",
             }
         if "run_tests" not in self.tasks:
             self.tasks["run_tests"] = {
@@ -91,6 +112,10 @@ class TaskManager:
             result = await self._perform_static_analysis_task(task, *args)
         elif task["type"] == "security_analysis":
             result = await self._perform_security_analysis_task(task, *args)
+        elif task["type"] == "pylint":
+            result = await self._perform_pylint_task(task, *args)
+        elif task["type"] == "type_check":
+            result = await self._perform_type_check_task(task, *args)
         else:
             logger.error("Tipo de tarefa inválido", task_type=task["type"])
             result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
@@ -105,8 +130,20 @@ class TaskManager:
                     "timestamp": datetime.now().isoformat(),
                 },
                 "tags": ["task", task_name.split("_")[0]],
+                "context_level": "short",
             }
         )
+        self.history.append({
+            "task": task_name,
+            "args": args,
+            "result": result,
+            "timestamp": datetime.now().isoformat(),
+        })
+        if hasattr(self.notifier, 'send'):
+            self.notifier.send(
+                f"Tarefa {task_name} concluída",
+                f"Resultado: {str(result)[:200]}"
+            )
         return result
 
     async def _perform_analysis_task(self, task: Dict, *args) -> List[Dict]:
@@ -260,6 +297,44 @@ class TaskManager:
         except Exception as e:
             logger.error("Erro na análise de segurança", error=str(e))
             return [f"Erro na análise de segurança: {e}"]
+
+    async def _perform_pylint_task(self, task: Dict, *args) -> List[str]:
+        cmd = ["pylint", str(self.code_analyzer.code_root)]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            out, _ = await proc.communicate()
+            output = out.decode().splitlines()
+            logger.info("Pylint executado", returncode=proc.returncode)
+            return output or ["✅ Nenhum problema encontrado"]
+        except FileNotFoundError:
+            logger.error("pylint não encontrado")
+            return ["pylint não disponível"]
+        except Exception as e:
+            logger.error("Erro no pylint", error=str(e))
+            return [f"Erro no pylint: {e}"]
+
+    async def _perform_type_check_task(self, task: Dict, *args) -> List[str]:
+        cmd = ["mypy", str(self.code_analyzer.code_root)]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            out, _ = await proc.communicate()
+            output = out.decode().splitlines()
+            logger.info("Type check executado", returncode=proc.returncode)
+            return output or ["✅ Tipagem ok"]
+        except FileNotFoundError:
+            logger.error("mypy não encontrado")
+            return ["mypy não disponível"]
+        except Exception as e:
+            logger.error("Erro na verificação de tipos", error=str(e))
+            return [f"Erro na verificação de tipos: {e}"]
 
     def _check_dependencies(self, chunk_name: str) -> List[str]:
         issues = []

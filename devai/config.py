@@ -18,6 +18,7 @@ class Config:
         defaults = {
             "OPENROUTER_API_KEY": os.getenv("OPENROUTER_API_KEY", ""),
             "MODEL_NAME": "deepseek/deepseek-r1-0528:free",
+            "MODELS": {},
             "CODE_ROOT": "./app",
             "MEMORY_DB": "memory.sqlite",
             "EMBEDDING_MODEL": "all-MiniLM-L6-v2",
@@ -31,6 +32,7 @@ class Config:
             "OPENROUTER_URL": "https://openrouter.ai/api/v1/chat/completions",
             "INDEX_FILE": "faiss.index",
             "INDEX_IDS_FILE": "faiss_ids.json",
+            "NOTIFY_EMAIL": os.getenv("NOTIFY_EMAIL", ""),
         }
         cfg = load_config(path, defaults)
         for key, value in cfg.items():
