@@ -1,0 +1,186 @@
+import ast
+import asyncio
+import hashlib
+import json
+import os
+import re
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List
+
+import aiofiles
+import aiofiles.os
+import networkx as nx
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+from .config import logger
+from .memory import MemoryManager
+
+
+class CodeAnalyzer:
+    """Parse source files and build dependency graphs."""
+
+    def __init__(self, code_root: str, memory: MemoryManager):
+        self.code_root = Path(code_root)
+        self.memory = memory
+        self.code_chunks: Dict[str, Dict] = {}
+        self.code_graph = nx.DiGraph()
+        self.vectorizer = TfidfVectorizer()
+        self.file_hashes = {}
+        self.external_dependencies = set()
+        self.learned_rules: Dict[str, str] = {}
+        self.last_analysis_time = datetime.now()
+
+    async def deep_scan_app(self):
+        logger.info("Iniciando varredura profunda do aplicativo")
+        await self.scan_app()
+        await self._build_semantic_relations()
+        await self._analyze_patterns()
+        logger.info(
+            "Varredura profunda concluída",
+            functions=len(self.code_chunks),
+            relations=self.code_graph.number_of_edges(),
+        )
+
+    async def scan_app(self):
+        tasks = []
+        for file_path in self.code_root.rglob("*.py"):
+            if file_path.is_file():
+                tasks.append(self.parse_file(file_path))
+        await asyncio.gather(*tasks)
+        logger.info("Aplicativo escaneado", files_processed=len(tasks))
+
+    async def parse_file(self, file_path: Path):
+        try:
+            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+                content = await f.read()
+            file_hash = hashlib.md5(content.encode()).hexdigest()
+            if str(file_path) in self.file_hashes and self.file_hashes[str(file_path)] == file_hash:
+                return
+            self.file_hashes[str(file_path)] = file_hash
+            tree = ast.parse(content)
+            chunks = []
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):
+                    chunk = {
+                        "name": node.name,
+                        "type": type(node).__name__,
+                        "code": ast.unparse(node),
+                        "file": str(file_path),
+                        "hash": file_hash,
+                        "last_modified": datetime.now().isoformat(),
+                        "dependencies": self._get_dependencies(node),
+                        "external_deps": self._get_external_dependencies(node),
+                        "docstring": ast.get_docstring(node) or "",
+                        "line_start": node.lineno,
+                        "line_end": node.end_lineno,
+                    }
+                    self.code_graph.add_node(node.name, **chunk)
+                    for dep in chunk["dependencies"]:
+                        self.code_graph.add_edge(node.name, dep)
+                    self.external_dependencies.update(chunk["external_deps"])
+                    chunks.append(chunk)
+                    if node.name in self.code_chunks and self.code_chunks[node.name]["hash"] != file_hash:
+                        logger.warning(
+                            "Código modificado",
+                            chunk=node.name,
+                            old_hash=self.code_chunks[node.name]["hash"],
+                            new_hash=file_hash,
+                        )
+            self.code_chunks.update({c["name"]: c for c in chunks})
+            for chunk in chunks:
+                memory_entry = {
+                    "type": "code_chunk",
+                    "content": f"{chunk['type']} {chunk['name']} em {chunk['file']}",
+                    "metadata": chunk,
+                    "tags": ["code", chunk['type'].lower(), os.path.basename(chunk['file'])],
+                }
+                self.memory.save(memory_entry)
+        except SyntaxError as e:
+            logger.error("Erro de sintaxe", file=str(file_path), error=str(e))
+        except Exception as e:
+            logger.error("Erro ao analisar arquivo", file=str(file_path), error=str(e))
+
+    def _get_dependencies(self, node):
+        deps = set()
+        for child in ast.walk(node):
+            if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
+                deps.add(child.id)
+            elif isinstance(child, ast.Attribute):
+                deps.add(child.attr)
+        return list(deps)
+
+    def _get_external_dependencies(self, node):
+        deps = set()
+        for child in ast.walk(node):
+            if isinstance(child, ast.Import):
+                for n in child.names:
+                    deps.add(n.name.split(".")[0])
+            elif isinstance(child, ast.ImportFrom) and child.module:
+                deps.add(child.module.split(".")[0])
+        return list(deps)
+
+    async def _build_semantic_relations(self):
+        logger.info("Construindo relações semânticas")
+        cursor = self.memory.conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, metadata FROM memory
+            WHERE type = 'code_chunk'
+            AND json_extract(metadata, '$.name') IS NOT NULL
+            """
+        )
+        code_memories = {json.loads(row[1])["name"]: row[0] for row in cursor.fetchall()}
+        for source, target in self.code_graph.edges():
+            if source in code_memories and target in code_memories:
+                self.memory.add_semantic_relation(code_memories[source], code_memories[target], "depends_on", strength=0.9)
+        all_code = [(mid, json.loads(meta)["name"]) for name, mid in code_memories.items()]
+        for i, (mid1, name1) in enumerate(all_code):
+            for j, (mid2, name2) in enumerate(all_code[i + 1 :], i + 1):
+                if self._name_similarity(name1, name2) > 0.7:
+                    self.memory.add_semantic_relation(mid1, mid2, "similar_name", strength=0.7)
+        logger.info("Relações semânticas construídas", relations=len(self.code_graph.edges()))
+
+    def _name_similarity(self, name1: str, name2: str) -> float:
+        from difflib import SequenceMatcher
+        return SequenceMatcher(None, name1.lower(), name2.lower()).ratio()
+
+    async def _analyze_patterns(self):
+        logger.info("Analisando padrões para regras aprendidas")
+        for chunk in self.code_chunks.values():
+            try:
+                tree = ast.parse(chunk["code"])
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef) and len(node.args.args) > 5:
+                        rule_name = "funcao_com_muitos_parametros"
+                        condition = "len(chunk['code'].split('def ')[1].split('(')[1].split(')')[0].split(',')) > 5"
+                        if rule_name not in self.learned_rules:
+                            self.learned_rules[rule_name] = condition
+                            self.memory.save(
+                                {
+                                    "type": "learned_rule",
+                                    "content": f"Função com muitos parâmetros detectada: {chunk['name']}",
+                                    "metadata": {"rule": rule_name, "condition": condition, "example": chunk["name"]},
+                                    "tags": ["rule", "code_smell"],
+                                }
+                            )
+            except Exception as e:
+                logger.error("Erro ao analisar padrão", chunk=chunk["name"], error=str(e))
+        logger.info("Análise de padrões concluída", rules=len(self.learned_rules))
+
+    def get_code_graph(self) -> Dict:
+        return {
+            "nodes": [{"id": n, **data} for n, data in self.code_graph.nodes(data=True)],
+            "links": [{"source": u, "target": v} for u, v in self.code_graph.edges()],
+        }
+
+    async def watch_app_directory(self, interval: int = 5):
+        logger.info("Iniciando monitoramento da pasta de código", path=str(self.code_root))
+        while True:
+            try:
+                await self.scan_app()
+                await asyncio.sleep(interval)
+            except Exception as e:
+                logger.error("Erro no monitoramento da pasta", error=str(e))
+                await asyncio.sleep(interval)
