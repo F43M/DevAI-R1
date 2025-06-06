@@ -42,6 +42,14 @@ API_SECRET: "sua-chave"
 
 2. Defina a variável de ambiente `OPENROUTER_API_KEY` com sua chave de acesso.
 
+3. Instale as dependências do projeto para habilitar a comunicação real com o OpenRouter:
+
+```bash
+pip install -r requirements.txt
+```
+
+O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
+
 ## Executando
 
 - **Servidor API**:
