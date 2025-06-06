@@ -11,6 +11,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Análise de código** com construção de grafo de dependências
 - **Parser multilíngue** (Python, JS, C++, HTML)
 - **Métricas de complexidade** das funções analisadas
+- **Acompanhamento da complexidade média do projeto**
 - **Monitoramento de logs** detectando padrões de erro
 - **Execução de testes automatizados e análise estática**
 - **Tarefas extras** com pylint e mypy
@@ -24,6 +25,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Suporte a múltiplos modelos** configuráveis
 - **Notificações por e-mail** opcionais
 - **Integração contínua via GitHub Actions**
+- **Refatoração automática validada por testes**
 
 ## Configuração
 
@@ -52,7 +54,8 @@ Com o servidor ativo, acesse `http://localhost:8000/static/index.html` para util
 python -m devai --cli
 ```
 
-Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`.
+Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`. Para refatorar um arquivo automaticamente utilize:
+`/tarefa auto_refactor caminho/para/arquivo.py`.
 
 ### Gerenciamento de arquivos
 
@@ -61,6 +64,7 @@ Além das tarefas padrão, a CLI permite explorar e modificar o diretório defin
 - `/ls [caminho]` lista arquivos e subpastas.
 - `/abrir <arquivo> [ini] [fim]` exibe linhas específicas de um arquivo.
 - `/editar <arquivo> <linha> <novo>` altera uma linha individual.
+- `/tarefa auto_refactor <arquivo>` refatora o arquivo informado e executa os testes.
 
 ## Testes
 
@@ -77,6 +81,10 @@ python -m devai --cli
 /tarefa run_tests
 /tarefa static_analysis
 ```
+
+### Integração contínua
+
+O repositório inclui um workflow em `.github/workflows/ci.yml` que executa lint, análise de segurança e testes a cada *pull request*. Basta habilitar o GitHub Actions para que as tarefas sejam rodadas automaticamente.
 
 ## Estrutura modular
 

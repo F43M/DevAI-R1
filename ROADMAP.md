@@ -18,4 +18,8 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Sistema de plugins** para extensões de tarefas.
 - **Suporte a múltiplos backends de IA**.
 - **Notificações automáticas** ao concluir tarefas longas.
+- **Refatoração automática validada por testes** *(implementado)*
+- **Monitoramento de complexidade do código ao longo do tempo**
+- **Integração com IDEs (VSCode, etc.)** *(futuro)*
+- **Treinamento incremental com dados do histórico** *(futuro)*
 

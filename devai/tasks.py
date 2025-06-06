@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Tuple, Optional
 import subprocess
 import asyncio
+from pathlib import Path
 
 import networkx as nx
 from asteval import Interpreter
@@ -91,6 +92,12 @@ class TaskManager:
                 "type": "security_analysis",
                 "description": "Roda bandit para detectar vulnerabilidades",
             }
+        if "auto_refactor" not in self.tasks:
+            self.tasks["auto_refactor"] = {
+                "name": "Refatoração Automática",
+                "type": "auto_refactor",
+                "description": "Usa IA para refatorar um arquivo e valida com testes",
+            }
 
     async def run_task(self, task_name: str, *args) -> Any:
         if task_name not in self.tasks:
@@ -116,6 +123,8 @@ class TaskManager:
             result = await self._perform_pylint_task(task, *args)
         elif task["type"] == "type_check":
             result = await self._perform_type_check_task(task, *args)
+        elif task["type"] == "auto_refactor":
+            result = await self._perform_auto_refactor_task(task, *args)
         else:
             logger.error("Tipo de tarefa inválido", task_type=task["type"])
             result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
@@ -335,6 +344,39 @@ class TaskManager:
         except Exception as e:
             logger.error("Erro na verificação de tipos", error=str(e))
             return [f"Erro na verificação de tipos: {e}"]
+
+    async def _perform_auto_refactor_task(self, task: Dict, *args) -> Dict:
+        if not self.ai_model:
+            return {"error": "Modelo de IA não configurado"}
+        file_path = args[0] if args else None
+        if not file_path or not os.path.exists(file_path):
+            return {"error": "Arquivo não encontrado"}
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                original = f.read()
+        except Exception as e:
+            logger.error("Erro ao ler arquivo", file=file_path, error=str(e))
+            return {"error": str(e)}
+
+        prompt = (
+            "Refatore o código a seguir mantendo a funcionalidade e melhore o estilo:\n"
+            f"{original}\n### Código refatorado:\n"
+        )
+        try:
+            suggestion = await self.ai_model.generate(prompt, max_length=len(original) + 200)
+        except Exception as e:
+            logger.error("Erro ao gerar refatoração", error=str(e))
+            return {"error": str(e)}
+
+        from .update_manager import UpdateManager
+        updater = UpdateManager()
+
+        def apply(p: Path) -> None:
+            p.write_text(suggestion)
+
+        success = updater.safe_apply(file_path, apply)
+        return {"success": success, "new_code": suggestion[:200]}
 
     def _check_dependencies(self, chunk_name: str) -> List[str]:
         issues = []

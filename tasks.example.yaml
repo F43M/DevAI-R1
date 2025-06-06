@@ -26,3 +26,8 @@ static_analysis:
   name: Análise Estática
   type: static_analysis
   description: Roda flake8 para encontrar problemas
+
+auto_refactor:
+  name: Refatoração Automática
+  type: auto_refactor
+  description: Usa IA para refatorar um arquivo e validar com testes

@@ -31,6 +31,7 @@ class CodeMemoryAI:
         self.app = FastAPI(title="CodeMemoryAI API")
         self._setup_api_routes()
         self.background_tasks = set()
+        self.last_average_complexity = 0.0
         self._start_background_tasks()
         logger.info(
             "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter", code_root=config.CODE_ROOT
@@ -181,6 +182,19 @@ class CodeMemoryAI:
                     "tags": ["insight", "complexity"],
                 }
             )
+
+        if self.analyzer.code_chunks:
+            avg = sum(c.get("complexity", 0) for c in self.analyzer.code_chunks.values()) / len(self.analyzer.code_chunks)
+            if self.last_average_complexity and abs(avg - self.last_average_complexity) / self.last_average_complexity > 0.2:
+                self.memory.save(
+                    {
+                        "type": "metric",
+                        "content": "Variação significativa na complexidade média",
+                        "metadata": {"previous": self.last_average_complexity, "current": avg},
+                        "tags": ["metric", "complexity"],
+                    }
+                )
+            self.last_average_complexity = avg
 
     async def generate_response(self, query: str) -> str:
         try:
