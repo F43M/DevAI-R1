@@ -14,13 +14,16 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Acompanhamento da complexidade média do projeto**
 - **Monitoramento de logs** detectando padrões de erro
 - **Execução de testes automatizados e análise estática**
+- **Relatórios de cobertura de testes**
 - **Tarefas extras** com pylint e mypy
 - **Análise de segurança com Bandit**
+- **Monitoramento de complexidade ao longo do tempo**
 - **Cache inteligente de prompts** reaproveitando respostas similares
 - **Integração opcional com modelo local** para geração offline
 - **API FastAPI** e **interface de linha de comando**
 - **Interface web opcional** em `/static/index.html` para conversar com a IA e explorar arquivos
 - Métricas expostas em `/metrics` (CPU e memória)
+- **Histórico de uso de CPU/memória**
 - **Histórico de tarefas** e sistema de plugins
 - **Suporte a múltiplos modelos** configuráveis
 - **Notificações por e-mail** opcionais
@@ -74,6 +77,12 @@ Instale as dependências de desenvolvimento e execute:
 pytest
 ```
 
+## Plugins
+
+Coloque scripts Python em `plugins/` para adicionar novas tarefas ao sistema.
+Cada plugin deve implementar uma função `register(task_manager)`.
+Veja `plugins/todo_counter.py` como exemplo.
+
 Você também pode rodar os testes e a análise estática pelo gerenciador de tarefas:
 
 ```bash
@@ -100,6 +109,7 @@ O código foi dividido em módulos dentro do pacote `devai/`, facilitando a incl
 - `cli.py` – interface de linha de comando
 - `lint.py` – checagem simples de TODOs
 - `update_manager.py` – aplica mudancas com rollback caso os testes falhem
+- Diretório `plugins/` – extensões opcionais de tarefas
 
 Sinta‑se livre para expandir cada módulo conforme necessário.
 ## Roadmap
@@ -115,4 +125,8 @@ Melhorias em andamento:
 - Exemplos de configuração prontos para uso
 - Automação incremental do projeto
 - Cache de memória para acelerar consultas
+- Sistema de plugins para novas tarefas *(implementado)*
+- Relatórios de cobertura integrados
+- Monitoramento de complexidade ao longo do tempo
+  (histórico salvo em `complexity_history.json`)
 - (adicione novas ideias aqui)

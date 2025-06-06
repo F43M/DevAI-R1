@@ -92,6 +92,12 @@ class TaskManager:
                 "type": "security_analysis",
                 "description": "Roda bandit para detectar vulnerabilidades",
             }
+        if "coverage" not in self.tasks:
+            self.tasks["coverage"] = {
+                "name": "Cobertura de Testes",
+                "type": "coverage",
+                "description": "Gera relatório de cobertura com coverage.py",
+            }
         if "auto_refactor" not in self.tasks:
             self.tasks["auto_refactor"] = {
                 "name": "Refatoração Automática",
@@ -126,8 +132,12 @@ class TaskManager:
         elif task["type"] == "auto_refactor":
             result = await self._perform_auto_refactor_task(task, *args)
         else:
-            logger.error("Tipo de tarefa inválido", task_type=task["type"])
-            result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
+            handler = getattr(self, f"_perform_{task['type']}_task", None)
+            if handler:
+                result = await handler(task, *args)
+            else:
+                logger.error("Tipo de tarefa inválido", task_type=task["type"])
+                result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
         self.memory.save(
             {
                 "type": "task_result",
@@ -344,6 +354,32 @@ class TaskManager:
         except Exception as e:
             logger.error("Erro na verificação de tipos", error=str(e))
             return [f"Erro na verificação de tipos: {e}"]
+
+    async def _perform_coverage_task(self, task: Dict, *args) -> List[str]:
+        cmd = ["coverage", "run", "-m", "pytest", "-q"]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            out, _ = await proc.communicate()
+            report_proc = await asyncio.create_subprocess_exec(
+                "coverage",
+                "report",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            rep_out, _ = await report_proc.communicate()
+            output = out.decode().splitlines() + rep_out.decode().splitlines()
+            logger.info("Cobertura executada", returncode=proc.returncode)
+            return output
+        except FileNotFoundError:
+            logger.error("coverage.py não encontrado")
+            return ["coverage não disponível"]
+        except Exception as e:
+            logger.error("Erro na cobertura", error=str(e))
+            return [f"Erro na cobertura: {e}"]
 
     async def _perform_auto_refactor_task(self, task: Dict, *args) -> Dict:
         if not self.ai_model:

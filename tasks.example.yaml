@@ -27,6 +27,11 @@ static_analysis:
   type: static_analysis
   description: Roda flake8 para encontrar problemas
 
+coverage:
+  name: Cobertura de Testes
+  type: coverage
+  description: Gera relatório de cobertura com coverage.py
+
 auto_refactor:
   name: Refatoração Automática
   type: auto_refactor

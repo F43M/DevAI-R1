@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .config import config, logger, metrics
+from .complexity_tracker import ComplexityTracker
 from .memory import MemoryManager
 from .analyzer import CodeAnalyzer
 from .file_history import FileHistory
@@ -28,6 +29,7 @@ class CodeMemoryAI:
         self.ai_model = AIModel()
         self.tasks = TaskManager(config.TASK_DEFINITIONS, self.analyzer, self.memory, ai_model=self.ai_model)
         self.log_monitor = LogMonitor(self.memory, config.LOG_DIR)
+        self.complexity_tracker = ComplexityTracker(config.COMPLEXITY_HISTORY)
         self.app = FastAPI(title="CodeMemoryAI API")
         self._setup_api_routes()
         self.background_tasks = set()
@@ -151,6 +153,7 @@ class CodeMemoryAI:
                 await self.log_monitor.monitor_logs()
                 await self._run_scheduled_tasks()
                 await self._generate_automatic_insights()
+                metrics.update_resources()
                 error_count = 0
                 await asyncio.sleep(config.LEARNING_LOOP_INTERVAL)
             except Exception as e:
@@ -195,6 +198,7 @@ class CodeMemoryAI:
                     }
                 )
             self.last_average_complexity = avg
+            self.complexity_tracker.record(avg)
 
     async def generate_response(self, query: str) -> str:
         try:
