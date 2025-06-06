@@ -9,6 +9,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Limpeza automática de memórias** e feedback de uso
 - **Análise de código** com construção de grafo de dependências
 - **Monitoramento de logs** detectando padrões de erro
+- **Execução de testes automatizados e análise estática**
 - **API FastAPI** e **interface de linha de comando**
 - Métricas expostas em `/metrics`
 
@@ -45,6 +46,14 @@ Instale as dependências de desenvolvimento e execute:
 
 ```bash
 pytest
+```
+
+Você também pode rodar os testes e a análise estática pelo gerenciador de tarefas:
+
+```bash
+python -m devai --cli
+/tarefa run_tests
+/tarefa static_analysis
 ```
 
 ## Estrutura modular

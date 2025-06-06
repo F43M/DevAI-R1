@@ -2,6 +2,8 @@ import os
 import yaml
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Optional
+import subprocess
+import asyncio
 
 import networkx as nx
 from asteval import Interpreter
@@ -50,6 +52,18 @@ class TaskManager:
                 "type": "lint",
                 "description": "Verifica TODOs no código",
             }
+        if "run_tests" not in self.tasks:
+            self.tasks["run_tests"] = {
+                "name": "Testes Automatizados",
+                "type": "test",
+                "description": "Executa a suíte de testes com pytest",
+            }
+        if "static_analysis" not in self.tasks:
+            self.tasks["static_analysis"] = {
+                "name": "Análise Estática",
+                "type": "static_analysis",
+                "description": "Roda flake8 para encontrar problemas",
+            }
 
     async def run_task(self, task_name: str, *args) -> Any:
         if task_name not in self.tasks:
@@ -65,6 +79,10 @@ class TaskManager:
             result = await self._perform_learning_task(task, *args)
         elif task["type"] == "lint":
             result = await self._perform_lint_task(task, *args)
+        elif task["type"] == "test":
+            result = await self._perform_test_task(task, *args)
+        elif task["type"] == "static_analysis":
+            result = await self._perform_static_analysis_task(task, *args)
         else:
             logger.error("Tipo de tarefa inválido", task_type=task["type"])
             result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
@@ -177,6 +195,44 @@ class TaskManager:
         for file, issues in results.items():
             findings.append({"file": file, "issues": issues})
         return findings if findings else ["✅ Nenhum TODO encontrado"]
+
+    async def _perform_test_task(self, task: Dict, *args) -> List[str]:
+        cmd = ["pytest", "-q"]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            out, _ = await proc.communicate()
+            output = out.decode().splitlines()
+            logger.info("Testes executados", returncode=proc.returncode)
+            return output
+        except FileNotFoundError:
+            logger.error("pytest não encontrado")
+            return ["pytest não disponível"]
+        except Exception as e:
+            logger.error("Erro ao executar testes", error=str(e))
+            return [f"Erro ao executar testes: {e}"]
+
+    async def _perform_static_analysis_task(self, task: Dict, *args) -> List[str]:
+        cmd = ["flake8", str(self.code_analyzer.code_root)]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            out, _ = await proc.communicate()
+            output = out.decode().splitlines()
+            logger.info("Análise estática executada", returncode=proc.returncode)
+            return output or ["✅ Nenhum problema encontrado"]
+        except FileNotFoundError:
+            logger.error("flake8 não encontrado")
+            return ["flake8 não disponível"]
+        except Exception as e:
+            logger.error("Erro na análise estática", error=str(e))
+            return [f"Erro na análise estática: {e}"]
 
     def _check_dependencies(self, chunk_name: str) -> List[str]:
         issues = []
