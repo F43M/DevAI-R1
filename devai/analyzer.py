@@ -7,7 +7,7 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import aiofiles
 import aiofiles.os
@@ -210,3 +210,40 @@ class CodeAnalyzer:
             except Exception as e:
                 logger.error("Erro no monitoramento da pasta", error=str(e))
                 await asyncio.sleep(interval)
+
+    async def list_dir(self, subpath: str = "") -> List[str]:
+        """List files and folders inside CODE_ROOT."""
+        target = (self.code_root / subpath).resolve()
+        if not str(target).startswith(str(self.code_root.resolve())) or not target.exists():
+            return []
+        return [
+            f"{p.relative_to(self.code_root)}{'/' if p.is_dir() else ''}"
+            for p in sorted(target.iterdir())
+        ]
+
+    async def read_lines(self, file_path: str, start: int = 1, end: Optional[int] = None) -> List[str]:
+        """Return selected lines from a file inside CODE_ROOT."""
+        path = (self.code_root / file_path).resolve()
+        if not path.is_file() or not str(path).startswith(str(self.code_root.resolve())):
+            return []
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        lines = content.splitlines()
+        start = max(1, start)
+        end = len(lines) if end is None else min(end, len(lines))
+        return [lines[i - 1].rstrip("\n") for i in range(start, end + 1)]
+
+    async def edit_line(self, file_path: str, line_no: int, new_content: str) -> bool:
+        """Edit a specific line of a file and reparse it."""
+        path = (self.code_root / file_path).resolve()
+        if not path.is_file() or not str(path).startswith(str(self.code_root.resolve())):
+            return False
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        if not 1 <= line_no <= len(lines):
+            return False
+        lines[line_no - 1] = new_content + "\n"
+        with open(path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+        await self.parse_file(path)
+        return True

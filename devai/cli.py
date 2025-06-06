@@ -16,6 +16,9 @@ async def cli_main():
     print("/analisar <função> - Analisa impacto de mudanças")
     print("/verificar - Verifica conformidade com especificação")
     print("/grafo - Mostra grafo de dependências")
+    print("/ls [caminho] - Lista arquivos e pastas")
+    print("/abrir <arquivo> [ini] [fim] - Mostra linhas do arquivo")
+    print("/editar <arquivo> <linha> <novo> - Edita linha do arquivo")
     print("/sair - Encerra")
     while True:
         try:
@@ -59,6 +62,27 @@ async def cli_main():
                 print("\nConexões:")
                 for link in graph["links"]:
                     print(f"{link['source']} -> {link['target']}")
+            elif user_input.startswith("/ls"):
+                path = user_input[len("/ls"):].strip()
+                items = await ai.analyzer.list_dir(path)
+                for item in items:
+                    print(item)
+            elif user_input.startswith("/abrir "):
+                parts = user_input[len("/abrir "):].split()
+                file = parts[0]
+                start = int(parts[1]) if len(parts) > 1 else 1
+                end = int(parts[2]) if len(parts) > 2 else start
+                lines = await ai.analyzer.read_lines(file, start, end)
+                for i, line in enumerate(lines, start=start):
+                    print(f"{i}: {line}")
+            elif user_input.startswith("/editar "):
+                parts = user_input[len("/editar "):].split(maxsplit=2)
+                if len(parts) < 3:
+                    print("Uso: /editar <arquivo> <linha> <novo>")
+                else:
+                    file, line_no, new_line = parts[0], int(parts[1]), parts[2]
+                    ok = await ai.analyzer.edit_line(file, line_no, new_line)
+                    print("✅ Linha atualizada" if ok else "Falha ao editar")
             else:
                 response = await ai.generate_response(user_input)
                 print("\nResposta:")

@@ -40,6 +40,14 @@ python -m devai --cli
 
 Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`.
 
+### Gerenciamento de arquivos
+
+Além das tarefas padrão, a CLI permite explorar e modificar o diretório definido em `CODE_ROOT` (por padrão `./app`):
+
+- `/ls [caminho]` lista arquivos e subpastas.
+- `/abrir <arquivo> [ini] [fim]` exibe linhas específicas de um arquivo.
+- `/editar <arquivo> <linha> <novo>` altera uma linha individual.
+
 ## Testes
 
 Instale as dependências de desenvolvimento e execute:

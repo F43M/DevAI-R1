@@ -1,4 +1,5 @@
 import ast
+import asyncio
 from devai.analyzer import CodeAnalyzer
 
 class DummyMemory:
@@ -24,3 +25,25 @@ def foo():
     analyzer = CodeAnalyzer(".", DummyMemory())
     calls = analyzer._get_function_calls(node)
     assert {"function": "bar", "line": 6} in calls
+
+
+def test_file_operations(tmp_path):
+    root = tmp_path / "app"
+    root.mkdir()
+    sub = root / "sub"
+    sub.mkdir()
+    file = sub / "f.py"
+    file.write_text("a\nb\nc\n")
+    analyzer = CodeAnalyzer(str(root), DummyMemory())
+
+    async def run():
+        ls = await analyzer.list_dir("sub")
+        lines = await analyzer.read_lines("sub/f.py", 2, 2)
+        ok = await analyzer.edit_line("sub/f.py", 2, "x")
+        return ls, lines, ok
+
+    ls, lines, ok = asyncio.run(run())
+    assert "sub/f.py" in ls
+    assert lines == ["b"]
+    assert ok
+    assert file.read_text().splitlines()[1] == "x"
