@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from devai.tasks import TaskManager
 import devai.tasks as tasks_module
 
@@ -67,4 +68,35 @@ def test_security_analysis_task(monkeypatch):
 
     res = asyncio.run(run())
     assert res == ["secure"]
+
+
+def test_auto_refactor(monkeypatch, tmp_path):
+    analyzer = DummyAnalyzer()
+    mem = DummyMemory()
+    tm = TaskManager("missing.yaml", analyzer, mem)
+
+    test_file = tmp_path / "test.py"
+    test_file.write_text("def foo():\n    return 1\n")
+
+    async def fake_generate(self, prompt, max_length=0):
+        return "def foo():\n    return 2\n"
+
+    class DummyUpdater:
+        def __init__(self):
+            self.called = False
+        def safe_apply(self, file_path, apply_func, max_attempts=1):
+            apply_func(Path(file_path))
+            self.called = True
+            return True
+
+    tm.ai_model = type("AI", (), {"generate": fake_generate})()
+    import devai.update_manager as upd
+    monkeypatch.setattr(upd, "UpdateManager", lambda tests_cmd=None: DummyUpdater())
+
+    async def run():
+        return await tm.run_task("auto_refactor", str(test_file))
+
+    res = asyncio.run(run())
+    assert res["success"] is True
+    assert test_file.read_text() == "def foo():\n    return 2\n"
 
