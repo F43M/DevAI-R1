@@ -2,6 +2,8 @@ import asyncio
 from collections import OrderedDict
 from datetime import datetime
 from difflib import SequenceMatcher
+from typing import Mapping, Sequence, Union
+import json
 
 import aiohttp
 
@@ -72,17 +74,23 @@ class AIModel:
         else:
             logger.error("Modelo não encontrado", model=name)
 
-    async def generate(self, prompt: str, max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
-        cached = self.cache.get(prompt)
+    async def generate(self, prompt: Union[str, Sequence[Mapping[str, str]]], max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
+        if isinstance(prompt, str):
+            key = prompt
+            messages = [{"role": "user", "content": prompt}]
+        else:
+            messages = list(prompt)
+            key = json.dumps(messages, sort_keys=True)
+        cached = self.cache.get(key)
         if cached is not None:
             return cached
 
         if self.current == "local" and self.local_model and self.local_tokenizer:
             try:
-                input_ids = self.local_tokenizer.encode(prompt, return_tensors="pt")
+                input_ids = self.local_tokenizer.encode(messages[-1]["content"], return_tensors="pt")
                 output = self.local_model.generate(input_ids, max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH))
                 text = self.local_tokenizer.decode(output[0], skip_special_tokens=True)
-                self.cache.add(prompt, text)
+                self.cache.add(key, text)
                 metrics.record_call(0)
                 return text
             except Exception as e:  # pragma: no cover - heavy dep
@@ -95,7 +103,7 @@ class AIModel:
         }
         payload = {
             "model": model_cfg.get("name", config.MODEL_NAME),
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
             "temperature": 0.7,
         }
@@ -110,7 +118,7 @@ class AIModel:
                 if resp.status == 200:
                     data = await resp.json()
                     text = data["choices"][0]["message"]["content"]
-                    self.cache.add(prompt, text)
+                    self.cache.add(key, text)
                     return text
                 error = await resp.text()
                 metrics.record_error()

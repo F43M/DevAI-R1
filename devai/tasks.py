@@ -190,9 +190,9 @@ class TaskManager:
                 }
                 if self.ai_model:
                     try:
-                        prompt = (
-                            f"Analise o código a seguir e sugira melhorias de forma breve:\n{chunk['code']}\n"
-                            f"Problemas detectados: {', '.join(analysis['issues'] + analysis['rule_findings'])}"
+                        from .prompt_utils import build_analysis_prompt
+                        prompt = build_analysis_prompt(
+                            chunk["code"], analysis["issues"] + analysis["rule_findings"]
                         )
                         suggestion = await self.ai_model.generate(prompt, max_length=200)
                         analysis["ai_suggestion"] = suggestion.strip()
@@ -395,10 +395,8 @@ class TaskManager:
             logger.error("Erro ao ler arquivo", file=file_path, error=str(e))
             return {"error": str(e)}
 
-        prompt = (
-            "Refatore o código a seguir mantendo a funcionalidade e melhore o estilo:\n"
-            f"{original}\n### Código refatorado:\n"
-        )
+        from .prompt_utils import build_refactor_prompt
+        prompt = build_refactor_prompt(original)
         try:
             suggestion = await self.ai_model.generate(prompt, max_length=len(original) + 200)
         except Exception as e:

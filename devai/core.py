@@ -216,16 +216,9 @@ class CodeMemoryAI:
     async def generate_response(self, query: str) -> str:
         try:
             contextual_memories = self.memory.search(query, level="short")
-            memory_context = "\n".join(
-                f"// Memória [{m['similarity_score']:.2f}]: {m['content']}\n// Tags: {', '.join(m.get('tags', []))}\n"
-                for m in contextual_memories[:3]
-            )
             relevant_chunks = self._find_relevant_code(query)
-            code_context = "\n\n".join(
-                f"// {chunk['file']} ({chunk['type']} {chunk['name']})\n// Dependências: {', '.join(chunk['dependencies'])}\n{chunk['code']}"
-                for chunk in relevant_chunks[:3]
-            )
-            prompt = f"{memory_context}\n{code_context}\nUsuário: {query}\nIA:".strip()
+            from .prompt_utils import build_user_query_prompt
+            prompt = build_user_query_prompt(query, contextual_memories, relevant_chunks)
             return await self.ai_model.generate(prompt)
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
