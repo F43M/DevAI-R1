@@ -10,9 +10,11 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Análise de código** com construção de grafo de dependências
 - **Monitoramento de logs** detectando padrões de erro
 - **Execução de testes automatizados e análise estática**
+- **Análise de segurança com Bandit**
 - **API FastAPI** e **interface de linha de comando**
 - **Interface web opcional** em `/static/index.html` para conversar com a IA e explorar arquivos
-- Métricas expostas em `/metrics`
+- Métricas expostas em `/metrics` (CPU e memória)
+- **Integração contínua via GitHub Actions**
 
 ## Configuração
 
@@ -86,6 +88,7 @@ Sinta‑se livre para expandir cada módulo conforme necessário.
 ## Roadmap
 
 Acompanhe [ROADMAP.md](ROADMAP.md) para sugestões de melhorias e futuras implementações.
+Veja também o histórico de versões em [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
 Melhorias em andamento:
 

@@ -64,6 +64,12 @@ class TaskManager:
                 "type": "static_analysis",
                 "description": "Roda flake8 para encontrar problemas",
             }
+        if "security_analysis" not in self.tasks:
+            self.tasks["security_analysis"] = {
+                "name": "Análise de Segurança",
+                "type": "security_analysis",
+                "description": "Roda bandit para detectar vulnerabilidades",
+            }
 
     async def run_task(self, task_name: str, *args) -> Any:
         if task_name not in self.tasks:
@@ -83,6 +89,8 @@ class TaskManager:
             result = await self._perform_test_task(task, *args)
         elif task["type"] == "static_analysis":
             result = await self._perform_static_analysis_task(task, *args)
+        elif task["type"] == "security_analysis":
+            result = await self._perform_security_analysis_task(task, *args)
         else:
             logger.error("Tipo de tarefa inválido", task_type=task["type"])
             result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
@@ -233,6 +241,25 @@ class TaskManager:
         except Exception as e:
             logger.error("Erro na análise estática", error=str(e))
             return [f"Erro na análise estática: {e}"]
+
+    async def _perform_security_analysis_task(self, task: Dict, *args) -> List[str]:
+        cmd = ["bandit", "-r", str(self.code_analyzer.code_root)]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            out, _ = await proc.communicate()
+            output = out.decode().splitlines()
+            logger.info("Análise de segurança executada", returncode=proc.returncode)
+            return output or ["✅ Nenhuma vulnerabilidade encontrada"]
+        except FileNotFoundError:
+            logger.error("bandit não encontrado")
+            return ["bandit não disponível"]
+        except Exception as e:
+            logger.error("Erro na análise de segurança", error=str(e))
+            return [f"Erro na análise de segurança: {e}"]
 
     def _check_dependencies(self, chunk_name: str) -> List[str]:
         issues = []

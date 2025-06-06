@@ -3,6 +3,10 @@ import logging
 import logging.handlers
 from typing import Dict, Any
 try:
+    import psutil  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    psutil = None
+try:
     import structlog
 except Exception:  # pragma: no cover - optional
     structlog = None
@@ -50,7 +54,22 @@ class Metrics:
 
     def summary(self) -> Dict[str, Any]:
         avg = self.total_response_time / self.api_calls if self.api_calls else 0
-        return {"api_calls": self.api_calls, "avg_response_time": avg, "errors": self.errors}
+        data = {
+            "api_calls": self.api_calls,
+            "avg_response_time": avg,
+            "errors": self.errors,
+        }
+        if psutil:
+            try:
+                data.update(
+                    {
+                        "cpu_percent": psutil.cpu_percent(interval=None),
+                        "memory_percent": psutil.virtual_memory().percent,
+                    }
+                )
+            except Exception:
+                pass
+        return data
 
 
 def configure_logging(log_dir: str):
