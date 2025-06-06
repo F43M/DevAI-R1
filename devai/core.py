@@ -83,6 +83,21 @@ class CodeMemoryAI:
             await self.analyzer.deep_scan_app()
             return {"status": "rescanned"}
 
+        @self.app.get("/files")
+        async def list_files(path: str = ""):
+            """Expose CODE_ROOT contents through the API."""
+            return await self.analyzer.list_dir(path)
+
+        @self.app.get("/file")
+        async def get_file(file: str, start: int = 1, end: Optional[int] = None):
+            lines = await self.analyzer.read_lines(file, start, end)
+            return {"file": file, "lines": lines}
+
+        @self.app.post("/file/edit")
+        async def edit_file(file: str, line: int, content: str):
+            ok = await self.analyzer.edit_line(file, line, content)
+            return {"status": "ok" if ok else "error"}
+
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
 
