@@ -16,3 +16,13 @@ lint:
   name: Lint
   type: lint
   description: Verifica TODOs no código
+
+run_tests:
+  name: Testes Automatizados
+  type: test
+  description: Executa a suíte de testes com pytest
+
+static_analysis:
+  name: Análise Estática
+  type: static_analysis
+  description: Roda flake8 para encontrar problemas

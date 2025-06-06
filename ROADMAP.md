@@ -11,4 +11,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - (adicione novos itens aqui)
 - **Automação incremental**: permitir que o projeto evolua com novas funções de forma contínua.
 - **Cache de memória**: reutilizar embeddings e consultas frequentes para acelerar o aprendizado.
+- **Relatórios de cobertura**: integrar ferramentas como `coverage.py` ao processo de testes.
+- **Análise de segurança**: incorporar `bandit` para detectar vulnerabilidades.
+- **Integração contínua**: rodar tarefas de teste e análise estática automaticamente em um pipeline CI.
 

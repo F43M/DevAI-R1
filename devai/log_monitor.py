@@ -16,9 +16,10 @@ class LogMonitor:
         self.memory = memory
         self.log_dir = Path(log_dir)
         self.patterns = {
-            "error": r"ERROR|CRITICAL|FAILED|Exception",
+            "error": r"ERROR|CRITICAL|FAILED|Exception|Traceback",
             "warning": r"WARNING|Deprecation",
             "performance": r"Timeout|Slow|Latency",
+            "test_failure": r"FAILURES|AssertionError",
         }
         self.last_checked = datetime.now()
 
