@@ -10,4 +10,5 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Exemplos de configuração**: disponibilizar modelos de `config.yaml` e `tasks.yaml` para facilitar o uso.
 - (adicione novos itens aqui)
 - **Automação incremental**: permitir que o projeto evolua com novas funções de forma contínua.
+- **Cache de memória**: reutilizar embeddings e consultas frequentes para acelerar o aprendizado.
 

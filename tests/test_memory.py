@@ -13,6 +13,16 @@ class DummyModel:
         return [1.0]
 
 
+class CountingModel(DummyModel):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def encode(self, text):
+        self.calls += 1
+        return super().encode(text)
+
+
 class DummyIndex:
     def __init__(self, dim):
         self.vectors = []
@@ -51,3 +61,14 @@ def test_cleanup():
         mem.cleanup(max_age_days=1)
         results = mem.search("old")
         assert not results
+
+
+def test_embedding_cache():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = f"{tmp}/mem.sqlite"
+        model = CountingModel()
+        index = DummyIndex(model.dim)
+        mem = MemoryManager(db, "dummy", model=model, index=index)
+        mem.search("hello")
+        mem.search("hello")
+        assert model.calls == 1

@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 from typing import List, Dict, Any, Optional
+from collections import OrderedDict
 from datetime import datetime, timedelta
 
 try:
@@ -28,6 +29,7 @@ class MemoryManager:
         embedding_model: str,
         model: Optional[Any] = None,
         index: Optional[Any] = None,
+        cache_size: int = 128,
     ):
         self.conn = sqlite3.connect(db_file)
         self._init_db()
@@ -47,6 +49,8 @@ class MemoryManager:
             index = faiss.IndexFlatL2(self.dimension)
         self.index = index
         self.indexed_ids: List[int] = []
+        self.embedding_cache: "OrderedDict[str, Any]" = OrderedDict()
+        self.embedding_cache_size = cache_size
         if index is None:
             self._load_index()
 
@@ -127,10 +131,20 @@ class MemoryManager:
             self.index.add(np.concatenate(embeddings))
         self._persist_index()
 
+    def _get_embedding(self, text: str):
+        if text in self.embedding_cache:
+            self.embedding_cache.move_to_end(text)
+            return self.embedding_cache[text]
+        vec = self.embedding_model.encode(text)
+        self.embedding_cache[text] = vec
+        if len(self.embedding_cache) > self.embedding_cache_size:
+            self.embedding_cache.popitem(last=False)
+        return vec
+
     def save(self, entry: Dict, update_feedback: bool = False):
         entry["metadata"] = json.dumps(entry.get("metadata", {}))
         content = self._generate_content_for_embedding(entry)
-        embedding_vec = self.embedding_model.encode(content)
+        embedding_vec = self._get_embedding(content)
         if np is not None:
             embedding = np.array(embedding_vec, dtype=np.float32).tobytes()
         else:
@@ -155,7 +169,7 @@ class MemoryManager:
                 ),
             )
             entry["id"] = cursor.lastrowid
-            vec = self.embedding_model.encode(content)
+            vec = embedding_vec
             if np is not None:
                 self.index.add(np.array([vec], dtype=np.float32))
             else:
@@ -175,7 +189,7 @@ class MemoryManager:
         return " ".join(parts)
 
     def search(self, query: str, top_k: int = 5, min_score: float = 0.7) -> List[Dict]:
-        query_embedding = self.embedding_model.encode(query)
+        query_embedding = self._get_embedding(query)
         if np is not None:
             q = np.array(query_embedding, dtype=np.float32).reshape(1, -1)
         else:
