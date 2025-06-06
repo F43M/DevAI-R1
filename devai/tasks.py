@@ -44,6 +44,12 @@ class TaskManager:
                 "condition": "'🚩' in findings or '⚠️' in findings",
                 "description": "Revisão geral de qualidade de código",
             }
+        if "lint" not in self.tasks:
+            self.tasks["lint"] = {
+                "name": "Lint",
+                "type": "lint",
+                "description": "Verifica TODOs no código",
+            }
 
     async def run_task(self, task_name: str, *args) -> Any:
         if task_name not in self.tasks:
@@ -57,6 +63,8 @@ class TaskManager:
             result = await self._perform_verification_task(task, *args)
         elif task["type"] == "learning":
             result = await self._perform_learning_task(task, *args)
+        elif task["type"] == "lint":
+            result = await self._perform_lint_task(task, *args)
         else:
             logger.error("Tipo de tarefa inválido", task_type=task["type"])
             result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
@@ -160,6 +168,15 @@ class TaskManager:
             )
             return {"status": "success", "rule_added": rule_name}
         return {"status": "error", "message": "Operação de aprendizado não reconhecida"}
+
+    async def _perform_lint_task(self, task: Dict, *args) -> List[Dict]:
+        from .lint import Linter
+        linter = Linter(self.code_analyzer.code_root)
+        results = linter.lint_all()
+        findings = []
+        for file, issues in results.items():
+            findings.append({"file": file, "issues": issues})
+        return findings if findings else ["✅ Nenhum TODO encontrado"]
 
     def _check_dependencies(self, chunk_name: str) -> List[str]:
         issues = []

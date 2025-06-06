@@ -33,13 +33,17 @@ class MemoryManager:
         self._init_db()
         if model is None:
             if SentenceTransformer is None:
-                raise RuntimeError("sentence_transformers not available")
+                raise RuntimeError(
+                    "O pacote 'sentence_transformers' não está instalado. Instale com 'pip install sentence-transformers'."
+                )
             model = SentenceTransformer(embedding_model)
         self.embedding_model = model
         self.dimension = self.embedding_model.get_sentence_embedding_dimension()
         if index is None:
             if faiss is None:
-                raise RuntimeError("faiss not available")
+                raise RuntimeError(
+                    "O pacote 'faiss' não está instalado. Instale com 'pip install faiss-cpu'."
+                )
             index = faiss.IndexFlatL2(self.dimension)
         self.index = index
         self.indexed_ids: List[int] = []

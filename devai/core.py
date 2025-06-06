@@ -4,6 +4,7 @@ import json
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional
+import ast
 
 import networkx as nx
 import uvicorn
