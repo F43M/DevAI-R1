@@ -34,6 +34,7 @@ class Config:
             "INDEX_IDS_FILE": "faiss_ids.json",
             "NOTIFY_EMAIL": os.getenv("NOTIFY_EMAIL", ""),
             "LOCAL_MODEL": os.getenv("LOCAL_MODEL", ""),
+            "COMPLEXITY_HISTORY": "complexity_history.json",
         }
         cfg = load_config(path, defaults)
         for key, value in cfg.items():
@@ -47,13 +48,27 @@ class Metrics:
         self.api_calls = 0
         self.total_response_time = 0.0
         self.errors = 0
+        self.max_cpu_percent = 0.0
+        self.max_memory_percent = 0.0
 
     def record_call(self, duration: float):
         self.api_calls += 1
         self.total_response_time += duration
+        self.update_resources()
 
     def record_error(self):
         self.errors += 1
+
+    def update_resources(self) -> None:
+        if not psutil:
+            return
+        try:
+            cpu = psutil.cpu_percent(interval=None)
+            mem = psutil.virtual_memory().percent
+            self.max_cpu_percent = max(self.max_cpu_percent, cpu)
+            self.max_memory_percent = max(self.max_memory_percent, mem)
+        except Exception:
+            pass
 
     def summary(self) -> Dict[str, Any]:
         avg = self.total_response_time / self.api_calls if self.api_calls else 0
@@ -61,6 +76,8 @@ class Metrics:
             "api_calls": self.api_calls,
             "avg_response_time": avg,
             "errors": self.errors,
+            "max_cpu_percent": self.max_cpu_percent,
+            "max_memory_percent": self.max_memory_percent,
         }
         if psutil:
             try:

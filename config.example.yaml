@@ -11,3 +11,4 @@ MODELS:
 NOTIFY_EMAIL: ''
 # Caminho opcional para um modelo local da HuggingFace
 LOCAL_MODEL: ''
+COMPLEXITY_HISTORY: complexity_history.json
