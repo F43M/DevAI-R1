@@ -69,6 +69,7 @@ O código foi dividido em módulos dentro do pacote `devai/`, facilitando a incl
 - `core.py` – orquestração principal
 - `cli.py` – interface de linha de comando
 - `lint.py` – checagem simples de TODOs
+- `update_manager.py` – aplica mudancas com rollback caso os testes falhem
 
 Sinta‑se livre para expandir cada módulo conforme necessário.
 ## Roadmap
