@@ -83,3 +83,13 @@ Sinta‑se livre para expandir cada módulo conforme necessário.
 ## Roadmap
 
 Acompanhe [ROADMAP.md](ROADMAP.md) para sugestões de melhorias e futuras implementações.
+
+Melhorias em andamento:
+
+- Expansão dos módulos existentes
+- Cobertura de testes ampliada
+- Dependências opcionais com fallback *(implementado)*
+- Exemplos de configuração prontos para uso
+- Automação incremental do projeto
+- Cache de memória para acelerar consultas
+- (adicione novas ideias aqui)

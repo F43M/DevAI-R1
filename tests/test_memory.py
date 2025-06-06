@@ -72,3 +72,13 @@ def test_embedding_cache():
         mem.search("hello")
         mem.search("hello")
         assert model.calls == 1
+
+
+def test_search_without_index():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = f"{tmp}/mem.sqlite"
+        mem = MemoryManager(db, "dummy", model=None, index=None)
+        mem.save({"type": "note", "content": "fallback", "metadata": {}, "tags": []})
+        results = mem.search("fallback")
+        assert results
+        assert results[0]["content"] == "fallback"
