@@ -60,3 +60,6 @@ O código foi dividido em módulos dentro do pacote `devai/`, facilitando a incl
 - `cli.py` – interface de linha de comando
 
 Sinta‑se livre para expandir cada módulo conforme necessário.
+## Roadmap
+
+Acompanhe [ROADMAP.md](ROADMAP.md) para sugestões de melhorias e futuras implementações.
