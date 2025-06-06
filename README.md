@@ -5,15 +5,21 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 ## Principais recursos
 
 - **Memória persistente** com busca vetorial (FAISS)
+- **Níveis de contexto** para memória de curto, médio e longo prazo
 - **Cache de embeddings** para acelerar consultas repetidas
 - **Limpeza automática de memórias** e feedback de uso
 - **Análise de código** com construção de grafo de dependências
+- **Métricas de complexidade** das funções analisadas
 - **Monitoramento de logs** detectando padrões de erro
 - **Execução de testes automatizados e análise estática**
+- **Tarefas extras** com pylint e mypy
 - **Análise de segurança com Bandit**
 - **API FastAPI** e **interface de linha de comando**
 - **Interface web opcional** em `/static/index.html` para conversar com a IA e explorar arquivos
 - Métricas expostas em `/metrics` (CPU e memória)
+- **Histórico de tarefas** e sistema de plugins
+- **Suporte a múltiplos modelos** configuráveis
+- **Notificações por e-mail** opcionais
 - **Integração contínua via GitHub Actions**
 
 ## Configuração

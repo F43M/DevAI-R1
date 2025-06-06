@@ -9,17 +9,31 @@ from .config import config, logger, metrics
 class AIModel:
     def __init__(self):
         self.session = aiohttp.ClientSession()
-        if not config.OPENROUTER_API_KEY:
-            logger.error("Chave OPENROUTER_API_KEY não configurada")
-        logger.info("Modelo DeepSeek-R1 configurado via OpenRouter")
+        self.models = config.MODELS or {"default": {
+            "name": config.MODEL_NAME,
+            "api_key": config.OPENROUTER_API_KEY,
+            "url": config.OPENROUTER_URL,
+        }}
+        self.current = "default"
+        if not any(m.get("api_key") for m in self.models.values()):
+            logger.error("Nenhuma chave de modelo configurada")
+        logger.info("Modelos disponíveis", models=list(self.models.keys()))
+
+    def set_model(self, name: str) -> None:
+        if name in self.models:
+            self.current = name
+            logger.info("Modelo selecionado", model=name)
+        else:
+            logger.error("Modelo não encontrado", model=name)
 
     async def generate(self, prompt: str, max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
+        model_cfg = self.models.get(self.current, {})
         headers = {
-            "Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
+            "Authorization": f"Bearer {model_cfg.get('api_key', '')}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": config.MODEL_NAME,
+            "model": model_cfg.get("name", config.MODEL_NAME),
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
             "temperature": 0.7,
@@ -27,7 +41,7 @@ class AIModel:
         start = datetime.now()
         try:
             async with self.session.post(
-                config.OPENROUTER_URL,
+                model_cfg.get("url", config.OPENROUTER_URL),
                 headers=headers,
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=60),

@@ -15,4 +15,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Análise de segurança**: incorporar `bandit` para detectar vulnerabilidades.
 - **Integração contínua**: rodar tarefas de teste e análise estática automaticamente em um pipeline CI.
 - **Métricas avançadas**: monitorar uso de CPU e memória do assistente.
+- **Sistema de plugins** para extensões de tarefas.
+- **Suporte a múltiplos backends de IA**.
+- **Notificações automáticas** ao concluir tarefas longas.
 

@@ -19,6 +19,8 @@
 </div>
 <div id="chat">
   <div id="messages"></div>
+  <button onclick="showGraph()">Grafo</button>
+  <button onclick="showMetrics()">Métricas</button>
   <div id="input">
     <textarea id="query" rows="3"></textarea>
     <button id="send">Enviar</button>
@@ -56,6 +58,18 @@ async function send() {
 }
 document.getElementById('send').onclick = send;
 refreshFiles();
+
+async function showMetrics() {
+  const res = await fetch('/metrics');
+  const data = await res.json();
+  alert(JSON.stringify(data, null, 2));
+}
+
+async function showGraph() {
+  const res = await fetch('/graph');
+  const data = await res.json();
+  alert('Nós:' + data.nodes.length + ' Ligações:' + data.links.length);
+}
 </script>
 </body>
 </html>

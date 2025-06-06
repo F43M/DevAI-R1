@@ -76,6 +76,7 @@ class MemoryManager:
                 metadata TEXT NOT NULL,
                 embedding BLOB,
                 feedback_score INTEGER DEFAULT 0,
+                context_level TEXT DEFAULT 'long',
                 last_accessed TEXT,
                 access_count INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -175,14 +176,15 @@ class MemoryManager:
         else:
             cursor.execute(
                 """INSERT INTO memory
-                (type, content, metadata, embedding, feedback_score)
-                VALUES (?, ?, ?, ?, ?)""",
+                (type, content, metadata, embedding, feedback_score, context_level)
+                VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     entry.get("type", "generic"),
                     entry.get("content", ""),
                     entry["metadata"],
                     embedding,
                     entry.get("feedback_score", 0),
+                    entry.get("context_level", "long"),
                 ),
             )
             entry["id"] = cursor.lastrowid
@@ -198,7 +200,7 @@ class MemoryManager:
         logger.info("Memória salva" if not update_feedback else "Feedback atualizado", entry_type=entry.get("type"))
 
     def _generate_content_for_embedding(self, entry: Dict) -> str:
-        parts = [entry.get("content", ""), entry.get("type", ""), " ".join(entry.get("tags", []))]
+        parts = [entry.get("content", ""), entry.get("type", ""), entry.get("context_level", ""), " ".join(entry.get("tags", []))]
         if "metadata" in entry:
             if isinstance(entry["metadata"], dict):
                 parts.append(json.dumps(entry["metadata"]))
@@ -206,21 +208,21 @@ class MemoryManager:
                 parts.append(str(entry["metadata"]))
         return " ".join(parts)
 
-    def search(self, query: str, top_k: int = 5, min_score: float = 0.7) -> List[Dict]:
+    def search(self, query: str, top_k: int = 5, min_score: float = 0.7, level: str | None = None) -> List[Dict]:
         results = []
         cursor = self.conn.cursor()
         if self.index is None:
-            cursor.execute(
-                """
-                SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags
-                FROM memory m
-                LEFT JOIN tags t ON m.id = t.memory_id
-                WHERE m.content LIKE ?
-                GROUP BY m.id
-                LIMIT ?
-                """,
-                (f"%{query}%", top_k),
+            sql = (
+                "SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags FROM memory m "
+                "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.content LIKE ?"
             )
+            params = [f"%{query}%"]
+            if level:
+                sql += " AND m.context_level = ?"
+                params.append(level)
+            sql += " GROUP BY m.id LIMIT ?"
+            params.append(top_k)
+            cursor.execute(sql, params)
             for row in cursor.fetchall():
                 results.append(
                     {
@@ -229,10 +231,11 @@ class MemoryManager:
                         "content": row[2],
                         "metadata": json.loads(row[3]),
                         "feedback_score": row[5],
-                        "tags": row[9].split(", ") if row[9] else [],
+                        "context_level": row[6],
+                        "tags": row[11].split(", ") if row[11] else [],
                         "similarity_score": 1.0,
-                        "last_accessed": row[6],
-                        "access_count": row[7],
+                        "last_accessed": row[7],
+                        "access_count": row[8],
                     }
                 )
         else:
@@ -245,16 +248,16 @@ class MemoryManager:
             for idx, distance in zip(indices[0], distances[0]):
                 if idx < len(self.indexed_ids) and distance <= (1 - min_score):
                     memory_id = self.indexed_ids[idx]
-                    cursor.execute(
-                        """
-                        SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags
-                        FROM memory m
-                        LEFT JOIN tags t ON m.id = t.memory_id
-                        WHERE m.id = ?
-                        GROUP BY m.id
-                        """,
-                        (memory_id,),
+                    sql = (
+                        "SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags FROM memory m "
+                        "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.id = ?"
                     )
+                    params = [memory_id]
+                    if level:
+                        sql += " AND m.context_level = ?"
+                        params.append(level)
+                    sql += " GROUP BY m.id"
+                    cursor.execute(sql, params)
                     row = cursor.fetchone()
                     if row:
                         results.append(
@@ -264,10 +267,11 @@ class MemoryManager:
                                 "content": row[2],
                                 "metadata": json.loads(row[3]),
                                 "feedback_score": row[5],
-                                "tags": row[9].split(", ") if row[9] else [],
+                                "context_level": row[6],
+                                "tags": row[11].split(", ") if row[11] else [],
                                 "similarity_score": 1 - distance,
-                                "last_accessed": row[6],
-                                "access_count": row[7],
+                                "last_accessed": row[7],
+                                "access_count": row[8],
                             }
                         )
                         cursor.execute(
@@ -311,9 +315,9 @@ class MemoryManager:
                     "type": row[1],
                     "content": row[2],
                     "metadata": json.loads(row[3]),
-                    "relation_type": row[9],
-                    "strength": row[10],
-                    "tags": row[11].split(", ") if row[11] else [],
+                    "relation_type": row[11],
+                    "strength": row[12],
+                    "tags": row[13].split(", ") if row[13] else [],
                 }
             )
         return results
