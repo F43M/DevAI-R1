@@ -1,7 +1,7 @@
 import os
 import yaml
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import networkx as nx
 from asteval import Interpreter
@@ -9,13 +9,15 @@ from asteval import Interpreter
 from .config import logger
 from .analyzer import CodeAnalyzer
 from .memory import MemoryManager
+from .ai_model import AIModel
 
 
 class TaskManager:
-    def __init__(self, task_file: str, code_analyzer: CodeAnalyzer, memory: MemoryManager):
+    def __init__(self, task_file: str, code_analyzer: CodeAnalyzer, memory: MemoryManager, ai_model: Optional[AIModel] = None):
         self.tasks = self._load_tasks(task_file)
         self.code_analyzer = code_analyzer
         self.memory = memory
+        self.ai_model = ai_model
         self.aeval = Interpreter()
         self._setup_default_tasks()
 
@@ -89,15 +91,24 @@ class TaskManager:
             chunks = [self.code_analyzer.code_chunks[target]] if target in self.code_analyzer.code_chunks else []
         for chunk in chunks:
             try:
-                findings.append(
-                    {
-                        "chunk": chunk["name"],
-                        "file": chunk["file"],
-                        "issues": self._check_dependencies(chunk["name"]),
-                        "rule_findings": self._apply_learned_rules(chunk),
-                        "custom_findings": self._evaluate_custom_condition(task["condition"], chunk, args),
-                    }
-                )
+                analysis = {
+                    "chunk": chunk["name"],
+                    "file": chunk["file"],
+                    "issues": self._check_dependencies(chunk["name"]),
+                    "rule_findings": self._apply_learned_rules(chunk),
+                    "custom_findings": self._evaluate_custom_condition(task["condition"], chunk, args),
+                }
+                if self.ai_model:
+                    try:
+                        prompt = (
+                            f"Analise o código a seguir e sugira melhorias de forma breve:\n{chunk['code']}\n"
+                            f"Problemas detectados: {', '.join(analysis['issues'] + analysis['rule_findings'])}"
+                        )
+                        suggestion = await self.ai_model.generate(prompt, max_length=200)
+                        analysis["ai_suggestion"] = suggestion.strip()
+                    except Exception as e:
+                        logger.error("Erro ao gerar sugestão da IA", chunk=chunk["name"], error=str(e))
+                findings.append(analysis)
             except Exception as e:
                 logger.error("Erro na análise", chunk=chunk["name"], error=str(e))
                 findings.append({"chunk": chunk["name"], "error": str(e)})
