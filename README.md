@@ -5,6 +5,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 ## Principais recursos
 
 - **Memória persistente** com busca vetorial (FAISS)
+- **Cache de embeddings** para acelerar consultas repetidas
 - **Limpeza automática de memórias** e feedback de uso
 - **Análise de código** com construção de grafo de dependências
 - **Monitoramento de logs** detectando padrões de erro
