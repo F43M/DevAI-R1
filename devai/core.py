@@ -22,9 +22,9 @@ class CodeMemoryAI:
     def __init__(self):
         self.memory = MemoryManager(config.MEMORY_DB, config.EMBEDDING_MODEL)
         self.analyzer = CodeAnalyzer(config.CODE_ROOT, self.memory)
-        self.tasks = TaskManager(config.TASK_DEFINITIONS, self.analyzer, self.memory)
-        self.log_monitor = LogMonitor(self.memory, config.LOG_DIR)
         self.ai_model = AIModel()
+        self.tasks = TaskManager(config.TASK_DEFINITIONS, self.analyzer, self.memory, ai_model=self.ai_model)
+        self.log_monitor = LogMonitor(self.memory, config.LOG_DIR)
         self.app = FastAPI(title="CodeMemoryAI API")
         self._setup_api_routes()
         self.background_tasks = set()
