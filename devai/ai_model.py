@@ -109,21 +109,21 @@ class AIModel:
         }
         start = datetime.now()
         try:
-            async with self.session.post(
+            resp = await self.session.post(
                 model_cfg.get("url", config.OPENROUTER_URL),
                 headers=headers,
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=60),
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    text = data["choices"][0]["message"]["content"]
-                    self.cache.add(key, text)
-                    return text
-                error = await resp.text()
-                metrics.record_error()
-                logger.error("Erro na chamada ao OpenRouter", status=resp.status, error=error)
-                return f"Erro na API: {resp.status} - {error}"
+            )
+            if resp.status == 200:
+                data = await resp.json()
+                text = data["choices"][0]["message"]["content"]
+                self.cache.add(key, text)
+                return text
+            error = await resp.text()
+            metrics.record_error()
+            logger.error("Erro na chamada ao OpenRouter", status=resp.status, error=error)
+            return f"Erro na API: {resp.status} - {error}"
         except asyncio.TimeoutError:
             metrics.record_error()
             logger.error("Timeout na chamada ao OpenRouter")
