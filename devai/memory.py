@@ -35,23 +35,34 @@ class MemoryManager:
         self._init_db()
         if model is None:
             if SentenceTransformer is None:
-                raise RuntimeError(
-                    "O pacote 'sentence_transformers' não está instalado. Instale com 'pip install sentence-transformers'."
+                logger.warning(
+                    "sentence_transformers não instalado; busca vetorial desabilitada"
                 )
-            model = SentenceTransformer(embedding_model)
-        self.embedding_model = model
-        self.dimension = self.embedding_model.get_sentence_embedding_dimension()
+                self.embedding_model = None
+            else:
+                self.embedding_model = SentenceTransformer(embedding_model)
+        else:
+            self.embedding_model = model
+
+        self.dimension = (
+            self.embedding_model.get_sentence_embedding_dimension()
+            if self.embedding_model
+            else 0
+        )
+
         if index is None:
-            if faiss is None:
-                raise RuntimeError(
-                    "O pacote 'faiss' não está instalado. Instale com 'pip install faiss-cpu'."
-                )
-            index = faiss.IndexFlatL2(self.dimension)
-        self.index = index
+            if self.embedding_model is not None and faiss is not None:
+                self.index = faiss.IndexFlatL2(self.dimension)
+            else:
+                if self.embedding_model is not None and faiss is None:
+                    logger.warning("faiss não instalado; indexação desabilitada")
+                self.index = None
+        else:
+            self.index = index
         self.indexed_ids: List[int] = []
         self.embedding_cache: "OrderedDict[str, Any]" = OrderedDict()
         self.embedding_cache_size = cache_size
-        if index is None:
+        if self.index is not None:
             self._load_index()
 
     def _init_db(self):
@@ -132,6 +143,8 @@ class MemoryManager:
         self._persist_index()
 
     def _get_embedding(self, text: str):
+        if self.embedding_model is None:
+            return [0.0]
         if text in self.embedding_cache:
             self.embedding_cache.move_to_end(text)
             return self.embedding_cache[text]
@@ -144,11 +157,15 @@ class MemoryManager:
     def save(self, entry: Dict, update_feedback: bool = False):
         entry["metadata"] = json.dumps(entry.get("metadata", {}))
         content = self._generate_content_for_embedding(entry)
-        embedding_vec = self._get_embedding(content)
-        if np is not None:
-            embedding = np.array(embedding_vec, dtype=np.float32).tobytes()
+        if self.index is not None:
+            embedding_vec = self._get_embedding(content)
+            if np is not None:
+                embedding = np.array(embedding_vec, dtype=np.float32).tobytes()
+            else:
+                embedding = json.dumps(embedding_vec).encode()
         else:
-            embedding = json.dumps(embedding_vec).encode()
+            embedding_vec = None
+            embedding = None
         cursor = self.conn.cursor()
         if update_feedback and "id" in entry:
             cursor.execute(
@@ -169,13 +186,14 @@ class MemoryManager:
                 ),
             )
             entry["id"] = cursor.lastrowid
-            vec = embedding_vec
-            if np is not None:
-                self.index.add(np.array([vec], dtype=np.float32))
-            else:
-                self.index.add([vec])
-            self.indexed_ids.append(entry["id"])
-            self._persist_index()
+            if self.index is not None and embedding_vec is not None:
+                vec = embedding_vec
+                if np is not None:
+                    self.index.add(np.array([vec], dtype=np.float32))
+                else:
+                    self.index.add([vec])
+                self.indexed_ids.append(entry["id"])
+                self._persist_index()
         self.conn.commit()
         logger.info("Memória salva" if not update_feedback else "Feedback atualizado", entry_type=entry.get("type"))
 
@@ -189,46 +207,73 @@ class MemoryManager:
         return " ".join(parts)
 
     def search(self, query: str, top_k: int = 5, min_score: float = 0.7) -> List[Dict]:
-        query_embedding = self._get_embedding(query)
-        if np is not None:
-            q = np.array(query_embedding, dtype=np.float32).reshape(1, -1)
-        else:
-            q = query_embedding
-        distances, indices = self.index.search(q, top_k)
         results = []
         cursor = self.conn.cursor()
-        for idx, distance in zip(indices[0], distances[0]):
-            if idx < len(self.indexed_ids) and distance <= (1 - min_score):
-                memory_id = self.indexed_ids[idx]
-                cursor.execute(
-                    """
-                    SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags
-                    FROM memory m
-                    LEFT JOIN tags t ON m.id = t.memory_id
-                    WHERE m.id = ?
-                    GROUP BY m.id
-                    """,
-                    (memory_id,),
+        if self.index is None:
+            cursor.execute(
+                """
+                SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags
+                FROM memory m
+                LEFT JOIN tags t ON m.id = t.memory_id
+                WHERE m.content LIKE ?
+                GROUP BY m.id
+                LIMIT ?
+                """,
+                (f"%{query}%", top_k),
+            )
+            for row in cursor.fetchall():
+                results.append(
+                    {
+                        "id": row[0],
+                        "type": row[1],
+                        "content": row[2],
+                        "metadata": json.loads(row[3]),
+                        "feedback_score": row[5],
+                        "tags": row[9].split(", ") if row[9] else [],
+                        "similarity_score": 1.0,
+                        "last_accessed": row[6],
+                        "access_count": row[7],
+                    }
                 )
-                row = cursor.fetchone()
-                if row:
-                    results.append(
-                        {
-                            "id": row[0],
-                            "type": row[1],
-                            "content": row[2],
-                            "metadata": json.loads(row[3]),
-                            "feedback_score": row[5],
-                            "tags": row[9].split(", ") if row[9] else [],
-                            "similarity_score": 1 - distance,
-                            "last_accessed": row[6],
-                            "access_count": row[7],
-                        }
-                    )
+        else:
+            query_embedding = self._get_embedding(query)
+            if np is not None:
+                q = np.array(query_embedding, dtype=np.float32).reshape(1, -1)
+            else:
+                q = query_embedding
+            distances, indices = self.index.search(q, top_k)
+            for idx, distance in zip(indices[0], distances[0]):
+                if idx < len(self.indexed_ids) and distance <= (1 - min_score):
+                    memory_id = self.indexed_ids[idx]
                     cursor.execute(
-                        "UPDATE memory SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 WHERE id = ?",
+                        """
+                        SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags
+                        FROM memory m
+                        LEFT JOIN tags t ON m.id = t.memory_id
+                        WHERE m.id = ?
+                        GROUP BY m.id
+                        """,
                         (memory_id,),
                     )
+                    row = cursor.fetchone()
+                    if row:
+                        results.append(
+                            {
+                                "id": row[0],
+                                "type": row[1],
+                                "content": row[2],
+                                "metadata": json.loads(row[3]),
+                                "feedback_score": row[5],
+                                "tags": row[9].split(", ") if row[9] else [],
+                                "similarity_score": 1 - distance,
+                                "last_accessed": row[6],
+                                "access_count": row[7],
+                            }
+                        )
+                        cursor.execute(
+                            "UPDATE memory SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 WHERE id = ?",
+                            (memory_id,),
+                        )
         self.conn.commit()
         logger.info("Busca de memória realizada", query=query, results=len(results))
         return sorted(results, key=lambda x: x["similarity_score"], reverse=True)
