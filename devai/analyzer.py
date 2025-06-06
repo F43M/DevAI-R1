@@ -71,6 +71,7 @@ class CodeAnalyzer:
                         "hash": file_hash,
                         "last_modified": datetime.now().isoformat(),
                         "dependencies": self._get_dependencies(node),
+                        "calls": self._get_function_calls(node),
                         "external_deps": self._get_external_dependencies(node),
                         "docstring": ast.get_docstring(node) or "",
                         "line_start": node.lineno,
@@ -78,7 +79,14 @@ class CodeAnalyzer:
                     }
                     self.code_graph.add_node(node.name, **chunk)
                     for dep in chunk["dependencies"]:
-                        self.code_graph.add_edge(node.name, dep)
+                        self.code_graph.add_edge(node.name, dep, type="dependency")
+                    for call in chunk["calls"]:
+                        self.code_graph.add_edge(
+                            node.name,
+                            call["function"],
+                            type="call",
+                            line=call["line"],
+                        )
                     self.external_dependencies.update(chunk["external_deps"])
                     chunks.append(chunk)
                     if node.name in self.code_chunks and self.code_chunks[node.name]["hash"] != file_hash:
@@ -111,6 +119,17 @@ class CodeAnalyzer:
                 deps.add(child.attr)
         return list(deps)
 
+    def _get_function_calls(self, node):
+        calls = []
+        for child in ast.walk(node):
+            if isinstance(child, ast.Call):
+                func = child.func
+                if isinstance(func, ast.Name):
+                    calls.append({"function": func.id, "line": child.lineno})
+                elif isinstance(func, ast.Attribute):
+                    calls.append({"function": func.attr, "line": child.lineno})
+        return calls
+
     def _get_external_dependencies(self, node):
         deps = set()
         for child in ast.walk(node):
@@ -132,9 +151,16 @@ class CodeAnalyzer:
             """
         )
         code_memories = {json.loads(row[1])["name"]: row[0] for row in cursor.fetchall()}
-        for source, target in self.code_graph.edges():
+        for source, target, data in self.code_graph.edges(data=True):
             if source in code_memories and target in code_memories:
-                self.memory.add_semantic_relation(code_memories[source], code_memories[target], "depends_on", strength=0.9)
+                rel = "calls" if data.get("type") == "call" else "depends_on"
+                strength = 0.5 if rel == "calls" else 0.9
+                self.memory.add_semantic_relation(
+                    code_memories[source],
+                    code_memories[target],
+                    rel,
+                    strength=strength,
+                )
         all_code = [(mid, json.loads(meta)["name"]) for name, mid in code_memories.items()]
         for i, (mid1, name1) in enumerate(all_code):
             for j, (mid2, name2) in enumerate(all_code[i + 1 :], i + 1):
