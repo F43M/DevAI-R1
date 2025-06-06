@@ -19,6 +19,10 @@ async def cli_main():
     print("/ls [caminho] - Lista arquivos e pastas")
     print("/abrir <arquivo> [ini] [fim] - Mostra linhas do arquivo")
     print("/editar <arquivo> <linha> <novo> - Edita linha do arquivo")
+    print("/novoarq <arquivo> [conteudo] - Cria novo arquivo")
+    print("/novapasta <caminho> - Cria nova pasta")
+    print("/deletar <caminho> - Remove arquivo ou pasta")
+    print("/historico <arquivo> - Mostra histórico de mudanças")
     print("/sair - Encerra")
     while True:
         try:
@@ -83,6 +87,27 @@ async def cli_main():
                     file, line_no, new_line = parts[0], int(parts[1]), parts[2]
                     ok = await ai.analyzer.edit_line(file, line_no, new_line)
                     print("✅ Linha atualizada" if ok else "Falha ao editar")
+            elif user_input.startswith("/novoarq "):
+                parts = user_input[len("/novoarq "):].split(maxsplit=1)
+                file = parts[0]
+                content = parts[1] if len(parts) > 1 else ""
+                ok = await ai.analyzer.create_file(file, content)
+                print("✅ Arquivo criado" if ok else "Falha ao criar")
+            elif user_input.startswith("/novapasta "):
+                path = user_input[len("/novapasta "):].strip()
+                ok = await ai.analyzer.create_directory(path)
+                print("✅ Pasta criada" if ok else "Falha ao criar pasta")
+            elif user_input.startswith("/deletar "):
+                path = user_input[len("/deletar "):].strip()
+                ok = await ai.analyzer.delete_file(path)
+                if not ok:
+                    ok = await ai.analyzer.delete_directory(path)
+                print("✅ Removido" if ok else "Falha ao remover")
+            elif user_input.startswith("/historico "):
+                file = user_input[len("/historico "):].strip()
+                hist = await ai.analyzer.get_history(file)
+                for h in hist:
+                    print(json.dumps(h, indent=2))
             else:
                 response = await ai.generate_response(user_input)
                 print("\nResposta:")

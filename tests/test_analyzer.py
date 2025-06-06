@@ -1,6 +1,7 @@
 import ast
 import asyncio
 from devai.analyzer import CodeAnalyzer
+from devai.file_history import FileHistory
 
 class DummyMemory:
     def __init__(self):
@@ -47,3 +48,20 @@ def test_file_operations(tmp_path):
     assert lines == ["b"]
     assert ok
     assert file.read_text().splitlines()[1] == "x"
+
+def test_create_delete(tmp_path):
+    root = tmp_path / "app"
+    root.mkdir()
+    hist = FileHistory(str(tmp_path / "h.json"))
+    analyzer = CodeAnalyzer(str(root), DummyMemory(), hist)
+
+    async def run():
+        ok_c = await analyzer.create_file("new.txt", "hi")
+        ok_d = await analyzer.delete_file("new.txt")
+        return ok_c, ok_d
+
+    ok_c, ok_d = asyncio.run(run())
+    history = hist.history("new.txt")
+    assert ok_c and ok_d
+    assert history[0]["type"] == "create"
+    assert history[1]["type"] == "delete"
