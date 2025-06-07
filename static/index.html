@@ -112,7 +112,8 @@ document.getElementById('autoMonitor').onclick=async()=>{
   appendConsole('Executando auto monitoramento...');
   const r=await fetch('/auto_monitor');
   const data=await r.json();
-  document.getElementById('aiOutput').textContent=JSON.stringify(data,null,2);
+  if(data.logs) appendConsole(data.logs);
+  document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
 };
 document.getElementById('shadowRefactor').onclick=async()=>{
   if(!window.currentFile) return;

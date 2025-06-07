@@ -17,19 +17,27 @@ async def auto_monitor_cycle(
     memory: MemoryManager,
     ai_model: AIModel,
 ) -> Dict[str, Any]:
-    """Check internal signals and trigger symbolic training if needed."""
+    """Run an internal health check and trigger symbolic training if needed."""
     log_dir = Path(config.LOG_DIR)
     log_dir.mkdir(exist_ok=True)
     monitor_log = log_dir / "monitoring_history.md"
     decision_log = log_dir / "self_triggered_analysis.md"
     training_report = log_dir / "symbolic_training_report.md"
 
+    logs: list[str] = []
+
+    def _log(msg: str) -> None:
+        logs.append(msg)
+        logger.info(msg)
+
+    # FUTURE: limitar ciclos por etapa no auto_monitor_cycle
+
     now = datetime.now()
     last_training = datetime.fromtimestamp(0)
     if training_report.exists():
         last_training = datetime.fromtimestamp(training_report.stat().st_mtime)
 
-    # Count negative memories in the last 24h
+    _log("🔎 Verificando novos logs de erro…")
     day_ago = (now - timedelta(hours=24)).isoformat()
     cursor = memory.conn.cursor()
     cursor.execute(
@@ -37,14 +45,16 @@ async def auto_monitor_cycle(
         (day_ago,),
     )
     failures = cursor.fetchone()[0]
+    _log("OK")
 
-    # Files changed since last training
+    _log("📂 Checando arquivos modificados…")
     changed_files = [
         f
         for f in Path(config.CODE_ROOT).rglob("*.py")
         if f.stat().st_mtime > last_training.timestamp()
     ]
     new_files = len(changed_files)
+    _log("OK")
 
     hours_since = (now - last_training).total_seconds() / 3600.0
 
@@ -58,10 +68,22 @@ async def auto_monitor_cycle(
 
     triggered = bool(reasons)
     training_executed = False
+    result_data: Dict[str, Any] = {
+        "triggered": triggered,
+        "reason": "; ".join(reasons) if reasons else "criterios nao atingidos",
+        "training_executed": False,
+        "new_rules": 0,
+        "errors_processed": 0,
+    }
+
+    _log("🧠 Avaliando necessidade de novo treinamento simbólico…")
     if triggered:
         training_executed = True
+        _log("EXECUTADO")
         logger.info("Monitor acionou treinamento simbólico")
-        await run_symbolic_training(analyzer, memory, ai_model)
+        training_result = await run_symbolic_training(analyzer, memory, ai_model)
+        result_data.update(training_result.get("data", {}))
+        result_data["training_executed"] = True
         decision_log.write_text(
             f"[{now.isoformat()}] Trigger: {'; '.join(reasons)}\n",
         )
@@ -69,12 +91,34 @@ async def auto_monitor_cycle(
             f"[{now.strftime('%Y-%m-%d %H:%M')}] Auto-análise executada: {new_files} arquivos alterados + {failures} falhas = treinamento simbólico disparado\n"
         )
     else:
+        _log("Nenhum treinamento necessário")
         monitor_log.open("a").write(
             f"[{now.strftime('%Y-%m-%d %H:%M')}] Auto-análise executada: {new_files} arquivos alterados + {failures} falhas\n"
         )
 
-    return {
-        "triggered": triggered,
-        "reason": "; ".join(reasons) if reasons else "criterios nao atingidos",
-        "training_executed": training_executed,
+    lines = ["🧭 Autoavaliação Concluída", ""]
+    if training_executed:
+        lines.append("🔁 Treinamento simbólico automático executado.")
+        rules = result_data.get("new_rules", 0)
+        if rules:
+            plural = "s" if rules != 1 else ""
+            lines.append(f"📌 {rules} nova{plural} regra{plural} aprendida.")
+        else:
+            lines.append("🧠 Regras simbólicas atualizadas com base em novos erros.")
+        logs_proc = result_data.get("errors_processed", 0)
+        if logs_proc:
+            lines.append(f"📂 {logs_proc} novos logs de erro processados com sucesso.")
+        lines.append("✅ Sistema atualizado com base em dados recentes.")
+    else:
+        lines.append("✅ Nenhuma anomalia identificada.")
+        lines.append("🧠 Nenhum aprendizado novo foi necessário neste ciclo.")
+        lines.append("ℹ️ Sistema está atualizado e operando normalmente.")
+
+    await asyncio.sleep(0)
+
+    result = {
+        "report": "\n".join(lines),
+        "logs": "\n".join(logs),
+        "data": result_data,
     }
+    return result
