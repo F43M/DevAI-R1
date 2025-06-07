@@ -192,7 +192,10 @@ async def cli_main():
                         print(json.dumps(h, indent=2))
                 log_path = Path("decision_log.yaml")
                 if log_path.exists():
-                    import yaml
+                    try:
+                        import yaml  # type: ignore
+                    except Exception:  # pragma: no cover - fallback when PyYAML is missing
+                        from . import yaml_fallback as yaml
                     data = yaml.safe_load(log_path.read_text()) or []
                     for e in data:
                         if target in e.get("modulo", "") or target in e.get("motivo", ""):

@@ -11,7 +11,10 @@ SYSTEM_PROMPT_CONTEXT = (
     "Sempre explique antes de agir e justifique cada modificação. "
     "Estrutura: contexto simbólico -> raciocínio -> código."
 )
-import yaml
+try:
+    import yaml  # type: ignore
+except Exception:  # pragma: no cover - fallback when PyYAML is missing
+    from . import yaml_fallback as yaml
 
 TEMPLATES: Dict[str, str] = {
     "create": "Crie o código solicitado com comentários e exemplos.",

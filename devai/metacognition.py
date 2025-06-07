@@ -41,7 +41,10 @@ class MetacognitionLoop:
             return
         try:
             import yaml  # type: ignore
+        except Exception:  # pragma: no cover - fallback when PyYAML is missing
+            from . import yaml_fallback as yaml
 
+        try:
             data: List[Dict] = yaml.safe_load(self.history_file.read_text()) or []
         except Exception:
             data = []

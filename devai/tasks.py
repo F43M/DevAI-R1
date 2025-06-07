@@ -1,5 +1,8 @@
 import os
-import yaml
+try:
+    import yaml  # type: ignore
+except Exception:  # pragma: no cover - fallback when PyYAML is missing
+    from . import yaml_fallback as yaml
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Optional
 import subprocess
