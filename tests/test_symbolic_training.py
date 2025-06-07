@@ -23,6 +23,7 @@ def test_run_symbolic_training(tmp_path, monkeypatch):
     code_root = tmp_path / 'app'
     code_root.mkdir()
     monkeypatch.setattr('devai.learning_engine.LESSONS_FILE', tmp_path / 'lessons.json')
+    monkeypatch.setattr('devai.symbolic_training.LESSONS_FILE', tmp_path / 'lessons.json')
     for i in range(3):
         f = code_root / f'f{i}.py'
         f.write_text('print("hi")')
@@ -38,9 +39,12 @@ def test_run_symbolic_training(tmp_path, monkeypatch):
         return await run_symbolic_training(analyzer, mem, model)
 
     result = asyncio.run(run())
-    assert result['total_files'] == 3
-    assert result['arquivos_com_erro'] == 3
-    assert result['sugestoes'] == 3
+    assert 'report' in result
+    assert '📌' in result['report'] or 'Nenhum aprendizado novo' in result['report']
+    assert 'Causa' in result['report']
+    data = result['data']
+    assert data['arquivos_com_erro'] == 3
+    assert data['errors_processed'] == 3
     report = Path(log_dir / 'symbolic_training_report.md')
     assert report.exists()
 

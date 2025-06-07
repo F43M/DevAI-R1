@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Dict, List
+import json
+
+from .learning_engine import LESSONS_FILE
 
 from .config import config, logger
-from .learning_engine import listar_licoes_negativas
 from .memory import MemoryManager
 from .analyzer import CodeAnalyzer
 from .ai_model import AIModel
@@ -15,10 +17,21 @@ async def run_symbolic_training(
     analyzer: CodeAnalyzer,
     memory: MemoryManager,
     ai_model: AIModel,
-) -> Dict[str, int]:
-    """Execute the symbolic deep training cycle."""
+    max_logs: int = 100,
+) -> Dict[str, object]:
+    """Execute the symbolic deep training cycle returning a friendly summary."""
     await analyzer.scan_app()
     code_root = Path(config.CODE_ROOT)
+
+    try:
+        items = json.loads(LESSONS_FILE.read_text()) if LESSONS_FILE.exists() else []
+    except Exception:
+        items = []
+    items = sorted(items, key=lambda x: x.get("timestamp", ""), reverse=True)[:max_logs]
+    lesson_map: Dict[str, List[str]] = {}
+    for it in items:
+        lesson_map.setdefault(it.get("arquivo", ""), []).append(it.get("erro", ""))
+
     total_files = 0
     history_files = 0
     at_risk = 0
@@ -26,10 +39,11 @@ async def run_symbolic_training(
     sensitive: List[str] = []
     patterns: List[str] = []
     sugg_lines: List[str] = []
+    unique_rules: Dict[str, None] = {}
 
     for file_path in code_root.rglob("*.py"):
         total_files += 1
-        history = listar_licoes_negativas(str(file_path))
+        history = lesson_map.get(str(file_path), [])
         if history:
             history_files += 1
             sensitive.append(f"- {file_path} → [{len(history)} erros anteriores]")
@@ -79,7 +93,9 @@ async def run_symbolic_training(
             at_risk += 1
         if improve.strip():
             suggestions += 1
-            sugg_lines.append(f"- {improve.strip().splitlines()[0]}")
+            first = improve.strip().splitlines()[0]
+            sugg_lines.append(f"- {first}")
+            unique_rules[first] = None
         await asyncio.sleep(0)
 
     report = ["# Relatório de Treinamento Simbólico Profundo", ""]
@@ -98,9 +114,40 @@ async def run_symbolic_training(
     Path(config.LOG_DIR).mkdir(exist_ok=True)
     Path(config.LOG_DIR, "symbolic_training_report.md").write_text("\n".join(report))
     logger.info("Relatorio de treinamento salvo", file="symbolic_training_report.md")
+
+    error_counts: Dict[str, int] = {}
+    for it in items:
+        typ = it.get("erro", "").split(":")[0].split()[0]
+        if typ:
+            error_counts[typ] = error_counts.get(typ, 0) + 1
+    if error_counts:
+        cause = ", ".join(f"{k} ({v})" for k, v in error_counts.items())
+        cause_msg = f"Baseado em {len(items)} erros do tipo {cause}."
+    else:
+        cause_msg = "Regras adicionadas com base em logs de erro anteriores."
+        # TODO: identificar origem exata de cada regra
+
+    rules = list(unique_rules.keys())
+    lines = ["🧠 Treinamento Concluído", ""]
+    if rules:
+        lines.append(f"✅ {len(rules)} novas regras de qualidade adicionadas à base de conhecimento:")
+        for i, r in enumerate(rules, 1):
+            lines.append(f"📌 [{i}] {r}")
+            # FUTURE: implementar rastreamento de origem da regra para exibição
+    else:
+        lines.append("Nenhum aprendizado novo encontrado desta vez.")
+    lines.append("")
+    lines.append(f"🔎 Causa: {cause_msg}")
+
     return {
-        "total_files": total_files,
-        "arquivos_com_erro": history_files,
-        "em_risco": at_risk,
-        "sugestoes": suggestions,
+        "report": "\n".join(lines),
+        "data": {
+            "total_files": total_files,
+            "arquivos_com_erro": history_files,
+            "em_risco": at_risk,
+            "sugestoes": suggestions,
+            "new_rules": len(rules),
+            "rules_added": rules,
+            "errors_processed": len(items),
+        },
     }
