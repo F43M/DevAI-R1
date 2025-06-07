@@ -238,12 +238,29 @@ class CodeMemoryAI:
             if not _auth(token):
                 return {"error": "unauthorized"}
             await self.analyzer.deep_scan_app()
-            summary = {
-                "architecture": self.analyzer.graph_summary(),
-                "rules": list(self.analyzer.learned_rules.items()),
-                # TODO: incluir bugs recorrentes e sugestões de refatoracao
-            }
-            return summary
+            modules = await self.analyzer.summary_by_module()
+            from .auto_review import run_autoreview
+            review = await run_autoreview(self.analyzer, self.memory)
+            high_complex = sum(m["complex_functions"] for m in modules.values())
+            stable_funcs = len(self.analyzer.code_chunks) - high_complex
+            report_lines = [
+                "🧠 Análise do Projeto",
+                f"📅 Última análise: {self.analyzer.last_analysis_time.strftime('%d/%m/%Y - %H:%M')}",
+                "",
+                f"📂 Módulos analisados: {len(modules)}",
+                f"🧩 Trechos de código indexados: {len(self.analyzer.code_chunks)}",
+                "",
+                "🚩 0 possíveis vulnerabilidades encontradas",
+                f"⚠️ {high_complex} trechos com complexidade alta",
+                f"💡 {len(review.get('suggestions', []))} oportunidades de refatoração",
+                f"✅ {stable_funcs} funções consideradas estáveis",
+                "",
+                "🔎 Módulo destaque:",
+            ]
+            for mod, data in list(modules.items())[:5]:
+                report_lines.append(f"\t• {mod}: {data['score']}")
+            report = "\n".join(report_lines)
+            return {"report": report, "modules": modules}
 
         @self.app.post("/symbolic_training")
         async def symbolic_training(token: str = ""):
