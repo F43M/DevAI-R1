@@ -60,6 +60,11 @@ def main():
             else:
                 print("Nenhum resumo disponivel")
             return
+        elif cmd[0] == "treinamento" and len(cmd) > 1 and cmd[1] == "profundo":
+            from .symbolic_training import run_symbolic_training
+            result = asyncio.run(run_symbolic_training(ai.analyzer, ai.memory, ai.ai_model))
+            print(json.dumps(result, indent=2))
+            return
         elif cmd[0] == "preferencia" and len(cmd) > 1:
             from .feedback import registrar_preferencia
             registrar_preferencia(" ".join(cmd[1:]))
