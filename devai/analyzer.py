@@ -46,7 +46,18 @@ class CodeAnalyzer:
 
     async def scan_app(self):
         tasks = []
-        patterns = ["*.py", "*.js", "*.ts", "*.cpp", "*.hpp", "*.html"]
+        patterns = [
+            "*.py",
+            "*.js",
+            "*.ts",
+            "*.cpp",
+            "*.hpp",
+            "*.html",
+            "*.java",
+            "*.cs",
+            "*.rb",
+            "*.php",
+        ]
         for pat in patterns:
             for file_path in self.code_root.rglob(pat):
                 if file_path.is_file():
@@ -133,6 +144,20 @@ class CodeAnalyzer:
             pattern = re.compile(r"function\s+(\w+)\s*\(")
         elif ftype in {"cpp", "hpp"}:
             pattern = re.compile(r"[\w:]+\s+(\w+)\s*\([^)]*\)\s*{", re.MULTILINE)
+        elif ftype == "java":
+            pattern = re.compile(
+                r"(?:public|protected|private|static|final|\s)+\s+[\w<>,\[\]]+\s+(\w+)\s*\(",
+                re.MULTILINE,
+            )
+        elif ftype == "cs":
+            pattern = re.compile(
+                r"(?:public|protected|private|internal|static|virtual|override|async|\s)+\s+[\w<>,\[\]]+\s+(\w+)\s*\(",
+                re.MULTILINE,
+            )
+        elif ftype == "rb":
+            pattern = re.compile(r"def\s+(\w+)")
+        elif ftype == "php":
+            pattern = re.compile(r"function\s+(\w+)\s*\(")
         if pattern:
             for m in pattern.finditer(content):
                 name = m.group(1)

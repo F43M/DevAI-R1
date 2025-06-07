@@ -108,6 +108,12 @@ class TaskManager:
                 "type": "auto_refactor",
                 "description": "Usa IA para refatorar um arquivo e valida com testes",
             }
+        if "quality_suite" not in self.tasks:
+            self.tasks["quality_suite"] = {
+                "name": "Quality Suite",
+                "type": "quality_suite",
+                "description": "Roda lint, análise e testes em paralelo",
+            }
 
     async def run_task(self, task_name: str, *args) -> Any:
         if task_name not in self.tasks:
@@ -135,6 +141,8 @@ class TaskManager:
             result = await self._perform_type_check_task(task, *args)
         elif task["type"] == "auto_refactor":
             result = await self._perform_auto_refactor_task(task, *args)
+        elif task["type"] == "quality_suite":
+            result = await self._perform_quality_suite_task(task, *args)
         else:
             handler = getattr(self, f"_perform_{task['type']}_task", None)
             if handler:
@@ -415,6 +423,21 @@ class TaskManager:
 
         success = updater.safe_apply(file_path, apply)
         return {"success": success, "new_code": suggestion[:200]}
+
+    async def _perform_quality_suite_task(self, task: Dict, *args) -> Dict[str, List[str]]:
+        lint_t = self._perform_lint_task(self.tasks["lint"])
+        static_t = self._perform_static_analysis_task(self.tasks["static_analysis"])
+        sec_t = self._perform_security_analysis_task(self.tasks["security_analysis"])
+        tests_t = self._perform_test_task(self.tasks["run_tests"])
+        results = await asyncio.gather(lint_t, static_t, sec_t, tests_t, return_exceptions=True)
+        names = ["lint", "static", "security", "tests"]
+        out: Dict[str, List[str]] = {}
+        for name, res in zip(names, results):
+            if isinstance(res, Exception):
+                out[name] = [str(res)]
+            else:
+                out[name] = res
+        return out
 
     def _check_dependencies(self, chunk_name: str) -> List[str]:
         issues = []

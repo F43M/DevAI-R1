@@ -10,6 +10,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Limpeza automática de memórias** e feedback de uso
 - **Análise de código** com construção de grafo de dependências
 - **Parser multilíngue** (Python, JS, C++, HTML)
+- **Suporte expandido a linguagens** (Java, C#, Ruby, PHP)
 - **Métricas de complexidade** das funções analisadas
 - **Acompanhamento da complexidade média do projeto**
 - **Monitoramento de logs** detectando padrões de erro
@@ -17,6 +18,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Relatórios de cobertura de testes**
 - **Tarefas extras** com pylint e mypy
 - **Análise de segurança com Bandit**
+- **Tarefa "Quality Suite" paralela para lint e testes**
 - **Monitoramento de complexidade ao longo do tempo**
 - **Cache inteligente de prompts** reaproveitando respostas similares
 - **Integração opcional com modelo local** para geração offline
@@ -25,6 +27,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - Métricas expostas em `/metrics` (CPU e memória)
 - **Histórico de uso de CPU/memória**
 - **Histórico de tarefas** e sistema de plugins
+- **Plugin de contexto de frameworks** lendo `package.json`, `requirements.txt` ou `pom.xml`
 - **Suporte a múltiplos modelos** configuráveis
 - **Notificações por e-mail** opcionais
 - **Integração contínua via GitHub Actions**
@@ -49,6 +52,8 @@ API_SECRET: "sua-chave"
 ```bash
 pip install -r requirements.txt
 ```
+
+4. (Opcional) Descreva comandos de build e testes adicionais em `PROJECT_GUIDE.md`.
 
 O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
 
