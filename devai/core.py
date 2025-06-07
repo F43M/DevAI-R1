@@ -4,6 +4,7 @@ import json
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional
+from pathlib import Path
 import ast
 
 import networkx as nx
@@ -19,6 +20,7 @@ from .file_history import FileHistory
 from .tasks import TaskManager
 from .log_monitor import LogMonitor
 from .ai_model import AIModel
+from .learning_engine import LearningEngine
 
 
 class CodeMemoryAI:
@@ -27,6 +29,7 @@ class CodeMemoryAI:
         self.history = FileHistory(config.FILE_HISTORY)
         self.analyzer = CodeAnalyzer(config.CODE_ROOT, self.memory, self.history)
         self.ai_model = AIModel()
+        self.learning_engine = LearningEngine(self.analyzer, self.memory, self.ai_model)
         self.tasks = TaskManager(config.TASK_DEFINITIONS, self.analyzer, self.memory, ai_model=self.ai_model)
         self.log_monitor = LogMonitor(self.memory, config.LOG_DIR)
         self.complexity_tracker = ComplexityTracker(config.COMPLEXITY_HISTORY)
@@ -217,6 +220,20 @@ class CodeMemoryAI:
             from .monitor_engine import auto_monitor_cycle
             result = await auto_monitor_cycle(self.analyzer, self.memory, self.ai_model)
             return result
+
+        @self.app.post("/memory/optimize")
+        async def optimize_memory():
+            compressed = self.memory.compress_memory()
+            pruned = self.memory.prune_old_memories()
+            log_path = Path("logs/memory_maintenance.md")
+            with open(log_path, "a") as f:
+                f.write(f"{datetime.now().isoformat()} compressed {compressed} pruned {pruned}\n")
+            return {"compressed": compressed, "pruned": pruned}
+
+        @self.app.post("/learning/lessons")
+        async def review_lessons():
+            summary = await self.learning_engine.explain_learning_lessons()
+            return {"summary": summary}
 
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")

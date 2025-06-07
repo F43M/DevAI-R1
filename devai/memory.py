@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 from typing import List, Dict, Any, Optional
+from pathlib import Path
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
@@ -443,3 +444,95 @@ class MemoryManager:
             except Exception:
                 pass
         logger.info("Feedback registrado", memory_id=memory_id, positive=is_positive)
+
+    def compress_memory(self) -> int:
+        """Collapse highly similar memories into canonical entries."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT id, content, memory_type, metadata FROM memory WHERE disabled = 0"
+        )
+        rows = cursor.fetchall()
+        if not rows:
+            return 0
+
+        canonical: dict[int, str] = {}
+        duplicates: list[tuple[int, int]] = []
+        for mem_id, content, mtype, meta_json in rows:
+            key = (mtype, content.strip().lower())
+            found = None
+            for cid, ccontent in canonical.items():
+                if ccontent == key[1] and mtype == rows[cid - 1][2]:
+                    found = cid
+                    break
+            if found:
+                duplicates.append((mem_id, found))
+            else:
+                canonical[mem_id] = key[1]
+
+        for dup_id, parent_id in duplicates:
+            cursor.execute("SELECT metadata FROM memory WHERE id = ?", (parent_id,))
+            meta = json.loads(cursor.fetchone()[0])
+            merged = meta.get("merged_ids", [])
+            merged.append(dup_id)
+            meta["merged_ids"] = merged
+            meta["data_compressao"] = datetime.now().isoformat()
+            cursor.execute(
+                "UPDATE memory SET metadata = ? WHERE id = ?",
+                (json.dumps(meta), parent_id),
+            )
+
+            cursor.execute("SELECT metadata FROM memory WHERE id = ?", (dup_id,))
+            dmeta = json.loads(cursor.fetchone()[0])
+            dmeta["colapsado_em"] = parent_id
+            cursor.execute(
+                "UPDATE memory SET metadata = ?, disabled = 1 WHERE id = ?",
+                (json.dumps(dmeta), dup_id),
+            )
+
+        self.conn.commit()
+        logger.info("Memoria comprimida", count=len(duplicates))
+        return len(duplicates)
+
+    def prune_old_memories(self, threshold_days: int = 30) -> int:
+        """Archive old memories to latent_memory.json with a symbolic reference."""
+        cutoff = datetime.now() - timedelta(days=threshold_days)
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT id, type, memory_type, content, metadata, created_at FROM memory "
+            "WHERE disabled = 0 AND access_count = 0 AND created_at < ?",
+            (cutoff.isoformat(),),
+        )
+        rows = cursor.fetchall()
+        if not rows:
+            return 0
+
+        latent_file = Path(config.LOG_DIR) / "latent_memory.json"
+        try:
+            data = json.loads(latent_file.read_text()) if latent_file.exists() else []
+        except Exception:
+            data = []
+
+        for row in rows:
+            mid, typ, mtype, content, meta_json, created = row
+            data.append(
+                {
+                    "id": mid,
+                    "type": typ,
+                    "memory_type": mtype,
+                    "content": content,
+                    "metadata": json.loads(meta_json),
+                    "created_at": created,
+                }
+            )
+            meta = json.loads(meta_json)
+            meta["latente"] = True
+            meta["arquivo"] = str(latent_file)
+            cursor.execute(
+                "UPDATE memory SET content = ?, metadata = ?, disabled = 1 WHERE id = ?",
+                ("essa memoria foi desativada por antiguidade", json.dumps(meta), mid),
+            )
+
+        latent_file.write_text(json.dumps(data, indent=2))
+        self.conn.commit()
+        logger.info("Memorias antigas arquivadas", count=len(rows))
+        return len(rows)

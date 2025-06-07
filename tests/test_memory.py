@@ -1,5 +1,8 @@
 import tempfile
+import json
+from pathlib import Path
 from devai.memory import MemoryManager
+from devai.config import config
 
 
 class DummyModel:
@@ -95,3 +98,24 @@ def test_deactivate_memories():
         count = mem.deactivate_memories("secret")
         assert count == 1
         assert not mem.search("secret")
+
+
+def test_compress_and_prune_memory(tmp_path, monkeypatch):
+    db = f"{tmp_path}/mem.sqlite"
+    monkeypatch.setattr(config, "LOG_DIR", str(tmp_path))
+    mem = MemoryManager(db, "dummy", model=None, index=None)
+    mem.save({"type": "n", "memory_type": "explicacao", "content": "dup", "metadata": {}})
+    mem.save({"type": "n", "memory_type": "explicacao", "content": "dup", "metadata": {}})
+    comp = mem.compress_memory()
+    assert comp == 1
+    active = mem.conn.execute("SELECT id, metadata FROM memory WHERE disabled=0").fetchone()
+    meta = json.loads(active[1])
+    assert meta.get("merged_ids")
+
+    old_entry = {"type": "n", "memory_type": "explicacao", "content": "old", "metadata": {}}
+    mem.save(old_entry)
+    mem.conn.execute("UPDATE memory SET created_at = ? WHERE id = ?", ("2000-01-01T00:00:00", old_entry["id"]))
+    pruned = mem.prune_old_memories(threshold_days=1)
+    assert pruned == 1
+    latent = Path(str(tmp_path)) / "latent_memory.json"
+    assert latent.exists()
