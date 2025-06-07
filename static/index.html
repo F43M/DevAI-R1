@@ -102,9 +102,11 @@ document.getElementById('investigate').onclick=async()=>{
 };
 document.getElementById('trainSymbolic').onclick=async()=>{
   appendConsole('Treinando com base em erros passados...');
+  const out=document.getElementById('aiOutput');
+  out.textContent='🔄 Treinando...';
   const r=await fetch('/symbolic_training',{method:'POST'});
   const data=await r.json();
-  document.getElementById('aiOutput').textContent=JSON.stringify(data,null,2);
+  out.textContent=data.report||'Nenhum aprendizado novo encontrado desta vez.';
 };
 document.getElementById('autoMonitor').onclick=async()=>{
   appendConsole('Executando auto monitoramento...');
