@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Sequence
 
 from .config import config, logger
+import yaml
 
 TEMPLATES: Dict[str, str] = {
     "create": "Crie o código solicitado com comentários e exemplos.",
@@ -15,11 +16,13 @@ TEMPLATES: Dict[str, str] = {
 }
 
 
-def _load_project_identity() -> str:
+def _load_project_identity() -> tuple[str, dict]:
     path = Path("project_identity.yaml")
     if path.exists():
-        return path.read_text().strip()
-    return ""
+        data = yaml.safe_load(path.read_text()) or {}
+        text = data.get("objetivo", "")
+        return text, data
+    return "", {}
 
 
 def _format_memories(memories: Sequence[Dict]) -> str:
@@ -57,16 +60,20 @@ def build_cot_prompt(
         "Seu papel é gerar código inteligente, testado e funcional com base no projeto atual.\n"
         "Trabalhe com precisão cirúrgica."
     )
-    project = _load_project_identity()
+    proj_text, proj_cfg = _load_project_identity()
     mem_text = _format_memories(memories)
     acts = "\n".join(
         f"- {a.get('task')}" for a in list(actions)[-3:]
     )
+    step_mode = proj_cfg.get("task_mode", "normal") == "step_by_step"
+    extra = (
+        "\nPor favor, forneça um plano de execução, checklist e questione informação faltante." if step_mode else ""
+    )
     prompt = (
-        f"{identity}\n{project}\n{mem_text}\n\n{graph_summary}\n\n"
+        f"{identity}\n{proj_text}\n{mem_text}\n\n{graph_summary}\n\n"
         f"Ultimas ações:\n{acts}\n\n"
         f"Logs recentes:\n{logs}\n\nComando do usuário: {command}\n"
-        "Vamos pensar passo a passo antes de responder."
+        "Vamos pensar passo a passo antes de responder." + extra
     )
     return prompt
 

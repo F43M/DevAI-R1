@@ -34,6 +34,7 @@ class CodeMemoryAI:
         self._setup_api_routes()
         self.background_tasks = set()
         self.last_average_complexity = 0.0
+        self.reason_stack = []
         self._start_background_tasks()
         logger.info(
             "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter", code_root=config.CODE_ROOT
@@ -176,9 +177,13 @@ class CodeMemoryAI:
                 await asyncio.sleep(wait_time)
 
     async def _run_scheduled_tasks(self):
-        if datetime.now().hour == 3:
+        now = datetime.now()
+        if now.hour == 3:
             await self.tasks.run_task("code_review")
             self.memory.cleanup()
+        if now.hour == 2:
+            from .auto_review import run_autoreview
+            await run_autoreview(self.analyzer, self.memory)
 
     async def _generate_automatic_insights(self):
         complex_functions = []
@@ -223,6 +228,8 @@ class CodeMemoryAI:
             graph_summary = self.analyzer.graph_summary()
             from .prompt_engine import build_cot_prompt, collect_recent_logs
             logs = collect_recent_logs()
+            self.reason_stack = []
+            self.reason_stack.append("Memórias coletadas")
             prompt = build_cot_prompt(
                 query,
                 graph_summary,
@@ -230,7 +237,10 @@ class CodeMemoryAI:
                 actions,
                 logs,
             )
-            return await self.ai_model.generate(prompt)
+            self.reason_stack.append("Prompt preparado")
+            result = await self.ai_model.generate(prompt)
+            self.reason_stack.append("Resposta gerada")
+            return result + "\n\nRaciocinio executado:\n" + "\n".join(f"-> {r}" for r in self.reason_stack)
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
             return f"Erro ao gerar resposta: {str(e)}"

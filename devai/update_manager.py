@@ -39,12 +39,26 @@ class UpdateManager:
     ) -> bool:
         """Apply modifications with automatic rollback if tests fail."""
         path = Path(file_path)
+        original_lines = path.read_text().splitlines()
+        protected: List[tuple[int, int]] = []
+        start = None
+        for i, line in enumerate(original_lines):
+            if "<protect>" in line:
+                start = i
+            elif "</protect>" in line and start is not None:
+                protected.append((start, i))
+                start = None
         attempt = 0
         while attempt < max_attempts:
             attempt += 1
             backup = self._backup(path)
             try:
                 apply_func(path)
+                new_lines = path.read_text().splitlines()
+                for s, e in protected:
+                    if original_lines[s : e + 1] != new_lines[s : e + 1]:
+                        logger.error("Tentativa de modificar area protegida", file=str(path))
+                        raise RuntimeError("protected block modified")
                 if self.run_tests():
                     backup.unlink(missing_ok=True)
                     logger.info(
