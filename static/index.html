@@ -21,6 +21,8 @@
   <div id="messages"></div>
   <button onclick="showGraph()">Grafo</button>
   <button onclick="showMetrics()">Métricas</button>
+  <button onclick="showActions()">Ações</button>
+  <button onclick="showDiff()">Último Diff</button>
   <div id="input">
     <textarea id="query" rows="3"></textarea>
     <button id="send">Enviar</button>
@@ -44,6 +46,7 @@ async function openFile(file) {
   const res = await fetch('/file?file=' + encodeURIComponent(file));
   const data = await res.json();
   alert(data.lines.join('\n'));
+  window.lastFile = file;
 }
 async function send() {
   const q = document.getElementById('query').value.trim();
@@ -63,6 +66,19 @@ async function showMetrics() {
   const res = await fetch('/metrics');
   const data = await res.json();
   alert(JSON.stringify(data, null, 2));
+}
+
+async function showActions() {
+  const res = await fetch('/actions');
+  const data = await res.json();
+  alert(JSON.stringify(data, null, 2));
+}
+
+async function showDiff() {
+  if(!window.lastFile) return;
+  const res = await fetch('/diff?file=' + encodeURIComponent(window.lastFile));
+  const data = await res.json();
+  alert(data.diff);
 }
 
 async function showGraph() {

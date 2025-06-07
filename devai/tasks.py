@@ -421,7 +421,25 @@ class TaskManager:
         def apply(p: Path) -> None:
             p.write_text(suggestion)
 
-        success = updater.safe_apply(file_path, apply)
+        try:
+            success, out = updater.safe_apply(file_path, apply, capture_output=True)
+        except TypeError:
+            success = updater.safe_apply(file_path, apply)
+            out = ""
+        if not success:
+            from .prompt_engine import build_debug_prompt
+            debug = build_debug_prompt(out, "", original[:200])
+            try:
+                suggestion = await self.ai_model.generate(debug, max_length=len(original) + 200)
+            except Exception as e:
+                logger.error("Erro no fallback de refatoracao", error=str(e))
+                return {"error": str(e)}
+            def apply_retry(p: Path) -> None:
+                p.write_text(suggestion)
+            try:
+                success, _ = updater.safe_apply(file_path, apply_retry, capture_output=True)
+            except TypeError:
+                success = updater.safe_apply(file_path, apply_retry)
         return {"success": success, "new_code": suggestion[:200]}
 
     async def _perform_quality_suite_task(self, task: Dict, *args) -> Dict[str, List[str]]:

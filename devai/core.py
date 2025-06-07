@@ -41,7 +41,16 @@ class CodeMemoryAI:
         )
 
     def _start_background_tasks(self):
-        for coro in [self._learning_loop(), self.log_monitor.monitor_logs(), self.analyzer.deep_scan_app(), self.analyzer.watch_app_directory()]:
+        from .metacognition import MetacognitionLoop
+
+        meta = MetacognitionLoop()
+        for coro in [
+            self._learning_loop(),
+            self.log_monitor.monitor_logs(),
+            self.analyzer.deep_scan_app(),
+            self.analyzer.watch_app_directory(),
+            meta.run(),
+        ]:
             task = asyncio.create_task(coro)
             self.background_tasks.add(task)
             task.add_done_callback(self.background_tasks.discard)
@@ -156,6 +165,27 @@ class CodeMemoryAI:
                 return {"error": "unauthorized"}
             return self.history.history(file)
 
+        @self.app.get("/actions")
+        async def get_actions():
+            from pathlib import Path
+            path = Path("decision_log.yaml")
+            if path.exists():
+                import yaml  # type: ignore
+                return yaml.safe_load(path.read_text())
+            return []
+
+        @self.app.get("/diff")
+        async def get_diff(file: str):
+            hist = self.history.history(file)
+            if not hist:
+                return {"diff": ""}
+            from difflib import unified_diff
+            last = hist[-1]
+            old = last.get("old", [])
+            new = last.get("new", [])
+            diff = "\n".join(unified_diff(old, new, fromfile="old", tofile="new"))
+            return {"diff": diff}
+
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -224,6 +254,7 @@ class CodeMemoryAI:
                 return "Por favor, forneça mais detalhes sobre sua solicitação."
 
             contextual_memories = self.memory.search(query, level="short")
+            suggestions = self.memory.search(query, top_k=1)
             actions = self.tasks.last_actions()
             graph_summary = self.analyzer.graph_summary()
             from .prompt_engine import build_cot_prompt, collect_recent_logs
@@ -237,6 +268,8 @@ class CodeMemoryAI:
                 actions,
                 logs,
             )
+            if suggestions:
+                prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
             self.reason_stack.append("Prompt preparado")
             result = await self.ai_model.generate(prompt)
             self.reason_stack.append("Resposta gerada")
