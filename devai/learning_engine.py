@@ -9,7 +9,9 @@ knowledge and ``AIModel`` as the interface to the language model.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -17,6 +19,36 @@ from .config import logger, config
 from .memory import MemoryManager
 from .ai_model import AIModel
 from .analyzer import CodeAnalyzer
+
+LESSONS_FILE = Path(__file__).with_name("lessons.json")
+
+
+def registrar_licao_negativa(arquivo: str, erro: str) -> None:
+    """Store a negative lesson for later reference."""
+    try:
+        data = json.loads(LESSONS_FILE.read_text()) if LESSONS_FILE.exists() else []
+    except Exception:
+        data = []
+    data.append(
+        {
+            "arquivo": arquivo,
+            "erro": erro,
+            "tipo": "licao_negativa",
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
+    LESSONS_FILE.write_text(json.dumps(data, indent=2))
+
+
+def listar_licoes_negativas(arquivo: str) -> List[str]:
+    """Return negative lessons recorded for a given file."""
+    if not LESSONS_FILE.exists():
+        return []
+    try:
+        items = json.loads(LESSONS_FILE.read_text())
+    except Exception:
+        return []
+    return [i.get("erro", "") for i in items if i.get("arquivo") == arquivo]
 
 
 class LearningEngine:

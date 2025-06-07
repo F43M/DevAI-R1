@@ -69,3 +69,9 @@ def listar_preferencias() -> List[str]:
         return data.get("preferencias", [])
     except Exception:
         return []
+
+
+def registrar_feedback_negativo(arquivo: str, motivo: str) -> None:
+    """Convenience helper to store negative feedback."""
+    db = FeedbackDB()
+    db.add(arquivo, "negativo", motivo)

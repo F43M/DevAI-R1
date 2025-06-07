@@ -408,7 +408,7 @@ class TaskManager:
             return {"error": str(e)}
 
         from .prompt_utils import build_refactor_prompt
-        prompt = build_refactor_prompt(original)
+        prompt = build_refactor_prompt(original, file_path)
         try:
             suggestion = await self.ai_model.generate(prompt, max_length=len(original) + 200)
         except Exception as e:

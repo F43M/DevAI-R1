@@ -4,6 +4,11 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Callable, Iterable, List
+import asyncio
+
+from .ai_model import AIModel
+from .learning_engine import registrar_licao_negativa
+from .feedback import registrar_feedback_negativo
 
 from .config import logger
 
@@ -78,9 +83,36 @@ class UpdateManager:
                         "Atualizacao aplicada com sucesso", file=str(path)
                     )
                     return (True, out) if capture_output else True
+
+                registrar_licao_negativa(str(path), out)
+                self._restore(backup, path)
+                backup = self._backup(path)
+
+                async def _retry() -> tuple[bool, str]:
+                    ai = AIModel()
+                    try:
+                        prompt = (
+                            "A refatoração anterior falhou nos testes com o seguinte erro:\n"
+                            f"{out}\nProponha uma nova solução corrigida, mantendo o objetivo anterior."
+                        )
+                        suggestion = await ai.generate(prompt, max_length=len(path.read_text()) + 200)
+                    finally:
+                        await ai.close()
+                    path.write_text(suggestion)
+                    return self.run_tests(capture_output=True)
+
+                success2, out2 = asyncio.run(_retry())
+                if success2:
+                    backup.unlink(missing_ok=True)
+                    logger.info(
+                        "Atualizacao aplicada com sucesso", file=str(path)
+                    )
+                    return (True, out2) if capture_output else True
+
+                registrar_feedback_negativo(str(path), out2)
                 self._restore(backup, path)
                 if capture_output:
-                    result_output = out
+                    result_output = out2
             except Exception as e:  # pragma: no cover - unexpected errors
                 logger.error("Erro na atualizacao", file=str(path), error=str(e))
                 self._restore(backup, path)
