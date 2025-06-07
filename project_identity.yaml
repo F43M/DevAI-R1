@@ -1,0 +1,8 @@
+linguagem_principal: Python
+estrutura: FastAPI com modulos em devai/
+dependencias_principais:
+  - fastapi
+  - uvicorn
+  - networkx
+  - aiohttp
+objetivo: Assistente de desenvolvimento com IA e memoria vetorial
