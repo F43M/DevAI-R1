@@ -1,6 +1,10 @@
 import sqlite3
 from datetime import datetime
 from typing import List, Dict
+from pathlib import Path
+import json
+
+PREFS_FILE = Path(__file__).with_name("preferences_store.json")
 
 class FeedbackDB:
     """Simple feedback registry."""
@@ -42,3 +46,26 @@ class FeedbackDB:
             {"file": f, "tag": t, "reason": r, "timestamp": ts}
             for f, t, r, ts in cur.fetchall()
         ]
+
+
+def registrar_preferencia(texto: str) -> None:
+    """Store a style preference in ``preferences_store.json`` avoiding duplicates."""
+    if not PREFS_FILE.exists():
+        PREFS_FILE.write_text(json.dumps({"preferencias": []}, indent=2))
+    data = json.loads(PREFS_FILE.read_text() or "{}")
+    prefs = data.get("preferencias", [])
+    if texto not in prefs:
+        prefs.append(texto)
+    data["preferencias"] = prefs
+    PREFS_FILE.write_text(json.dumps(data, indent=2))
+
+
+def listar_preferencias() -> List[str]:
+    """Return the list of stored preferences."""
+    if not PREFS_FILE.exists():
+        return []
+    try:
+        data = json.loads(PREFS_FILE.read_text() or "{}")
+        return data.get("preferencias", [])
+    except Exception:
+        return []

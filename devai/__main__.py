@@ -60,6 +60,11 @@ def main():
             else:
                 print("Nenhum resumo disponivel")
             return
+        elif cmd[0] == "preferencia" and len(cmd) > 1:
+            from .feedback import registrar_preferencia
+            registrar_preferencia(" ".join(cmd[1:]))
+            print("Preferência registrada com sucesso")
+            return
 
     print("Por favor, especifique --api ou --cli para iniciar o aplicativo")
 

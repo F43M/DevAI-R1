@@ -3,7 +3,7 @@ import json
 
 from .config import config, logger
 from .core import CodeMemoryAI
-from .feedback import FeedbackDB
+from .feedback import FeedbackDB, registrar_preferencia
 from .decision_log import log_decision
 from pathlib import Path
 import re
@@ -177,6 +177,10 @@ async def cli_main():
                     Path("PREFERENCES_STORE.json").write_text(json.dumps(prefs, indent=2))
                     log_decision("comando", "ajustar", f"{param}={val}", "cli", "ok")
                     print("Preferência atualizada")
+            elif user_input.startswith("/preferencia "):
+                text = user_input[len("/preferencia "):].strip().strip('"')
+                registrar_preferencia(text)
+                print("Preferência registrada com sucesso")
             elif user_input.startswith("/rastrear "):
                 target = user_input[len("/rastrear "):].strip()
                 print("-- Rastreamento --")
