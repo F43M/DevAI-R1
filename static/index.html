@@ -28,7 +28,7 @@
   <div id="inputArea">
     <textarea id="query" rows="2"></textarea>
     <button id="send">Enviar</button>
-    <button id="deep">🔎 Raciocinar</button>
+    <button id="deep" title="Executa análise profunda com plano passo a passo antes da resposta.">🔎 Análise Explicada</button>
     <button id="investigate">🧠 Analisar Projeto</button>
     <button id="trainSymbolic">🧠 Treinar com base em erros passados</button>
     <button id="autoMonitor">🧭 Autoavaliação Inteligente</button>
@@ -75,8 +75,16 @@ async function send(cot){
   if(!q) return;
   const url=cot?'/analyze_deep':'/analyze';
   const r=await fetch(url+'?'+new URLSearchParams({query:q}),{method:'POST'});
-  const text=await r.text();
-  appendConsole('> '+q+'\n'+text);
+  if(cot){
+    let data;
+    try{ data=await r.json(); }catch(e){ data={plan:'',response:await r.text()}; }
+    if(data.plan) appendConsole('🧠 Plano de Raciocínio:\n'+data.plan);
+    document.getElementById('aiOutput').textContent=data.response;
+    appendConsole('> '+q);
+  }else{
+    const text=await r.text();
+    appendConsole('> '+q+'\n'+text);
+  }
   document.getElementById('query').value='';
 }
 function appendConsole(msg){
