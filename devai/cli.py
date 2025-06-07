@@ -4,16 +4,27 @@ import json
 from .config import config, logger
 from .core import CodeMemoryAI
 from .feedback import FeedbackDB
+from .decision_log import log_decision
+from pathlib import Path
+import re
 
 
 async def cli_main():
+    """Interactive command loop for DevAI.
+
+    Comandos principais: /lembrar, /esquecer, /ajustar, /rastrear e /memoria.
+    """
     print("Inicializando CodeMemoryAI com DeepSeek-R1...")
     ai = CodeMemoryAI()
     feedback_db = FeedbackDB()
     asyncio.create_task(ai.analyzer.deep_scan_app())
     print("\nDev IA Avançado Pronto!")
     print("Comandos disponíveis:")
-    print("/memoria <query>|tipo:<tag> - Busca memórias relevantes")
+    print("/memoria tipo:<tag> [filtro] --detalhado - Busca memórias")
+    print("/lembrar <conteúdo> tipo:<tag> - Armazena memória")
+    print("/esquecer <termo> - Desativa memórias")
+    print("/ajustar estilo:<param> valor:<opcao> - Ajusta preferência")
+    print("/rastrear <arquivo|tarefa> - Mostra histórico")
     print("/tarefa <nome> [args] - Executa uma tarefa")
     print("/analisar <função> - Analisa impacto de mudanças")
     print("/verificar - Verifica conformidade com especificação")
@@ -33,16 +44,31 @@ async def cli_main():
             if user_input.lower() == "/sair":
                 break
             elif user_input.lower().startswith("/memoria"):
-                query = user_input[len("/memoria"):].strip()
-                if query.startswith("tipo:"):
-                    tag = query.split(":", 1)[1].strip()
-                    memories = ai.memory.search("", top_k=5, memory_type=tag)
-                else:
-                    q = query or "recent"
-                    memories = ai.memory.search(q, top_k=5)
+                args = user_input[len("/memoria"):].strip()
+                detailed = "--detalhado" in args
+                if detailed:
+                    args = args.replace("--detalhado", "").strip()
+                page = 1
+                m_page = re.search(r"page:(\d+)", args)
+                if m_page:
+                    page = int(m_page.group(1))
+                    args = args.replace(m_page.group(0), "").strip()
+                m_type = re.search(r"tipo:([\w_]+)", args)
+                memory_type = m_type.group(1) if m_type else None
+                if memory_type:
+                    args = args.replace(m_type.group(0), "").strip()
+                query = args.replace("filtro:", "").strip()
+                results = ai.memory.search(query or "recent", top_k=5 * page, memory_type=memory_type)
+                results = results[(page - 1) * 5 : page * 5]
                 print("\nMemórias relevantes:")
-                for m in memories:
-                    print(f"- [{m['similarity_score']:.2f}] {m['content'][:80]}... (tags: {', '.join(m['tags'])})")
+                for m in results:
+                    text = m['content']
+                    if query:
+                        text = text.replace(query, f"**{query}**")
+                    line = f"- [{m['similarity_score']:.2f}] {text[:80]}"
+                    if detailed:
+                        line += f" (id: {m['id']}, tags: {', '.join(m['tags'])})"
+                    print(line)
             elif user_input.startswith("/tarefa "):
                 parts = user_input[len("/tarefa "):].split()
                 task_name = parts[0]
@@ -115,6 +141,63 @@ async def cli_main():
                 if not ok:
                     ok = await ai.analyzer.delete_directory(path)
                 print("✅ Removido" if ok else "Falha ao remover")
+            elif user_input.startswith("/lembrar "):
+                args = user_input[len("/lembrar "):].strip()
+                m_type = re.search(r"tipo:([\w_]+)", args)
+                memory_type = m_type.group(1) if m_type else None
+                if memory_type:
+                    args = args.replace(m_type.group(0), "").strip()
+                ai.memory.save({
+                    "type": "manual",
+                    "content": args,
+                    "metadata": {"source": "cli"},
+                    "tags": [memory_type] if memory_type else [],
+                    "memory_type": memory_type,
+                })
+                log_decision("comando", "lembrar", args, "cli", "ok")
+                print("✅ Memória registrada")
+            elif user_input.startswith("/esquecer "):
+                term = user_input[len("/esquecer "):].strip()
+                count = ai.memory.deactivate_memories(term)
+                log_decision("comando", "esquecer", term, "cli", str(count))
+                print(f"Memórias desativadas: {count}")
+            elif user_input.startswith("/ajustar "):
+                args = user_input[len("/ajustar "):].strip()
+                m_param = re.search(r"estilo:([\w_]+)", args)
+                m_val = re.search(r"valor:([\w_]+)", args)
+                if not (m_param and m_val):
+                    print("Uso: /ajustar estilo:<par> valor:<opcao>")
+                else:
+                    param = m_param.group(1)
+                    val = m_val.group(1)
+                    prefs = {}
+                    if Path("PREFERENCES_STORE.json").exists():
+                        prefs = json.loads(Path("PREFERENCES_STORE.json").read_text())
+                    prefs[param] = val
+                    Path("PREFERENCES_STORE.json").write_text(json.dumps(prefs, indent=2))
+                    log_decision("comando", "ajustar", f"{param}={val}", "cli", "ok")
+                    print("Preferência atualizada")
+            elif user_input.startswith("/rastrear "):
+                target = user_input[len("/rastrear "):].strip()
+                print("-- Rastreamento --")
+                hist = await ai.analyzer.get_history(target)
+                for h in hist:
+                    print(json.dumps(h, indent=2))
+                for h in ai.tasks.get_history():
+                    if target in h.get("task", "") or target in str(h.get("args", "")):
+                        print(json.dumps(h, indent=2))
+                log_path = Path("decision_log.yaml")
+                if log_path.exists():
+                    import yaml
+                    data = yaml.safe_load(log_path.read_text()) or []
+                    for e in data:
+                        if target in e.get("modulo", "") or target in e.get("motivo", ""):
+                            print(json.dumps(e, indent=2))
+                if Path("SELF_REFLECTION.md").exists():
+                    for line in Path("SELF_REFLECTION.md").read_text().splitlines():
+                        if target in line:
+                            print(line.strip())
+                log_decision("comando", "rastrear", target, "cli", "ok")
             elif user_input.startswith("/historico "):
                 file = user_input[len("/historico "):].strip()
                 hist = await ai.analyzer.get_history(file)

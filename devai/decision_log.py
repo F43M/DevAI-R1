@@ -13,8 +13,16 @@ except Exception:  # pragma: no cover - optional dependency
 from .config import logger
 
 
-def log_decision(tipo: str, modulo: str, motivo: str, modelo: str, resultado: str, score: str | None = None, fallback: bool | None = None) -> Tuple[str, str]:
-    """Register a decision entry in decision_log.yaml."""
+def log_decision(
+    tipo: str,
+    modulo: str,
+    motivo: str,
+    modelo: str,
+    resultado: str,
+    score: str | None = None,
+    fallback: bool | None = None,
+) -> Tuple[str, str]:
+    """Register a decision entry in ``decision_log.yaml`` and ``decision_log.md``."""
     path = Path("decision_log.yaml")
     data = []
     if path.exists() and yaml is not None:
@@ -40,5 +48,12 @@ def log_decision(tipo: str, modulo: str, motivo: str, modelo: str, resultado: st
     data.append(entry)
     if yaml is not None:
         path.write_text(yaml.safe_dump(data, allow_unicode=True))
+
+    # Also append a short summary in Markdown for quick human inspection
+    md_path = Path("decision_log.md")
+    md_line = f"- {entry['timestamp']} [{entry['id']}] {tipo} {modulo} - {motivo}\n"
+    with md_path.open("a", encoding="utf-8") as f:
+        f.write(md_line)
+
     logger.info("Decisao registrada", id=entry_id, tipo=tipo)
     return entry_id, h
