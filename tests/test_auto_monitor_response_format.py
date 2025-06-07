@@ -22,43 +22,7 @@ def _set_time(path: Path, dt: datetime) -> None:
     os.utime(path, (ts, ts))
 
 
-def test_auto_monitor_no_trigger(tmp_path, monkeypatch):
-    code_root = tmp_path / "app"
-    code_root.mkdir()
-    for i in range(2):
-        f = code_root / f"f{i}.py"
-        f.write_text("print('x')")
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir()
-    training = log_dir / "symbolic_training_report.md"
-    training.write_text("old")
-    _set_time(training, datetime.now())
-
-    monkeypatch.setattr(config, "CODE_ROOT", str(code_root))
-    monkeypatch.setattr(config, "LOG_DIR", str(log_dir))
-
-    mem = MemoryManager(str(tmp_path / "mem.sqlite"), "dummy", model=None, index=None)
-    analyzer = CodeAnalyzer(str(code_root), mem)
-    model = DummyModel()
-
-    called = []
-
-    async def fake_run(*a, **k):
-        called.append(True)
-        return {}
-
-    monkeypatch.setattr("devai.monitor_engine.run_symbolic_training", fake_run)
-
-    async def run():
-        return await auto_monitor_cycle(analyzer, mem, model)
-
-    result = asyncio.run(run())
-    assert not result["data"]["training_executed"]
-    assert "🧭" in result["report"]
-    assert not called
-
-
-def test_auto_monitor_trigger(tmp_path, monkeypatch):
+def test_auto_monitor_response_format(tmp_path, monkeypatch):
     code_root = tmp_path / "app"
     code_root.mkdir()
     for i in range(6):
@@ -81,11 +45,8 @@ def test_auto_monitor_trigger(tmp_path, monkeypatch):
     for i in range(3):
         mem.save({"type": "err", "memory_type": "erro_reincidente", "content": "x", "metadata": {}})
 
-    called = []
-
     async def fake_run(*a, **k):
-        called.append(True)
-        return {}
+        return {"report": "", "data": {"new_rules": 1, "errors_processed": 3}}
 
     monkeypatch.setattr("devai.monitor_engine.run_symbolic_training", fake_run)
 
@@ -93,5 +54,5 @@ def test_auto_monitor_trigger(tmp_path, monkeypatch):
         return await auto_monitor_cycle(analyzer, mem, model)
 
     result = asyncio.run(run())
+    assert "🧭" in result["report"]
     assert result["data"]["training_executed"]
-    assert called

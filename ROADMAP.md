@@ -53,3 +53,4 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 ## Melhoria pendente – Aprendizado Simbólico
 - Implementar rastreamento de origem das regras aprendidas
 - Executar treinamento simbólico de forma assíncrona
+- Autoavaliação com rastreamento simbólico por regra
