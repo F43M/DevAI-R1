@@ -32,6 +32,7 @@
     <button id="investigate">🧠 Analisar Projeto</button>
     <button id="trainSymbolic">🧠 Treinar com base em erros passados</button>
     <button id="autoMonitor">🧭 Autoavaliação Inteligente</button>
+    <button id="shadowRefactor">🕶️ Simular Refatoração</button>
   </div>
 </div>
 <div id="aiPanel">
@@ -102,6 +103,15 @@ document.getElementById('autoMonitor').onclick=async()=>{
   const r=await fetch('/auto_monitor');
   const data=await r.json();
   document.getElementById('aiOutput').textContent=JSON.stringify(data,null,2);
+};
+document.getElementById('shadowRefactor').onclick=async()=>{
+  if(!window.currentFile) return;
+  const code=editor.getValue();
+  appendConsole('Simulando refatoração...');
+  const r=await fetch('/dry_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:code})});
+  const data=await r.json();
+  appendConsole(data.diff);
+  document.getElementById('aiOutput').textContent=data.evaluation.analysis;
 };
 </script>
 </body>

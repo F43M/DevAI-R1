@@ -71,6 +71,23 @@ def main():
             registrar_preferencia(" ".join(cmd[1:]))
             print("Preferência registrada com sucesso")
             return
+        elif cmd[0] == "simular" and len(cmd) > 2:
+            from .shadow_mode import simulate_update, evaluate_change_with_ia, log_simulation, run_tests_in_temp
+            file_path = cmd[1]
+            new_code = " ".join(cmd[2:])
+            diff, temp_root, sim_id = simulate_update(file_path, new_code)
+            tests_ok, _ = run_tests_in_temp(temp_root)
+            evaluation = asyncio.run(evaluate_change_with_ia(diff))
+            print(diff)
+            print(evaluation["analysis"])
+            if tests_ok and input("Aplicar? [s/N] ").lower() == "s":
+                from .update_manager import UpdateManager
+                UpdateManager().safe_apply(file_path, lambda p: p.write_text(new_code))
+                action = "shadow_approved"
+            else:
+                action = "shadow_declined" if tests_ok else "shadow_failed"
+            log_simulation(file_path, evaluation["analysis"], action)
+            return
         elif cmd[0] == "monitorar":
             from .monitor_engine import auto_monitor_cycle
             result = asyncio.run(auto_monitor_cycle(ai.analyzer, ai.memory, ai.ai_model))
