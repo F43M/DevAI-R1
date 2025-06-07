@@ -4,6 +4,12 @@ from pathlib import Path
 from typing import Any, Dict, Sequence
 
 from .config import config, logger
+
+SYSTEM_PROMPT_CONTEXT = (
+    "Você atua como engenheiro simbólico. "
+    "Sempre explique antes de agir e justifique cada modificação. "
+    "Estrutura: contexto simbólico -> raciocínio -> código."
+)
 import yaml
 
 TEMPLATES: Dict[str, str] = {
@@ -55,11 +61,7 @@ def build_cot_prompt(
     logs: str,
 ) -> str:
     """Compose a reasoning prompt with full context."""
-    identity = (
-        "Você é o agente DevAI-R1.\n"
-        "Seu papel é gerar código inteligente, testado e funcional com base no projeto atual.\n"
-        "Trabalhe com precisão cirúrgica."
-    )
+    identity = SYSTEM_PROMPT_CONTEXT
     proj_text, proj_cfg = _load_project_identity()
     mem_text = _format_memories(memories)
     acts = "\n".join(
@@ -80,9 +82,7 @@ def build_cot_prompt(
 
 
 def build_debug_prompt(error: str, logs: str, snippet: str) -> str:
-    identity = (
-        "Você é o agente DevAI-R1.\nTrabalhe com precisão cirúrgica."
-    )
+    identity = SYSTEM_PROMPT_CONTEXT
     return (
         f"{identity}\nErro detectado: {error}\nContexto:\n{snippet}\nLogs:\n{logs}\n"
         "Explique a causa e proponha correções passo a passo."
@@ -90,9 +90,7 @@ def build_debug_prompt(error: str, logs: str, snippet: str) -> str:
 
 
 def build_task_prompt(task_yaml: Dict[str, Any], status: str) -> str:
-    identity = (
-        "Você é o agente DevAI-R1.\nTrabalhe com precisão cirúrgica."
-    )
+    identity = SYSTEM_PROMPT_CONTEXT
     desc = task_yaml.get("description", "")
     ttype = task_yaml.get("type", "generic")
     template = TEMPLATES.get(ttype, "")

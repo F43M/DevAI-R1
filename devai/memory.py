@@ -5,6 +5,15 @@ from typing import List, Dict, Any, Optional
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
+MEMORY_TYPES = [
+    "explicacao",
+    "bug corrigido",
+    "feedback negativo",
+    "refatoracao aprovada",
+    "regra do usuario",
+    "licao aprendida",
+]
+
 try:
     import numpy as np
 except Exception:  # pragma: no cover - optional dependency
@@ -74,6 +83,7 @@ class MemoryManager:
             CREATE TABLE IF NOT EXISTS memory (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT NOT NULL,
+                memory_type TEXT,
                 content TEXT NOT NULL,
                 metadata TEXT NOT NULL,
                 embedding BLOB,
@@ -111,6 +121,7 @@ class MemoryManager:
         )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_feedback ON memory(feedback_score)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_access ON memory(access_count)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_type ON memory(memory_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag)")
         self.conn.commit()
 
@@ -178,10 +189,11 @@ class MemoryManager:
         else:
             cursor.execute(
                 """INSERT INTO memory
-                (type, content, metadata, embedding, feedback_score, context_level)
-                VALUES (?, ?, ?, ?, ?, ?)""",
+                (type, memory_type, content, metadata, embedding, feedback_score, context_level)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
                     entry.get("type", "generic"),
+                    entry.get("memory_type"),
                     entry.get("content", ""),
                     entry["metadata"],
                     embedding,
@@ -202,7 +214,13 @@ class MemoryManager:
         logger.info("Memória salva" if not update_feedback else "Feedback atualizado", entry_type=entry.get("type"))
 
     def _generate_content_for_embedding(self, entry: Dict) -> str:
-        parts = [entry.get("content", ""), entry.get("type", ""), entry.get("context_level", ""), " ".join(entry.get("tags", []))]
+        parts = [
+            entry.get("content", ""),
+            entry.get("type", ""),
+            entry.get("memory_type", ""),
+            entry.get("context_level", ""),
+            " ".join(entry.get("tags", [])),
+        ]
         if "metadata" in entry:
             if isinstance(entry["metadata"], dict):
                 parts.append(json.dumps(entry["metadata"]))
@@ -210,7 +228,14 @@ class MemoryManager:
                 parts.append(str(entry["metadata"]))
         return " ".join(parts)
 
-    def search(self, query: str, top_k: int = 5, min_score: float = 0.7, level: str | None = None) -> List[Dict]:
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        min_score: float = 0.7,
+        level: str | None = None,
+        memory_type: str | None = None,
+    ) -> List[Dict]:
         results = []
         cursor = self.conn.cursor()
         if self.index is None:
@@ -219,6 +244,9 @@ class MemoryManager:
                 "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.content LIKE ?"
             )
             params = [f"%{query}%"]
+            if memory_type:
+                sql += " AND m.memory_type = ?"
+                params.append(memory_type)
             if level:
                 sql += " AND m.context_level = ?"
                 params.append(level)
@@ -230,14 +258,14 @@ class MemoryManager:
                     {
                         "id": row[0],
                         "type": row[1],
-                        "content": row[2],
-                        "metadata": json.loads(row[3]),
-                        "feedback_score": row[5],
-                        "context_level": row[6],
-                        "tags": row[11].split(", ") if row[11] else [],
+                        "content": row[3],
+                        "metadata": json.loads(row[4]),
+                        "feedback_score": row[6],
+                        "context_level": row[7],
+                        "tags": row[12].split(", ") if row[12] else [],
                         "similarity_score": 1.0,
-                        "last_accessed": row[7],
-                        "access_count": row[8],
+                        "last_accessed": row[8],
+                        "access_count": row[9],
                     }
                 )
         else:
@@ -255,6 +283,9 @@ class MemoryManager:
                         "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.id = ?"
                     )
                     params = [memory_id]
+                    if memory_type:
+                        sql += " AND m.memory_type = ?"
+                        params.append(memory_type)
                     if level:
                         sql += " AND m.context_level = ?"
                         params.append(level)
@@ -266,14 +297,14 @@ class MemoryManager:
                             {
                                 "id": row[0],
                                 "type": row[1],
-                                "content": row[2],
-                                "metadata": json.loads(row[3]),
-                                "feedback_score": row[5],
-                                "context_level": row[6],
-                                "tags": row[11].split(", ") if row[11] else [],
+                                "content": row[3],
+                                "metadata": json.loads(row[4]),
+                                "feedback_score": row[6],
+                                "context_level": row[7],
+                                "tags": row[12].split(", ") if row[12] else [],
                                 "similarity_score": 1 - distance,
-                                "last_accessed": row[7],
-                                "access_count": row[8],
+                                "last_accessed": row[8],
+                                "access_count": row[9],
                             }
                         )
                         cursor.execute(
@@ -328,9 +359,9 @@ class MemoryManager:
                     "type": row[1],
                     "content": row[2],
                     "metadata": json.loads(row[3]),
-                    "relation_type": row[11],
-                    "strength": row[12],
-                    "tags": row[13].split(", ") if row[13] else [],
+                    "relation_type": row[12],
+                    "strength": row[13],
+                    "tags": row[14].split(", ") if row[14] else [],
                 }
             )
         return results

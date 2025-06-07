@@ -35,6 +35,7 @@ class CodeMemoryAI:
         self.background_tasks = set()
         self.last_average_complexity = 0.0
         self.reason_stack = []
+        self.double_check = config.DOUBLE_CHECK
         self._start_background_tasks()
         logger.info(
             "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter", code_root=config.CODE_ROOT
@@ -43,7 +44,7 @@ class CodeMemoryAI:
     def _start_background_tasks(self):
         from .metacognition import MetacognitionLoop
 
-        meta = MetacognitionLoop()
+        meta = MetacognitionLoop(memory=self.memory)
         for coro in [
             self._learning_loop(),
             self.log_monitor.monitor_logs(),
@@ -74,7 +75,7 @@ class CodeMemoryAI:
 
         @self.app.post("/analyze")
         async def analyze_code(query: str):
-            return await self.generate_response(query)
+            return await self.generate_response(query, double_check=self.double_check)
 
         @self.app.get("/memory")
         async def search_memory(query: str, top_k: int = 5, level: str | None = None):
@@ -248,7 +249,7 @@ class CodeMemoryAI:
             self.last_average_complexity = avg
             self.complexity_tracker.record(avg)
 
-    async def generate_response(self, query: str) -> str:
+    async def generate_response(self, query: str, double_check: bool = False) -> str:
         try:
             if len(query.split()) < 3:
                 return "Por favor, forneça mais detalhes sobre sua solicitação."
@@ -257,10 +258,11 @@ class CodeMemoryAI:
             suggestions = self.memory.search(query, top_k=1)
             actions = self.tasks.last_actions()
             graph_summary = self.analyzer.graph_summary()
-            from .prompt_engine import build_cot_prompt, collect_recent_logs
+            from .prompt_engine import build_cot_prompt, collect_recent_logs, SYSTEM_PROMPT_CONTEXT
             logs = collect_recent_logs()
             self.reason_stack = []
             self.reason_stack.append("Memórias coletadas")
+            query += "\nExplique antes de responder."
             prompt = build_cot_prompt(
                 query,
                 graph_summary,
@@ -268,6 +270,14 @@ class CodeMemoryAI:
                 actions,
                 logs,
             )
+            if double_check:
+                plan = await self.ai_model.generate(
+                    f"{SYSTEM_PROMPT_CONTEXT}\nElabore um plano de ação para: {query}"
+                )
+                review = await self.ai_model.generate(
+                    f"{SYSTEM_PROMPT_CONTEXT}\nRevise o plano a seguir e sugira ajustes se necessário:\n{plan}"
+                )
+                prompt = plan + "\n" + review + "\n" + prompt
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
             self.reason_stack.append("Prompt preparado")

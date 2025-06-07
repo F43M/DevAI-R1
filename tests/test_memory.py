@@ -44,10 +44,12 @@ def test_save_and_search():
         model = DummyModel()
         index = DummyIndex(model.dim)
         mem = MemoryManager(db, "dummy", model=model, index=index)
-        mem.save({"type": "note", "content": "hello", "metadata": {}, "tags": ["t"]})
+        mem.save({"type": "note", "content": "hello", "metadata": {}, "tags": ["t"], "memory_type": "explicacao"})
         results = mem.search("hello")
         assert results
         assert results[0]["content"] == "hello"
+        results_t = mem.search("", memory_type="explicacao")
+        assert results_t
 
 
 def test_cleanup():
