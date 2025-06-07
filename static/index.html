@@ -31,6 +31,7 @@
     <button id="deep">🔎 Raciocinar</button>
     <button id="investigate">🧠 Analisar Projeto</button>
     <button id="trainSymbolic">🧠 Treinar com base em erros passados</button>
+    <button id="autoMonitor">🧭 Autoavaliação Inteligente</button>
   </div>
 </div>
 <div id="aiPanel">
@@ -93,6 +94,12 @@ document.getElementById('investigate').onclick=async()=>{
 document.getElementById('trainSymbolic').onclick=async()=>{
   appendConsole('Treinando com base em erros passados...');
   const r=await fetch('/symbolic_training',{method:'POST'});
+  const data=await r.json();
+  document.getElementById('aiOutput').textContent=JSON.stringify(data,null,2);
+};
+document.getElementById('autoMonitor').onclick=async()=>{
+  appendConsole('Executando auto monitoramento...');
+  const r=await fetch('/auto_monitor');
   const data=await r.json();
   document.getElementById('aiOutput').textContent=JSON.stringify(data,null,2);
 };

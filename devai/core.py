@@ -212,6 +212,12 @@ class CodeMemoryAI:
             from .symbolic_training import run_symbolic_training
             return await run_symbolic_training(self.analyzer, self.memory, self.ai_model)
 
+        @self.app.get("/auto_monitor")
+        async def auto_monitor():
+            from .monitor_engine import auto_monitor_cycle
+            result = await auto_monitor_cycle(self.analyzer, self.memory, self.ai_model)
+            return result
+
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
 
