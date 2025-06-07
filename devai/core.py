@@ -92,8 +92,8 @@ class CodeMemoryAI:
 
         @self.app.post("/analyze_deep")
         async def analyze_deep(query: str):
-            """Perform a deeper analysis using double-check mode."""
-            return await self.generate_response(query, double_check=True)
+            """Perform a deeper analysis returning plan and answer separately."""
+            return await self.generate_response_with_plan(query)
 
         @self.app.get("/memory")
         async def search_memory(query: str, top_k: int = 5, level: str | None = None):
@@ -428,6 +428,69 @@ class CodeMemoryAI:
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
             return f"Erro ao gerar resposta: {str(e)}"
+
+    @staticmethod
+    def _split_plan_response(text: str) -> tuple[str, str]:
+        if "===RESPOSTA===" in text:
+            plan, resp = text.split("===RESPOSTA===", 1)
+            return plan.strip(), resp.strip()
+        logger.warning("A IA não retornou plano separado. Verificar prompt.")
+        return "", text.strip()
+
+    async def generate_response_with_plan(self, query: str) -> Dict[str, str]:
+        try:
+            cmd = await self._process_command(query)
+            if cmd is not None:
+                return {"plan": "", "response": cmd}
+            if len(query.split()) < 3:
+                return {
+                    "plan": "",
+                    "response": "Por favor, forneça mais detalhes sobre sua solicitação.",
+                }
+
+            contextual_memories = self.memory.search(query, level="short")
+            suggestions = self.memory.search(query, top_k=1)
+            actions = self.tasks.last_actions()
+            graph_summary = self.analyzer.graph_summary()
+            from .prompt_engine import build_cot_prompt, collect_recent_logs
+
+            logs = collect_recent_logs()
+            prompt = build_cot_prompt(
+                query,
+                graph_summary,
+                contextual_memories,
+                actions,
+                logs,
+            )
+            if suggestions:
+                prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
+
+            system_msg = (
+                "Você é um assistente especialista em análise de código. "
+                "Sua tarefa é resolver o pedido do usuário em duas etapas:\n"
+                "1. Primeiro, liste seu plano de raciocínio passo a passo, numerando cada etapa.\n"
+                "2. Depois, forneça a resposta final ao pedido do usuário com base nesse plano.\n"
+                "Separe o plano da resposta com a marcação ===RESPOSTA===."
+            )
+            messages = [
+                {"role": "system", "content": system_msg},
+                *self.conversation_history[-4:],
+                {"role": "user", "content": prompt},
+            ]
+            raw = await self.ai_model.safe_api_call(
+                messages,
+                4096,
+                prompt,
+                self.memory,
+                temperature=0.2,
+            )
+            plan, resp = self._split_plan_response(raw)
+            self.conversation_history.append({"role": "user", "content": query})
+            self.conversation_history.append({"role": "assistant", "content": resp})
+            return {"plan": plan, "response": resp}
+        except Exception as e:
+            logger.error("Erro ao gerar resposta", error=str(e))
+            return {"plan": "", "response": f"Erro ao gerar resposta: {str(e)}"}
 
     def _find_relevant_code(self, query: str) -> List[Dict]:
         exact = [

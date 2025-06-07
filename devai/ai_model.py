@@ -133,6 +133,7 @@ class AIModel:
         self,
         prompt: Union[str, Sequence[Mapping[str, str]]],
         max_length: int = config.MAX_CONTEXT_LENGTH,
+        temperature: float = 0.7,
     ) -> str:
         if isinstance(prompt, str):
             key = prompt
@@ -191,7 +192,7 @@ class AIModel:
                 "model": cfg.get("name", config.MODEL_NAME),
                 "messages": messages,
                 "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
-                "temperature": 0.7,
+                "temperature": temperature,
             }
             start = datetime.now()
             try:
@@ -282,6 +283,7 @@ class AIModel:
         max_tokens: int,
         context: str = "",
         memory: "MemoryManager | None" = None,
+        temperature: float = 0.7,
     ) -> str:
         """Call the model ensuring the answer is complete."""
         if isinstance(prompt, str):
@@ -293,7 +295,9 @@ class AIModel:
             available = max_tokens
         attempts = 0
         note = ""
-        response = await self.generate(prompt, max_length=available)
+        response = await self.generate(
+            prompt, max_length=available, temperature=temperature
+        )
         while attempts < 3 and (
             is_response_incomplete(response) or len(response.split()) >= available - 1
         ):
@@ -307,7 +311,9 @@ class AIModel:
                         "content": "Continue exatamente de onde você parou. Não repita partes da resposta anterior.",
                     }
                 ]
-            continuation = await self.generate(cont_prompt, max_length=available)
+            continuation = await self.generate(
+                cont_prompt, max_length=available, temperature=temperature
+            )
             response = rebuild_response(response, continuation)
         if attempts:
             note = "Essa resposta foi reconstruída após corte automático.\n"

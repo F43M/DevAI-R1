@@ -45,3 +45,6 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 
 ## Melhoria pendente – Função /analyze
 - Implementar contexto multi-turno para /analyze via self.conversation_history persistente.
+
+## Melhoria pendente – Análise Explicada (/analyze_deep)
+- Avaliar estabilidade da divisão plano/resposta e ajustar a UI conforme necessário.
