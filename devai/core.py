@@ -77,6 +77,11 @@ class CodeMemoryAI:
         async def analyze_code(query: str):
             return await self.generate_response(query, double_check=self.double_check)
 
+        @self.app.post("/analyze_deep")
+        async def analyze_deep(query: str):
+            """Perform a deeper analysis using double-check mode."""
+            return await self.generate_response(query, double_check=True)
+
         @self.app.get("/memory")
         async def search_memory(query: str, top_k: int = 5, level: str | None = None):
             return self.memory.search(query, top_k, level=level)
@@ -186,6 +191,19 @@ class CodeMemoryAI:
             new = last.get("new", [])
             diff = "\n".join(unified_diff(old, new, fromfile="old", tofile="new"))
             return {"diff": diff}
+
+        @self.app.get("/deep_analysis")
+        async def deep_analysis(token: str = ""):
+            """Run a project wide analysis and return a summary."""
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            await self.analyzer.deep_scan_app()
+            summary = {
+                "architecture": self.analyzer.graph_summary(),
+                "rules": list(self.analyzer.learned_rules.items()),
+                # TODO: incluir bugs recorrentes e sugestões de refatoracao
+            }
+            return summary
 
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
