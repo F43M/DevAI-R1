@@ -30,7 +30,9 @@ class CodeMemoryAI:
         self.analyzer = CodeAnalyzer(config.CODE_ROOT, self.memory, self.history)
         self.ai_model = AIModel()
         self.learning_engine = LearningEngine(self.analyzer, self.memory, self.ai_model)
-        self.tasks = TaskManager(config.TASK_DEFINITIONS, self.analyzer, self.memory, ai_model=self.ai_model)
+        self.tasks = TaskManager(
+            config.TASK_DEFINITIONS, self.analyzer, self.memory, ai_model=self.ai_model
+        )
         self.log_monitor = LogMonitor(self.memory, config.LOG_DIR)
         self.complexity_tracker = ComplexityTracker(config.COMPLEXITY_HISTORY)
         self.app = FastAPI(title="CodeMemoryAI API")
@@ -38,10 +40,13 @@ class CodeMemoryAI:
         self.background_tasks = set()
         self.last_average_complexity = 0.0
         self.reason_stack = []
+        # FUTURE: Implementar contexto multi-turno para /analyze via self.conversation_history
+        self.conversation_history: List[Dict[str, str]] = []
         self.double_check = config.DOUBLE_CHECK
         self._start_background_tasks()
         logger.info(
-            "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter", code_root=config.CODE_ROOT
+            "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter",
+            code_root=config.CODE_ROOT,
         )
 
     def _start_background_tasks(self):
@@ -79,6 +84,11 @@ class CodeMemoryAI:
         @self.app.post("/analyze")
         async def analyze_code(query: str):
             return await self.generate_response(query, double_check=self.double_check)
+
+        @self.app.post("/reset_conversation")
+        async def reset_conversation():
+            self.conversation_history.clear()
+            return {"status": "reset"}
 
         @self.app.post("/analyze_deep")
         async def analyze_deep(query: str):
@@ -177,6 +187,7 @@ class CodeMemoryAI:
         @self.app.get("/actions")
         async def get_actions():
             from pathlib import Path
+
             path = Path("decision_log.yaml")
             if path.exists():
                 try:
@@ -192,6 +203,7 @@ class CodeMemoryAI:
             if not hist:
                 return {"diff": ""}
             from difflib import unified_diff
+
             last = hist[-1]
             old = last.get("old", [])
             new = last.get("new", [])
@@ -200,7 +212,13 @@ class CodeMemoryAI:
 
         @self.app.post("/dry_run")
         async def dry_run(file_path: str, suggested_code: str):
-            from .shadow_mode import simulate_update, evaluate_change_with_ia, log_simulation, run_tests_in_temp
+            from .shadow_mode import (
+                simulate_update,
+                evaluate_change_with_ia,
+                log_simulation,
+                run_tests_in_temp,
+            )
+
             diff, temp_root, sim_id = simulate_update(file_path, suggested_code)
             tests_ok, test_output = run_tests_in_temp(temp_root)
             evaluation = await evaluate_change_with_ia(diff)
@@ -232,11 +250,15 @@ class CodeMemoryAI:
             if not _auth(token):
                 return {"error": "unauthorized"}
             from .symbolic_training import run_symbolic_training
-            return await run_symbolic_training(self.analyzer, self.memory, self.ai_model)
+
+            return await run_symbolic_training(
+                self.analyzer, self.memory, self.ai_model
+            )
 
         @self.app.get("/auto_monitor")
         async def auto_monitor():
             from .monitor_engine import auto_monitor_cycle
+
             result = await auto_monitor_cycle(self.analyzer, self.memory, self.ai_model)
             return result
 
@@ -246,7 +268,9 @@ class CodeMemoryAI:
             pruned = self.memory.prune_old_memories()
             log_path = Path("logs/memory_maintenance.md")
             with open(log_path, "a") as f:
-                f.write(f"{datetime.now().isoformat()} compressed {compressed} pruned {pruned}\n")
+                f.write(
+                    f"{datetime.now().isoformat()} compressed {compressed} pruned {pruned}\n"
+                )
             return {"compressed": compressed, "pruned": pruned}
 
         @self.app.post("/learning/lessons")
@@ -270,7 +294,9 @@ class CodeMemoryAI:
                 await asyncio.sleep(config.LEARNING_LOOP_INTERVAL)
             except Exception as e:
                 error_count += 1
-                logger.error("Erro no loop de aprendizado", error=str(e), count=error_count)
+                logger.error(
+                    "Erro no loop de aprendizado", error=str(e), count=error_count
+                )
                 wait_time = min(30 * error_count, 300)
                 await asyncio.sleep(wait_time)
 
@@ -281,6 +307,7 @@ class CodeMemoryAI:
             self.memory.cleanup()
         if now.hour == 2:
             from .auto_review import run_autoreview
+
             await run_autoreview(self.analyzer, self.memory)
 
     async def _generate_automatic_insights(self):
@@ -303,21 +330,43 @@ class CodeMemoryAI:
             )
 
         if self.analyzer.code_chunks:
-            avg = sum(c.get("complexity", 0) for c in self.analyzer.code_chunks.values()) / len(self.analyzer.code_chunks)
-            if self.last_average_complexity and abs(avg - self.last_average_complexity) / self.last_average_complexity > 0.2:
+            avg = sum(
+                c.get("complexity", 0) for c in self.analyzer.code_chunks.values()
+            ) / len(self.analyzer.code_chunks)
+            if (
+                self.last_average_complexity
+                and abs(avg - self.last_average_complexity)
+                / self.last_average_complexity
+                > 0.2
+            ):
                 self.memory.save(
                     {
                         "type": "metric",
                         "content": "Variação significativa na complexidade média",
-                        "metadata": {"previous": self.last_average_complexity, "current": avg},
+                        "metadata": {
+                            "previous": self.last_average_complexity,
+                            "current": avg,
+                        },
                         "tags": ["metric", "complexity"],
                     }
                 )
             self.last_average_complexity = avg
             self.complexity_tracker.record(avg)
 
+    async def _process_command(self, query: str) -> str | None:
+        if query.strip() == "/resetar":
+            self.conversation_history.clear()
+            return "Conversa resetada."
+        if query.startswith("/teste"):
+            output = await self.tasks.run_task("run_tests")
+            return "\n".join(output)
+        return None
+
     async def generate_response(self, query: str, double_check: bool = False) -> str:
         try:
+            cmd = await self._process_command(query)
+            if cmd is not None:
+                return cmd
             if len(query.split()) < 3:
                 return "Por favor, forneça mais detalhes sobre sua solicitação."
 
@@ -325,11 +374,17 @@ class CodeMemoryAI:
             suggestions = self.memory.search(query, top_k=1)
             actions = self.tasks.last_actions()
             graph_summary = self.analyzer.graph_summary()
-            from .prompt_engine import build_cot_prompt, collect_recent_logs, SYSTEM_PROMPT_CONTEXT
+            from .prompt_engine import (
+                build_cot_prompt,
+                collect_recent_logs,
+                SYSTEM_PROMPT_CONTEXT,
+            )
+
             logs = collect_recent_logs()
             self.reason_stack = []
             self.reason_stack.append("Memórias coletadas")
-            query += "\nExplique antes de responder."
+            # FIXME: Ativar explicação apenas em modo Raciocinar
+            # query += "\nExplique antes de responder."
             prompt = build_cot_prompt(
                 query,
                 graph_summary,
@@ -354,23 +409,46 @@ class CodeMemoryAI:
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
             self.reason_stack.append("Prompt preparado")
-            result = await self.ai_model.safe_api_call(prompt, config.MAX_CONTEXT_LENGTH, prompt, self.memory)
+            messages = (
+                [{"role": "system", "content": SYSTEM_PROMPT_CONTEXT}]
+                + self.conversation_history[-4:]
+                + [{"role": "user", "content": prompt}]
+            )
+            result = await self.ai_model.safe_api_call(
+                messages, config.MAX_CONTEXT_LENGTH, prompt, self.memory
+            )
+            self.conversation_history.append({"role": "user", "content": query})
+            self.conversation_history.append({"role": "assistant", "content": result})
             self.reason_stack.append("Resposta gerada")
-            return result + "\n\nRaciocinio executado:\n" + "\n".join(f"-> {r}" for r in self.reason_stack)
+            return (
+                result
+                + "\n\nRaciocinio executado:\n"
+                + "\n".join(f"-> {r}" for r in self.reason_stack)
+            )
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
             return f"Erro ao gerar resposta: {str(e)}"
 
     def _find_relevant_code(self, query: str) -> List[Dict]:
-        exact = [c for n, c in self.analyzer.code_chunks.items() if n.lower() in query.lower()]
+        exact = [
+            c
+            for n, c in self.analyzer.code_chunks.items()
+            if n.lower() in query.lower()
+        ]
         if exact:
             return exact
         if hasattr(self.analyzer, "embedding_model"):
             query_emb = self.analyzer.embedding_model.encode(query).astype(float)
             sims = []
             for name, chunk in self.analyzer.code_chunks.items():
-                chunk_emb = self.analyzer.embedding_model.encode(f"{chunk['name']} {chunk['docstring']}").astype(float)
-                sim = float(query_emb @ chunk_emb / (np.linalg.norm(query_emb) * np.linalg.norm(chunk_emb)))
+                chunk_emb = self.analyzer.embedding_model.encode(
+                    f"{chunk['name']} {chunk['docstring']}"
+                ).astype(float)
+                sim = float(
+                    query_emb
+                    @ chunk_emb
+                    / (np.linalg.norm(query_emb) * np.linalg.norm(chunk_emb))
+                )
                 sims.append((sim, chunk))
             sims.sort(reverse=True, key=lambda x: x[0])
             return [c for _, c in sims[:5]]
@@ -384,7 +462,13 @@ class CodeMemoryAI:
             tags.add("warning")
         if "sugestão" in text.lower():
             tags.add("sugestão")
-        emoji_tags = {"🚩": "atenção", "⚠️": "aviso", "⚙️": "técnico", "🧠": "aprendizado", "✅": "sucesso"}
+        emoji_tags = {
+            "🚩": "atenção",
+            "⚠️": "aviso",
+            "⚙️": "técnico",
+            "🧠": "aprendizado",
+            "✅": "sucesso",
+        }
         for emoji, tag in emoji_tags.items():
             if emoji in text:
                 tags.add(tag)
@@ -454,6 +538,8 @@ class CodeMemoryAI:
         return None
 
     async def run(self):
-        cfg = uvicorn.Config(self.app, host="0.0.0.0", port=config.API_PORT, log_level="info")
+        cfg = uvicorn.Config(
+            self.app, host="0.0.0.0", port=config.API_PORT, log_level="info"
+        )
         server = uvicorn.Server(cfg)
         await server.serve()
