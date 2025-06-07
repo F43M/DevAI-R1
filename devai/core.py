@@ -219,9 +219,17 @@ class CodeMemoryAI:
                 return "Por favor, forneça mais detalhes sobre sua solicitação."
 
             contextual_memories = self.memory.search(query, level="short")
-            relevant_chunks = self._find_relevant_code(query)
-            from .prompt_utils import build_cot_prompt
-            prompt = build_cot_prompt(query, contextual_memories, relevant_chunks)
+            actions = self.tasks.last_actions()
+            graph_summary = self.analyzer.graph_summary()
+            from .prompt_engine import build_cot_prompt, collect_recent_logs
+            logs = collect_recent_logs()
+            prompt = build_cot_prompt(
+                query,
+                graph_summary,
+                contextual_memories,
+                actions,
+                logs,
+            )
             return await self.ai_model.generate(prompt)
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))

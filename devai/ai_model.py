@@ -4,6 +4,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from typing import Mapping, Sequence, Union
 import json
+from uuid import uuid4
 
 import aiohttp
 
@@ -85,6 +86,8 @@ class AIModel:
         if cached is not None:
             return cached
 
+        prompt_id = uuid4().hex
+
         if self.current == "local" and self.local_model and self.local_tokenizer:
             try:
                 input_ids = self.local_tokenizer.encode(messages[-1]["content"], return_tensors="pt")
@@ -96,44 +99,77 @@ class AIModel:
             except Exception as e:  # pragma: no cover - heavy dep
                 logger.error("Erro no modelo local", error=str(e))
 
-        model_cfg = self.models.get(self.current, {})
-        headers = {
-            "Authorization": f"Bearer {model_cfg.get('api_key', '')}",
-            "Content-Type": "application/json",
+        async def _call(model_name: str) -> str:
+            cfg = self.models.get(model_name, {})
+            if cfg.get("local") and self.local_model and self.local_tokenizer:
+                try:
+                    input_ids = self.local_tokenizer.encode(messages[-1]["content"], return_tensors="pt")
+                    output = self.local_model.generate(input_ids, max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH))
+                    return self.local_tokenizer.decode(output[0], skip_special_tokens=True)
+                except Exception as e:  # pragma: no cover - heavy dep
+                    logger.error("Erro no modelo local", error=str(e))
+                    return f"Erro: {str(e)}"
+            headers = {
+                "Authorization": f"Bearer {cfg.get('api_key', '')}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": cfg.get("name", config.MODEL_NAME),
+                "messages": messages,
+                "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
+                "temperature": 0.7,
+            }
+            start = datetime.now()
+            try:
+                resp = await self.session.post(
+                    cfg.get("url", config.OPENROUTER_URL),
+                    headers=headers,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=60),
+                )
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data["choices"][0]["message"]["content"]
+                error = await resp.text()
+                logger.error("Erro ao chamar modelo", model=model_name, status=resp.status)
+                return f"Erro: {error}"
+            except Exception as e:
+                logger.error("Falha na conexao", model=model_name, error=str(e))
+                return f"Erro: {str(e)}"
+            finally:
+                metrics.record_call((datetime.now() - start).total_seconds())
+
+        model_order = [self.current] + [m for m in self.models if m != self.current]
+        response_text = ""
+        for name in model_order:
+            text = await _call(name)
+            if text and "Erro" not in text:
+                response_text = text
+                used_model = name
+                break
+        if not response_text:
+            metrics.record_error()
+            used_model = "none"
+            response_text = "# Falha geral – requires human input"
+
+        response_id = uuid4().hex
+        annotation = f"# IA usada: {used_model}\n# PromptID: {prompt_id}\n# RespostaID: {response_id}\n"
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "model": used_model,
+            "prompt_id": prompt_id,
+            "response_id": response_id,
+            "prompt": messages[-1]["content"],
+            "response": response_text,
         }
-        payload = {
-            "model": model_cfg.get("name", config.MODEL_NAME),
-            "messages": messages,
-            "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
-            "temperature": 0.7,
-        }
-        start = datetime.now()
         try:
-            resp = await self.session.post(
-                model_cfg.get("url", config.OPENROUTER_URL),
-                headers=headers,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=60),
-            )
-            if resp.status == 200:
-                data = await resp.json()
-                text = data["choices"][0]["message"]["content"]
-                self.cache.add(key, text)
-                return text
-            error = await resp.text()
-            metrics.record_error()
-            logger.error("Erro na chamada ao OpenRouter", status=resp.status, error=error)
-            return f"Erro na API: {resp.status} - {error}"
-        except asyncio.TimeoutError:
-            metrics.record_error()
-            logger.error("Timeout na chamada ao OpenRouter")
-            return "Erro: tempo limite excedido ao chamar a API"
+            with open("prompt_log.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry) + "\n")
         except Exception as e:
-            metrics.record_error()
-            logger.error("Erro na conexão com OpenRouter", error=str(e))
-            return f"Erro de conexão: {str(e)}"
-        finally:
-            metrics.record_call((datetime.now() - start).total_seconds())
+            logger.error("Erro ao registrar prompt", error=str(e))
+
+        self.cache.add(key, response_text)
+        return annotation + response_text
 
     async def close(self):
         await self.session.close()

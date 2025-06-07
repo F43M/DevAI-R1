@@ -25,4 +25,6 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Fine-tuning com RLHF** *(planejado)*
 - **Sandbox de execução com containers** *(planejado)*
 - **Prompts com Chain-of-Thought** *(parcialmente implementado)*
+- **Planejamento multi-turn interativo** *(futuro)*
+- **Confirmação antes de ações críticas** *(futuro)*
 
