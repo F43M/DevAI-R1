@@ -89,6 +89,7 @@ class MemoryManager:
                 embedding BLOB,
                 feedback_score INTEGER DEFAULT 0,
                 context_level TEXT DEFAULT 'long',
+                disabled INTEGER DEFAULT 0,
                 last_accessed TEXT,
                 access_count INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -123,6 +124,10 @@ class MemoryManager:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_access ON memory(access_count)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_type ON memory(memory_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag)")
+        cursor.execute("PRAGMA table_info(memory)")
+        cols = [r[1] for r in cursor.fetchall()]
+        if "disabled" not in cols:
+            cursor.execute("ALTER TABLE memory ADD COLUMN disabled INTEGER DEFAULT 0")
         self.conn.commit()
 
     def _load_index(self):
@@ -241,7 +246,7 @@ class MemoryManager:
         if self.index is None:
             sql = (
                 "SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags FROM memory m "
-                "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.content LIKE ?"
+                "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.disabled = 0 AND m.content LIKE ?"
             )
             params = [f"%{query}%"]
             if memory_type:
@@ -280,7 +285,7 @@ class MemoryManager:
                     memory_id = self.indexed_ids[idx]
                     sql = (
                         "SELECT m.*, GROUP_CONCAT(t.tag, ', ') as tags FROM memory m "
-                        "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.id = ?"
+                        "LEFT JOIN tags t ON m.id = t.memory_id WHERE m.id = ? AND m.disabled = 0"
                     )
                     params = [memory_id]
                     if memory_type:
@@ -386,6 +391,22 @@ class MemoryManager:
         self.conn.commit()
         self._rebuild_index()
         logger.info("Limpeza de memória executada", removed=len(ids))
+
+    def deactivate_memories(self, term: str) -> int:
+        """Deactivate memories related to the given term."""
+        results = self.search(term, top_k=20)
+        ids = [m["id"] for m in results]
+        if not ids:
+            return 0
+        cursor = self.conn.cursor()
+        placeholders = ",".join(["?"] * len(ids))
+        cursor.execute(
+            f"UPDATE memory SET disabled = 1 WHERE id IN ({placeholders})",
+            ids,
+        )
+        self.conn.commit()
+        logger.info("Memorias desativadas", term=term, count=len(ids))
+        return len(ids)
 
     def record_feedback(self, memory_id: int, is_positive: bool):
         score_change = 1 if is_positive else -1

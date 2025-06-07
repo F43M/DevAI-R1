@@ -84,3 +84,14 @@ def test_search_without_index():
         results = mem.search("fallback")
         assert results
         assert results[0]["content"] == "fallback"
+
+
+def test_deactivate_memories():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = f"{tmp}/mem.sqlite"
+        mem = MemoryManager(db, "dummy", model=None, index=None)
+        mem.save({"type": "note", "content": "secret", "metadata": {}, "tags": []})
+        assert mem.search("secret")
+        count = mem.deactivate_memories("secret")
+        assert count == 1
+        assert not mem.search("secret")
