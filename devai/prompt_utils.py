@@ -16,6 +16,12 @@ def build_user_query_prompt(query: str, memories: Sequence[Dict], chunks: Sequen
     return f"{memory_context}\n{code_context}\nUsuário: {query}\nIA:".strip()
 
 
+def build_cot_prompt(query: str, memories: Sequence[Dict], chunks: Sequence[Dict]) -> str:
+    """Compose a prompt encouraging step-by-step reasoning."""
+    base = build_user_query_prompt(query, memories, chunks)
+    return base + "\nVamos pensar passo a passo antes de responder."
+
+
 def build_analysis_prompt(code: str, issues: Sequence[str]) -> str:
     """Prompt asking the model to review a code snippet."""
     return (

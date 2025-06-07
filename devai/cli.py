@@ -99,6 +99,10 @@ async def cli_main():
                 print("✅ Pasta criada" if ok else "Falha ao criar pasta")
             elif user_input.startswith("/deletar "):
                 path = user_input[len("/deletar "):].strip()
+                confirm = input("Tem certeza que deseja remover? [s/N] ").lower()
+                if confirm != "s":
+                    print("Operação cancelada")
+                    continue
                 ok = await ai.analyzer.delete_file(path)
                 if not ok:
                     ok = await ai.analyzer.delete_directory(path)
