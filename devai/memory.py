@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover - optional dependency
     np = None
 
 from .config import config, logger
+from .feedback import FeedbackDB
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -32,6 +33,7 @@ class MemoryManager:
         cache_size: int = 128,
     ):
         self.conn = sqlite3.connect(db_file)
+        self.feedback_db = FeedbackDB()
         self._init_db()
         if model is None:
             if SentenceTransformer is None:
@@ -280,7 +282,18 @@ class MemoryManager:
                         )
         self.conn.commit()
         logger.info("Busca de memória realizada", query=query, results=len(results))
-        return sorted(results, key=lambda x: x["similarity_score"], reverse=True)
+
+        def _score(item: Dict) -> float:
+            recency = 0.0
+            if item.get("last_accessed"):
+                try:
+                    age = datetime.now() - datetime.fromisoformat(item["last_accessed"])
+                    recency = max(0.0, 1 - age.days / 30)
+                except Exception:
+                    pass
+            return item["similarity_score"] + recency * 0.1
+
+        return sorted(results, key=_score, reverse=True)
 
     def add_semantic_relation(self, source_id: int, target_id: int, relation_type: str, strength: float = 1.0):
         cursor = self.conn.cursor()
@@ -351,4 +364,13 @@ class MemoryManager:
             (score_change, memory_id),
         )
         self.conn.commit()
+        if not is_positive:
+            try:
+                cur = self.conn.cursor()
+                cur.execute("SELECT content FROM memory WHERE id = ?", (memory_id,))
+                row = cur.fetchone()
+                if row:
+                    self.feedback_db.add(str(memory_id), "negativo", row[0])
+            except Exception:
+                pass
         logger.info("Feedback registrado", memory_id=memory_id, positive=is_positive)

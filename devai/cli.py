@@ -3,11 +3,13 @@ import json
 
 from .config import config, logger
 from .core import CodeMemoryAI
+from .feedback import FeedbackDB
 
 
 async def cli_main():
     print("Inicializando CodeMemoryAI com DeepSeek-R1...")
     ai = CodeMemoryAI()
+    feedback_db = FeedbackDB()
     asyncio.create_task(ai.analyzer.deep_scan_app())
     print("\nDev IA Avançado Pronto!")
     print("Comandos disponíveis:")
@@ -23,6 +25,7 @@ async def cli_main():
     print("/novapasta <caminho> - Cria nova pasta")
     print("/deletar <caminho> - Remove arquivo ou pasta")
     print("/historico <arquivo> - Mostra histórico de mudanças")
+    print("/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo")
     print("/sair - Encerra")
     while True:
         try:
@@ -112,6 +115,13 @@ async def cli_main():
                 hist = await ai.analyzer.get_history(file)
                 for h in hist:
                     print(json.dumps(h, indent=2))
+            elif user_input.startswith("/feedback "):
+                parts = user_input[len("/feedback "):].split(maxsplit=2)
+                if len(parts) < 3:
+                    print("Uso: /feedback <arquivo> <tag> <motivo>")
+                else:
+                    feedback_db.add(parts[0], parts[1], parts[2])
+                    print("Feedback registrado")
             else:
                 response = await ai.generate_response(user_input)
                 print("\nResposta:")

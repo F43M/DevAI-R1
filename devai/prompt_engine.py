@@ -73,7 +73,8 @@ def build_cot_prompt(
         f"{identity}\n{proj_text}\n{mem_text}\n\n{graph_summary}\n\n"
         f"Ultimas ações:\n{acts}\n\n"
         f"Logs recentes:\n{logs}\n\nComando do usuário: {command}\n"
-        "Vamos pensar passo a passo antes de responder." + extra
+        "Antes de gerar código, descreva em 2-3 etapas a lógica da solução. "
+        "Depois apresente o código com uma justificativa." + extra
     )
     return prompt
 

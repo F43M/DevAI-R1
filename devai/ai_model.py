@@ -6,6 +6,11 @@ from typing import Mapping, Sequence, Union
 import json
 from uuid import uuid4
 
+SYSTEM_MESSAGE = (
+    "Você é um assistente especialista em desenvolvimento de software "
+    "com foco em qualidade, segurança e aprendizado simbólico."
+)
+
 import aiohttp
 
 try:
@@ -78,9 +83,14 @@ class AIModel:
     async def generate(self, prompt: Union[str, Sequence[Mapping[str, str]]], max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
         if isinstance(prompt, str):
             key = prompt
-            messages = [{"role": "user", "content": prompt}]
+            messages = [
+                {"role": "system", "content": SYSTEM_MESSAGE},
+                {"role": "user", "content": prompt},
+            ]
         else:
             messages = list(prompt)
+            if not any(m.get("role") == "system" for m in messages):
+                messages.insert(0, {"role": "system", "content": SYSTEM_MESSAGE})
             key = json.dumps(messages, sort_keys=True)
         cached = self.cache.get(key)
         if cached is not None:

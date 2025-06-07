@@ -26,17 +26,24 @@ class UpdateManager:
             "Arquivo restaurado devido a falha nos testes", file=str(original)
         )
 
-    def run_tests(self) -> bool:
+    def run_tests(self, capture_output: bool = False):
         logger.info("Executando testes para validacao")
         proc = subprocess.run(
             self.tests_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
+        output = proc.stdout.decode()
         logger.info("Testes finalizados", returncode=proc.returncode)
+        if capture_output:
+            return proc.returncode == 0, output
         return proc.returncode == 0
 
     def safe_apply(
-        self, file_path: str | Path, apply_func: Callable[[Path], None], max_attempts: int = 1
-    ) -> bool:
+        self,
+        file_path: str | Path,
+        apply_func: Callable[[Path], None],
+        max_attempts: int = 1,
+        capture_output: bool = False,
+    ):
         """Apply modifications with automatic rollback if tests fail."""
         path = Path(file_path)
         original_lines = path.read_text().splitlines()
@@ -49,6 +56,7 @@ class UpdateManager:
                 protected.append((start, i))
                 start = None
         attempt = 0
+        result_output = ""
         while attempt < max_attempts:
             attempt += 1
             backup = self._backup(path)
@@ -59,13 +67,20 @@ class UpdateManager:
                     if original_lines[s : e + 1] != new_lines[s : e + 1]:
                         logger.error("Tentativa de modificar area protegida", file=str(path))
                         raise RuntimeError("protected block modified")
-                if self.run_tests():
+                try:
+                    success, out = self.run_tests(capture_output=True)
+                except TypeError:
+                    success = self.run_tests()
+                    out = ""
+                if success:
                     backup.unlink(missing_ok=True)
                     logger.info(
                         "Atualizacao aplicada com sucesso", file=str(path)
                     )
-                    return True
+                    return (True, out) if capture_output else True
                 self._restore(backup, path)
+                if capture_output:
+                    result_output = out
             except Exception as e:  # pragma: no cover - unexpected errors
                 logger.error("Erro na atualizacao", file=str(path), error=str(e))
                 self._restore(backup, path)
@@ -73,4 +88,4 @@ class UpdateManager:
         logger.error(
             "Falha em validar atualizacao apos tentativas", file=str(path)
         )
-        return False
+        return (False, result_output) if capture_output else False
