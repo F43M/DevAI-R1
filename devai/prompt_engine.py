@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Sequence
 
 from .config import config, logger
+from .feedback import listar_preferencias
 
 SYSTEM_PROMPT_CONTEXT = (
     "Você atua como engenheiro simbólico. "
@@ -61,6 +62,14 @@ def build_cot_prompt(
     logs: str,
 ) -> str:
     """Compose a reasoning prompt with full context."""
+    prefs = listar_preferencias()
+    pref_text = ""
+    if prefs:
+        pref_lines = "\n".join(f"- {p}" for p in prefs)
+        pref_text = (
+            "Estas são as preferências do usuário para estilo de código:\n"
+            f"{pref_lines}\n\n"
+        )
     identity = SYSTEM_PROMPT_CONTEXT
     proj_text, proj_cfg = _load_project_identity()
     mem_text = _format_memories(memories)
@@ -72,7 +81,7 @@ def build_cot_prompt(
         "\nPor favor, forneça um plano de execução, checklist e questione informação faltante." if step_mode else ""
     )
     prompt = (
-        f"{identity}\n{proj_text}\n{mem_text}\n\n{graph_summary}\n\n"
+        f"{pref_text}{identity}\n{proj_text}\n{mem_text}\n\n{graph_summary}\n\n"
         f"Ultimas ações:\n{acts}\n\n"
         f"Logs recentes:\n{logs}\n\nComando do usuário: {command}\n"
         "Antes de gerar código, descreva em 2-3 etapas a lógica da solução. "

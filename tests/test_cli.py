@@ -26,3 +26,18 @@ def test_cli_exit(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "Comandos disponíveis" in out
     assert "/ls" in out
+
+
+def test_cli_preferencia(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
+    recorded = []
+    monkeypatch.setattr(cli, "registrar_preferencia", lambda t: recorded.append(t))
+
+    async def run():
+        with patch("builtins.input", side_effect=["/preferencia usar x", "/sair"]):
+            await cli.cli_main()
+
+    asyncio.run(run())
+    out = capsys.readouterr().out
+    assert "Preferência registrada com sucesso" in out
+    assert recorded == ["usar x"]
