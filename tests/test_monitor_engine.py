@@ -13,6 +13,9 @@ class DummyModel:
     async def generate(self, prompt, max_length=0):
         return "ok"
 
+    async def safe_api_call(self, prompt, max_tokens, context="", memory=None):
+        return "ok"
+
 
 def _set_time(path: Path, dt: datetime) -> None:
     ts = dt.timestamp()

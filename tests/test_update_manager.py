@@ -6,6 +6,9 @@ class DummyModel:
     async def generate(self, prompt, max_length=0):
         return "retry"
 
+    async def safe_api_call(self, prompt, max_tokens, context="", memory=None):
+        return "retry"
+
     async def close(self):
         pass
 

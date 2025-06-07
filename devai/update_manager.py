@@ -95,7 +95,11 @@ class UpdateManager:
                             "A refatoração anterior falhou nos testes com o seguinte erro:\n"
                             f"{out}\nProponha uma nova solução corrigida, mantendo o objetivo anterior."
                         )
-                        suggestion = await ai.generate(prompt, max_length=len(path.read_text()) + 200)
+                        suggestion = await ai.safe_api_call(
+                            prompt,
+                            len(path.read_text()) + 200,
+                            prompt,
+                        )
                     finally:
                         await ai.close()
                     path.write_text(suggestion)

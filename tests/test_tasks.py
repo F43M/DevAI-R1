@@ -89,7 +89,10 @@ def test_auto_refactor(monkeypatch, tmp_path):
             self.called = True
             return True
 
-    tm.ai_model = type("AI", (), {"generate": fake_generate})()
+    async def fake_safe(self, prompt, max_tokens, context="", memory=None):
+        return await fake_generate(self, prompt, max_tokens)
+
+    tm.ai_model = type("AI", (), {"generate": fake_generate, "safe_api_call": fake_safe})()
     import devai.update_manager as upd
     monkeypatch.setattr(upd, "UpdateManager", lambda tests_cmd=None: DummyUpdater())
 

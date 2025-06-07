@@ -71,7 +71,7 @@ class LearningEngine:
         self._call_times.append(time.time())
         self.call_count += 1
         logger.info("Chamada R1", total=self.call_count)
-        return await self.ai_model.generate(prompt, max_length=max_length)
+        return await self.ai_model.safe_api_call(prompt, max_length, prompt, self.memory)
 
     async def learn_from_codebase(self):
         for chunk in self.analyzer.code_chunks.values():

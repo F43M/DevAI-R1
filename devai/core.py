@@ -302,17 +302,23 @@ class CodeMemoryAI:
                 logs,
             )
             if double_check:
-                plan = await self.ai_model.generate(
-                    f"{SYSTEM_PROMPT_CONTEXT}\nElabore um plano de ação para: {query}"
+                plan = await self.ai_model.safe_api_call(
+                    f"{SYSTEM_PROMPT_CONTEXT}\nElabore um plano de ação para: {query}",
+                    config.MAX_CONTEXT_LENGTH,
+                    query,
+                    self.memory,
                 )
-                review = await self.ai_model.generate(
-                    f"{SYSTEM_PROMPT_CONTEXT}\nRevise o plano a seguir e sugira ajustes se necessário:\n{plan}"
+                review = await self.ai_model.safe_api_call(
+                    f"{SYSTEM_PROMPT_CONTEXT}\nRevise o plano a seguir e sugira ajustes se necessário:\n{plan}",
+                    config.MAX_CONTEXT_LENGTH,
+                    plan,
+                    self.memory,
                 )
                 prompt = plan + "\n" + review + "\n" + prompt
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
             self.reason_stack.append("Prompt preparado")
-            result = await self.ai_model.generate(prompt)
+            result = await self.ai_model.safe_api_call(prompt, config.MAX_CONTEXT_LENGTH, prompt, self.memory)
             self.reason_stack.append("Resposta gerada")
             return result + "\n\nRaciocinio executado:\n" + "\n".join(f"-> {r}" for r in self.reason_stack)
         except Exception as e:

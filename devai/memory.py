@@ -20,6 +20,7 @@ MEMORY_TYPES = [
     "refatoracao_sugerida",
     "risco_reincidente",
     "ponto_critico",
+    "resposta_cortada",
 ]
 
 try:
@@ -182,7 +183,15 @@ class MemoryManager:
         return vec
 
     def save(self, entry: Dict, update_feedback: bool = False):
-        entry["metadata"] = json.dumps(entry.get("metadata", {}))
+        meta = entry.get("metadata", {})
+        if entry.get("resposta_recomposta"):
+            if not isinstance(meta, dict):
+                try:
+                    meta = json.loads(str(meta))
+                except Exception:
+                    meta = {"raw": str(meta)}
+            meta["resposta_recomposta"] = True
+        entry["metadata"] = json.dumps(meta)
         content = self._generate_content_for_embedding(entry)
         if self.index is not None:
             embedding_vec = self._get_embedding(content)
