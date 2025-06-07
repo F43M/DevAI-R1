@@ -419,3 +419,27 @@ class CodeAnalyzer:
         if self.history:
             return self.history.history(file_path)
         return []
+
+    async def summary_by_module(self) -> Dict[str, Dict[str, int | str]]:
+        """Return aggregated statistics grouped by source file."""
+        summary: Dict[str, Dict[str, int | str]] = {}
+        for chunk in self.code_chunks.values():
+            rel_path = os.path.relpath(chunk["file"], self.code_root)
+            mod = summary.setdefault(rel_path, {"complex_functions": 0, "todos": 0, "score": ""})
+            if chunk.get("complexity", 0) > 10:
+                mod["complex_functions"] += 1
+        for file_path, data in summary.items():
+            path = self.code_root / file_path
+            try:
+                async with aiofiles.open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = await f.read()
+                data["todos"] = content.count("TODO")
+            except Exception:
+                data["todos"] = 0
+            if data["complex_functions"] > 0:
+                data["score"] = "⚠️ Precisa atenção"
+            elif data["todos"] > 0:
+                data["score"] = "💡 Possui melhorias possíveis"
+            else:
+                data["score"] = "✅ Estável"
+        return summary
