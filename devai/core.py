@@ -202,7 +202,7 @@ class CodeMemoryAI:
             tests_ok, test_output = run_tests_in_temp(temp_root)
             evaluation = await evaluate_change_with_ia(diff)
             status = "shadow_failed" if not tests_ok else "shadow_declined"
-            log_simulation(file_path, evaluation["analysis"], status)
+            log_simulation(sim_id, file_path, tests_ok, evaluation["analysis"], status)
             return {
                 "id": sim_id,
                 "diff": diff,

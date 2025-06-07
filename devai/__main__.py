@@ -86,7 +86,7 @@ def main():
                 action = "shadow_approved"
             else:
                 action = "shadow_declined" if tests_ok else "shadow_failed"
-            log_simulation(file_path, evaluation["analysis"], action)
+            log_simulation(sim_id, file_path, tests_ok, evaluation["analysis"], action)
             return
         elif cmd[0] == "monitorar":
             from .monitor_engine import auto_monitor_cycle
