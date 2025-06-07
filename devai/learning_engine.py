@@ -142,3 +142,38 @@ class LearningEngine:
             resp = await self._rate_limited_call(f"Explique o que essa funcao faz:\n{code}")
             self.memory.save({"type": "import", "memory_type": "aprendizado_importado", "content": resp, "metadata": meta})
         logger.info("Aprendizado de codigo externo concluido", source=str(path_obj))
+
+    def find_symbolic_correlations(self) -> List[str]:
+        """Identify common patterns among learned lessons."""
+        cursor = self.memory.conn.cursor()
+        cursor.execute(
+            "SELECT memory_type, content FROM memory WHERE memory_type IN (""""
+            "'erro_estudado','licao_aprendida','refatoracao_aplicada'"""")"
+        )
+        rows = cursor.fetchall()
+        groups: dict[str, list[str]] = {}
+        for mtype, content in rows:
+            key = (mtype, " ".join(content.lower().split()[:5]))
+            groups.setdefault(key[0], []).append(key[1])
+        summary = []
+        for k, items in groups.items():
+            if len(items) > 1:
+                summary.append(f"{k.replace('_', ' ')} ({len(items)} itens)")
+        logger.info("Correlação simbólica gerada", total=len(summary))
+        return summary
+
+    async def explain_learning_lessons(self) -> str:
+        """Generate a high level summary of learned lessons."""
+        cursor = self.memory.conn.cursor()
+        cursor.execute(
+            "SELECT content FROM memory WHERE memory_type IN ('erro_resolvido','refatoracao_aplicada')"
+        )
+        lines = [r[0] for r in cursor.fetchall()]
+        if not lines:
+            return ""
+        prompt = "Resuma de forma breve o que foi aprendido:\n" + "\n".join(lines)
+        resp = await self.ai_model.safe_api_call(prompt, 800, prompt, self.memory)
+        path = Path("logs/learning_summary.md")
+        path.write_text(resp)
+        logger.info("Resumo das lições salvo", file=str(path))
+        return resp
