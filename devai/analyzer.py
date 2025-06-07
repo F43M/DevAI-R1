@@ -279,6 +279,16 @@ class CodeAnalyzer:
             "links": [{"source": u, "target": v} for u, v in self.code_graph.edges()],
         }
 
+    def graph_text_summary(self, limit: int = 50) -> str:
+        """Return a simple textual summary of the dependency graph."""
+        lines = []
+        for u, v, d in self.code_graph.edges(data=True):
+            if d.get("type") == "call":
+                lines.append(f"Função {u} chama {v}")
+            else:
+                lines.append(f"Função {u} depende de {v}")
+        return "\n".join(lines[:limit])
+
     async def watch_app_directory(self, interval: int = 5):
         logger.info("Iniciando monitoramento da pasta de código", path=str(self.code_root))
         while True:

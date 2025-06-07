@@ -5,6 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional
 import ast
+from pathlib import Path
 
 import networkx as nx
 import uvicorn
@@ -27,6 +28,7 @@ class CodeMemoryAI:
         self.history = FileHistory(config.FILE_HISTORY)
         self.analyzer = CodeAnalyzer(config.CODE_ROOT, self.memory, self.history)
         self.ai_model = AIModel()
+        self.project_identity = self._load_project_identity()
         self.tasks = TaskManager(config.TASK_DEFINITIONS, self.analyzer, self.memory, ai_model=self.ai_model)
         self.log_monitor = LogMonitor(self.memory, config.LOG_DIR)
         self.complexity_tracker = ComplexityTracker(config.COMPLEXITY_HISTORY)
@@ -215,10 +217,16 @@ class CodeMemoryAI:
 
     async def generate_response(self, query: str) -> str:
         try:
-            contextual_memories = self.memory.search(query, level="short")
+            contextual_memories = self.memory.search(query, top_k=3, level="short")
             relevant_chunks = self._find_relevant_code(query)
-            from .prompt_utils import build_user_query_prompt
-            prompt = build_user_query_prompt(query, contextual_memories, relevant_chunks)
+            graph_summary = self.analyzer.graph_text_summary()
+            actions = self.tasks.get_recent_actions()
+            logs = await self.log_monitor.collect_recent_logs(50)
+            context = self.project_identity
+            for chunk in relevant_chunks[:3]:
+                context += f"\n// {chunk['file']} ({chunk['type']} {chunk['name']})\n{chunk['code']}"
+            from .prompt_engine import build_cot_prompt
+            prompt = build_cot_prompt(query, context, graph_summary, contextual_memories, logs, actions)
             return await self.ai_model.generate(prompt)
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
@@ -296,6 +304,15 @@ class CodeMemoryAI:
         except Exception as e:
             logger.error("Erro ao extrair inputs", error=str(e))
         return []
+
+    def _load_project_identity(self) -> str:
+        path = Path("project_identity.yaml")
+        if path.exists():
+            try:
+                return path.read_text(encoding="utf-8")
+            except Exception as e:
+                logger.error("Erro ao ler project_identity", error=str(e))
+        return ""
 
     def _infer_return_type(self, code: str) -> Optional[str]:
         try:

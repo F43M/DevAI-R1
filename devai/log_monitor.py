@@ -23,6 +23,20 @@ class LogMonitor:
         }
         self.last_checked = datetime.now()
 
+    async def collect_recent_logs(self, lines: int = 50) -> str:
+        """Return last few lines from all log files."""
+        collected = []
+        if not self.log_dir.exists():
+            return ""
+        for log_file in sorted(self.log_dir.glob("*.log")):
+            try:
+                async with aiofiles.open(log_file, "r") as f:
+                    content = await f.readlines()
+                collected.extend(content[-lines:])
+            except Exception:
+                continue
+        return "".join(collected)
+
     async def monitor_logs(self):
         while True:
             try:

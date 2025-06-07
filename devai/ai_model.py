@@ -3,6 +3,7 @@ from collections import OrderedDict
 from datetime import datetime
 from difflib import SequenceMatcher
 from typing import Mapping, Sequence, Union
+from uuid import uuid4
 import json
 
 import aiohttp
@@ -75,6 +76,7 @@ class AIModel:
             logger.error("Modelo não encontrado", model=name)
 
     async def generate(self, prompt: Union[str, Sequence[Mapping[str, str]]], max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
+        prompt_id = uuid4().hex
         if isinstance(prompt, str):
             key = prompt
             messages = [{"role": "user", "content": prompt}]
@@ -92,6 +94,7 @@ class AIModel:
                 text = self.local_tokenizer.decode(output[0], skip_special_tokens=True)
                 self.cache.add(key, text)
                 metrics.record_call(0)
+                self._log_prompt(prompt_id, self.current, messages, text)
                 return text
             except Exception as e:  # pragma: no cover - heavy dep
                 logger.error("Erro no modelo local", error=str(e))
@@ -119,6 +122,9 @@ class AIModel:
                 data = await resp.json()
                 text = data["choices"][0]["message"]["content"]
                 self.cache.add(key, text)
+                self._log_prompt(prompt_id, self.current, messages, text)
+                if self._needs_fallback(text):
+                    return await self._fallback_generate(prompt, prompt_id, text)
                 return text
             error = await resp.text()
             metrics.record_error()
@@ -137,3 +143,34 @@ class AIModel:
 
     async def close(self):
         await self.session.close()
+
+    def _log_prompt(self, pid: str, model: str, prompt: Sequence[Mapping[str, str]], response: str) -> None:
+        entry = {
+            "prompt_id": pid,
+            "model": model,
+            "prompt": prompt,
+            "response": response,
+            "timestamp": datetime.now().isoformat(),
+        }
+        try:
+            with open("prompt_log.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception as e:
+            logger.error("Falha ao registrar prompt", error=str(e))
+
+    def _needs_fallback(self, text: str) -> bool:
+        return text.strip() == "" or text.lower().startswith("erro")
+
+    async def _fallback_generate(self, prompt, pid: str, previous: str) -> str:
+        for name, cfg in self.models.items():
+            if name == self.current:
+                continue
+            old = self.current
+            self.current = name
+            logger.info("Usando modelo alternativo", model=name)
+            result = await self.generate(prompt)
+            self.current = old
+            if not self._needs_fallback(result):
+                return result
+        logger.error("Falha geral – requires human input")
+        return previous
