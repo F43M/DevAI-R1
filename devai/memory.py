@@ -10,6 +10,11 @@ MEMORY_TYPES = [
     "bug corrigido",
     "feedback negativo",
     "refatoracao aprovada",
+    "boas_praticas",
+    "risco_oculto",
+    "erro_estudado",
+    "padrao_positivo",
+    "aprendizado_importado",
     "regra do usuario",
     "licao aprendida",
 ]
