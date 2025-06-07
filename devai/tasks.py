@@ -33,6 +33,11 @@ class TaskManager:
         """Return list of executed tasks."""
         return list(self.history)
 
+    def get_recent_actions(self, limit: int = 3) -> List[str]:
+        return [
+            f"{h['task']} {h.get('args', '')}" for h in self.history[-limit:]
+        ]
+
     def _load_tasks(self, task_file: str) -> Dict:
         if os.path.exists(task_file):
             with open(task_file, "r") as f:

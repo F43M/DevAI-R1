@@ -1,0 +1,6 @@
+linguagem_principal: Python
+estrutura: app/ com módulos devai
+dependencias_principais:
+  - fastapi
+  - aiohttp
+objetivo: "Assistente de desenvolvimento autônomo baseado em IA"
