@@ -1,5 +1,6 @@
 import asyncio
 import argparse
+import json
 from pathlib import Path
 
 from .config import config
@@ -69,6 +70,11 @@ def main():
             from .feedback import registrar_preferencia
             registrar_preferencia(" ".join(cmd[1:]))
             print("Preferência registrada com sucesso")
+            return
+        elif cmd[0] == "monitorar":
+            from .monitor_engine import auto_monitor_cycle
+            result = asyncio.run(auto_monitor_cycle(ai.analyzer, ai.memory, ai.ai_model))
+            print(json.dumps(result, indent=2))
             return
 
     print("Por favor, especifique --api ou --cli para iniciar o aplicativo")
