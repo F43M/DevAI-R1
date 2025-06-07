@@ -37,4 +37,8 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Prompts com Chain-of-Thought** *(parcialmente implementado)*
 - **Planejamento multi-turn interativo** *(futuro)*
 - **Confirmação antes de ações críticas** *(futuro)*
+- **Painel web estilo IDE** com diffs e chat integrado *(futuro)*
+- **Componente de metacognição** para aprendizado contínuo *(futuro)*
+- **Paralelismo de tarefas** acelerando lint e testes *(implementado em parte)*
+- **Uso de modelos menores** para otimizar embeddings *(futuro)*
 
