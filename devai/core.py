@@ -215,10 +215,13 @@ class CodeMemoryAI:
 
     async def generate_response(self, query: str) -> str:
         try:
+            if len(query.split()) < 3:
+                return "Por favor, forneça mais detalhes sobre sua solicitação."
+
             contextual_memories = self.memory.search(query, level="short")
             relevant_chunks = self._find_relevant_code(query)
-            from .prompt_utils import build_user_query_prompt
-            prompt = build_user_query_prompt(query, contextual_memories, relevant_chunks)
+            from .prompt_utils import build_cot_prompt
+            prompt = build_cot_prompt(query, contextual_memories, relevant_chunks)
             return await self.ai_model.generate(prompt)
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))

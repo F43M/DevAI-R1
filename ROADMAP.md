@@ -22,4 +22,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Monitoramento de complexidade do código ao longo do tempo** *(implementado)*
 - **Integração com IDEs (VSCode, etc.)** *(futuro)*
 - **Treinamento incremental com dados do histórico** *(futuro)*
+- **Fine-tuning com RLHF** *(planejado)*
+- **Sandbox de execução com containers** *(planejado)*
+- **Prompts com Chain-of-Thought** *(parcialmente implementado)*
 

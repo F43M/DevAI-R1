@@ -29,6 +29,8 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Notificações por e-mail** opcionais
 - **Integração contínua via GitHub Actions**
 - **Refatoração automática validada por testes**
+- **Prompts Chain-of-Thought** para melhor raciocínio
+- **Estrutura inicial para fine-tuning via RLHF e sandbox de execução**
 
 ## Configuração
 
@@ -137,6 +139,9 @@ Melhorias em andamento:
 - Automação incremental do projeto
 - Cache de memória para acelerar consultas
 - Sistema de plugins para novas tarefas *(implementado)*
+- Prompts com raciocínio em etapas *(Chain-of-Thought)*
+- Estrutura para treinamento via RLHF
+- Sandbox de execução para testes isolados *(planejado)*
 - Relatórios de cobertura integrados
 - Monitoramento de complexidade ao longo do tempo
   (histórico salvo em `complexity_history.json`)
