@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Dict, Sequence
 from .prompt_engine import SYSTEM_PROMPT_CONTEXT
+from .learning_engine import listar_licoes_negativas
 
 
 def build_user_query_prompt(query: str, memories: Sequence[Dict], chunks: Sequence[Dict]) -> str:
@@ -31,10 +32,19 @@ def build_analysis_prompt(code: str, issues: Sequence[str]) -> str:
     )
 
 
-def build_refactor_prompt(code: str) -> str:
+def build_refactor_prompt(code: str, file_path: str | None = None) -> str:
     """Prompt asking for a refactored version of the code."""
+    lesson_text = ""
+    if file_path:
+        licoes = listar_licoes_negativas(file_path)
+        if licoes:
+            items = "\n".join(f"- {e}" for e in licoes)
+            lesson_text = (
+                "Atenção: Neste arquivo, os seguintes padrões de erro já ocorreram:\n"
+                f"{items}\nEvite repetir esses problemas.\n"
+            )
     return (
-        f"{SYSTEM_PROMPT_CONTEXT}\nRefatore o código a seguir mantendo a funcionalidade e melhore o estilo:\n"
+        f"{SYSTEM_PROMPT_CONTEXT}\n{lesson_text}Refatore o código a seguir mantendo a funcionalidade e melhore o estilo:\n"
         f"{code}\n### Código refatorado:\nVamos pensar passo a passo antes de responder.\n"
     )
 
