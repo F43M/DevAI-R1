@@ -17,6 +17,9 @@ MEMORY_TYPES = [
     "aprendizado_importado",
     "regra do usuario",
     "licao aprendida",
+    "refatoracao_sugerida",
+    "risco_reincidente",
+    "ponto_critico",
 ]
 
 try:

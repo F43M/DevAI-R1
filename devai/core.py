@@ -205,6 +205,13 @@ class CodeMemoryAI:
             }
             return summary
 
+        @self.app.post("/symbolic_training")
+        async def symbolic_training(token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            from .symbolic_training import run_symbolic_training
+            return await run_symbolic_training(self.analyzer, self.memory, self.ai_model)
+
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
 

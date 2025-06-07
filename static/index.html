@@ -30,6 +30,7 @@
     <button id="send">Enviar</button>
     <button id="deep">🔎 Raciocinar</button>
     <button id="investigate">🧠 Analisar Projeto</button>
+    <button id="trainSymbolic">🧠 Treinar com base em erros passados</button>
   </div>
 </div>
 <div id="aiPanel">
@@ -86,6 +87,12 @@ document.getElementById('deep').onclick=()=>send(true);
 document.getElementById('investigate').onclick=async()=>{
   appendConsole('Analisando projeto...');
   const r=await fetch('/deep_analysis');
+  const data=await r.json();
+  document.getElementById('aiOutput').textContent=JSON.stringify(data,null,2);
+};
+document.getElementById('trainSymbolic').onclick=async()=>{
+  appendConsole('Treinando com base em erros passados...');
+  const r=await fetch('/symbolic_training',{method:'POST'});
   const data=await r.json();
   document.getElementById('aiOutput').textContent=JSON.stringify(data,null,2);
 };
