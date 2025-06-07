@@ -1,4 +1,5 @@
 import difflib
+import os
 import shutil
 import subprocess
 import tempfile
@@ -9,6 +10,9 @@ from typing import Tuple
 
 from .ai_model import AIModel
 from .config import config, logger
+
+
+SHADOW_BASE = Path("/tmp/devai_shadow")
 
 
 def simulate_update(file_path: str, suggested_code: str) -> Tuple[str, str, str]:
@@ -25,10 +29,12 @@ def simulate_update(file_path: str, suggested_code: str) -> Tuple[str, str, str]
         )
     )
     sim_id = uuid4().hex
-    temp_root = Path(tempfile.mkdtemp(prefix=f"shadow_{sim_id}_"))
+    SHADOW_BASE.mkdir(parents=True, exist_ok=True)
+    temp_root = Path(tempfile.mkdtemp(prefix=f"shadow_{sim_id}_", dir=SHADOW_BASE))
     project_root = Path(config.CODE_ROOT).resolve()
     shutil.copytree(project_root, temp_root / project_root.name, dirs_exist_ok=True)
     temp_file = temp_root / project_root.name / original_path.relative_to(project_root)
+    assert not os.path.samefile(original_path, temp_file)
     temp_file.write_text(suggested_code)
     return diff, str(temp_root), sim_id
 
@@ -51,24 +57,31 @@ async def evaluate_change_with_ia(diff_text: str) -> dict:
     return {"analysis": analysis, "confidence": "Desconhecida"}
 
 
-def log_simulation(file_path: str, evaluation: str, action: str) -> None:
+def log_simulation(
+    sim_id: str, file_path: str, tests_passed: bool, evaluation: str, action: str
+) -> None:
     """Append an entry to the simulation history log."""
     log_dir = Path(config.LOG_DIR)
     log_dir.mkdir(exist_ok=True)
     log = log_dir / "simulation_history.md"
     with log.open("a", encoding="utf-8") as f:
-        f.write(
-            f"[{datetime.now().isoformat()}] Simulação de alteração em {file_path}\n"
-        )
-        f.write(f"Resultado IA: {evaluation}\n")
-        f.write(f"Ação: {action}\n\n")
-    logger.info("Simulação registrada", file=file_path, action=action)
+        f.write(f"## Simulação {sim_id}\n")
+        f.write(f"Arquivo: {file_path}\n")
+        f.write(f"Testes passaram: {tests_passed}\n")
+        f.write(f"Ação: {action}\n")
+        f.write("### Avaliação IA\n")
+        f.write(evaluation + "\n\n")
+    logger.info(
+        "Simulação registrada", file=file_path, action=action, id=sim_id, tests=tests_passed
+    )
 
 
 def run_tests_in_temp(temp_dir: str) -> Tuple[bool, str]:
-    """Execute pytest in a temporary directory."""
+    """Execute pytest in a temporary directory copy of the project."""
+    project_subdir = Path(temp_dir) / Path(config.CODE_ROOT).name
+    cwd = project_subdir if project_subdir.exists() else Path(temp_dir)
     proc = subprocess.run(
-        ["pytest", "-q"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=temp_dir
+        ["pytest", "-q"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=cwd
     )
     return proc.returncode == 0, proc.stdout.decode()
 
