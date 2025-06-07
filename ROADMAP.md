@@ -42,3 +42,6 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Paralelismo de tarefas** acelerando lint e testes *(implementado em parte)*
 - **Uso de modelos menores** para otimizar embeddings *(futuro)*
 
+
+## Melhoria pendente – Função /analyze
+- Implementar contexto multi-turno para /analyze via self.conversation_history persistente.

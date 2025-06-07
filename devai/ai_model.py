@@ -32,13 +32,25 @@ def is_response_incomplete(response: str) -> bool:
         return True
     if text.endswith("..."):
         return True
-    if re.search(r"\b(portanto|logo|entao|isso significa que|ou seja|em conclusao)$", text, re.IGNORECASE):
+    if re.search(
+        r"\b(portanto|logo|entao|isso significa que|ou seja|em conclusao)$",
+        text,
+        re.IGNORECASE,
+    ):
         return True
     if text.count("```") % 2 == 1:
         return True
-    if text.count("{") > text.count("}") or text.count("[") > text.count("]") or text.count("(") > text.count(")"):
+    if (
+        text.count("{") > text.count("}")
+        or text.count("[") > text.count("]")
+        or text.count("(") > text.count(")")
+    ):
         return True
-    if (text.startswith("{") or text.startswith("[")) and not text.endswith("}") and not text.endswith("]"):
+    if (
+        (text.startswith("{") or text.startswith("["))
+        and not text.endswith("}")
+        and not text.endswith("]")
+    ):
         return True
     if not text.endswith((".", "!", "?", "\n", "`", "'", '"', ")", "}", "]")):
         return True
@@ -90,14 +102,18 @@ class AIModel:
             self.models.setdefault("local", {"name": config.LOCAL_MODEL, "local": True})
         self.current = "default"
         self.cache = PromptCache()
-        if not any(m.get("api_key") for m in self.models.values() if not m.get("local")):
+        if not any(
+            m.get("api_key") for m in self.models.values() if not m.get("local")
+        ):
             logger.error("Nenhuma chave de modelo configurada")
         logger.info("Modelos disponíveis", models=list(self.models.keys()))
 
         if config.LOCAL_MODEL and AutoModelForCausalLM:
             try:
                 self.local_tokenizer = AutoTokenizer.from_pretrained(config.LOCAL_MODEL)
-                self.local_model = AutoModelForCausalLM.from_pretrained(config.LOCAL_MODEL)
+                self.local_model = AutoModelForCausalLM.from_pretrained(
+                    config.LOCAL_MODEL
+                )
             except Exception as e:  # pragma: no cover - heavy dep
                 logger.error("Erro ao carregar modelo local", error=str(e))
                 self.local_model = None
@@ -113,7 +129,11 @@ class AIModel:
         else:
             logger.error("Modelo não encontrado", model=name)
 
-    async def generate(self, prompt: Union[str, Sequence[Mapping[str, str]]], max_length: int = config.MAX_CONTEXT_LENGTH) -> str:
+    async def generate(
+        self,
+        prompt: Union[str, Sequence[Mapping[str, str]]],
+        max_length: int = config.MAX_CONTEXT_LENGTH,
+    ) -> str:
         if isinstance(prompt, str):
             key = prompt
             messages = [
@@ -133,8 +153,12 @@ class AIModel:
 
         if self.current == "local" and self.local_model and self.local_tokenizer:
             try:
-                input_ids = self.local_tokenizer.encode(messages[-1]["content"], return_tensors="pt")
-                output = self.local_model.generate(input_ids, max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH))
+                input_ids = self.local_tokenizer.encode(
+                    messages[-1]["content"], return_tensors="pt"
+                )
+                output = self.local_model.generate(
+                    input_ids, max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH)
+                )
                 text = self.local_tokenizer.decode(output[0], skip_special_tokens=True)
                 self.cache.add(key, text)
                 metrics.record_call(0)
@@ -146,9 +170,16 @@ class AIModel:
             cfg = self.models.get(model_name, {})
             if cfg.get("local") and self.local_model and self.local_tokenizer:
                 try:
-                    input_ids = self.local_tokenizer.encode(messages[-1]["content"], return_tensors="pt")
-                    output = self.local_model.generate(input_ids, max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH))
-                    return self.local_tokenizer.decode(output[0], skip_special_tokens=True)
+                    input_ids = self.local_tokenizer.encode(
+                        messages[-1]["content"], return_tensors="pt"
+                    )
+                    output = self.local_model.generate(
+                        input_ids,
+                        max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH),
+                    )
+                    return self.local_tokenizer.decode(
+                        output[0], skip_special_tokens=True
+                    )
                 except Exception as e:  # pragma: no cover - heavy dep
                     logger.error("Erro no modelo local", error=str(e))
                     return f"Erro: {str(e)}"
@@ -174,7 +205,9 @@ class AIModel:
                     data = await resp.json()
                     return data["choices"][0]["message"]["content"]
                 error = await resp.text()
-                logger.error("Erro ao chamar modelo", model=model_name, status=resp.status)
+                logger.error(
+                    "Erro ao chamar modelo", model=model_name, status=resp.status
+                )
                 return f"Erro: {error}"
             except Exception as e:
                 logger.error("Falha na conexao", model=model_name, error=str(e))
@@ -199,6 +232,7 @@ class AIModel:
         annotation = f"# IA usada: {used_model}\n# PromptID: {prompt_id}\n# RespostaID: {response_id}\n"
         from .symbolic_verification import evaluate_ai_response
         from .decision_log import log_decision
+
         score, details = evaluate_ai_response(response_text)
         entry = {
             "timestamp": datetime.now().isoformat(),
@@ -217,9 +251,12 @@ class AIModel:
             logger.error("Erro ao registrar prompt", error=str(e))
 
         from pathlib import Path
+
         hist_dir = Path("history/prompts")
         hist_dir.mkdir(parents=True, exist_ok=True)
-        hist_file = hist_dir / f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{used_model}.txt"
+        hist_file = (
+            hist_dir / f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{used_model}.txt"
+        )
         hist_file.write_text(response_text)
 
         fallback = used_model != self.current
@@ -241,21 +278,35 @@ class AIModel:
 
     async def safe_api_call(
         self,
-        prompt: str,
+        prompt: Union[str, Sequence[Mapping[str, str]]],
         max_tokens: int,
         context: str = "",
         memory: "MemoryManager | None" = None,
     ) -> str:
         """Call the model ensuring the answer is complete."""
-        available = max_tokens - len(prompt.split()) - len(context.split())
+        if isinstance(prompt, str):
+            prompt_len = len(prompt.split())
+        else:
+            prompt_len = sum(len(m.get("content", "").split()) for m in prompt)
+        available = max_tokens - prompt_len - len(context.split())
         if available <= 0:
             available = max_tokens
         attempts = 0
         note = ""
         response = await self.generate(prompt, max_length=available)
-        while attempts < 3 and (is_response_incomplete(response) or len(response.split()) >= available - 1):
+        while attempts < 3 and (
+            is_response_incomplete(response) or len(response.split()) >= available - 1
+        ):
             attempts += 1
-            cont_prompt = f"{context}\nContinue exatamente de onde você parou. Não repita partes da resposta anterior."
+            if isinstance(prompt, str):
+                cont_prompt = f"{context}\nContinue exatamente de onde você parou. Não repita partes da resposta anterior."
+            else:
+                cont_prompt = list(prompt) + [
+                    {
+                        "role": "system",
+                        "content": "Continue exatamente de onde você parou. Não repita partes da resposta anterior.",
+                    }
+                ]
             continuation = await self.generate(cont_prompt, max_length=available)
             response = rebuild_response(response, continuation)
         if attempts:
@@ -265,8 +316,9 @@ class AIModel:
             try:
                 Path("logs").mkdir(exist_ok=True)
                 with open("logs/api_recovery_log.md", "a", encoding="utf-8") as f:
+                    preview = prompt if isinstance(prompt, str) else str(prompt)
                     f.write(
-                        f"- {datetime.now().isoformat()} | tokens:{available} | tentativas:{attempts} | prompt:{prompt[:60]}\n"
+                        f"- {datetime.now().isoformat()} | tokens:{available} | tentativas:{attempts} | prompt:{preview[:60]}\n"
                     )
             except Exception:
                 pass
@@ -277,7 +329,12 @@ class AIModel:
                         "type": "recovery",
                         "memory_type": "resposta_cortada",
                         "content": response,
-                        "metadata": {"prompt": prompt, "status": "incompleto"},
+                        "metadata": {
+                            "prompt": (
+                                prompt if isinstance(prompt, str) else str(prompt)
+                            ),
+                            "status": "incompleto",
+                        },
                         "resposta_recomposta": attempts > 0,
                     }
                 )
