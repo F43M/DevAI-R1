@@ -13,7 +13,7 @@ async def cli_main():
     asyncio.create_task(ai.analyzer.deep_scan_app())
     print("\nDev IA Avançado Pronto!")
     print("Comandos disponíveis:")
-    print("/memoria <query> - Busca memórias relevantes")
+    print("/memoria <query>|tipo:<tag> - Busca memórias relevantes")
     print("/tarefa <nome> [args] - Executa uma tarefa")
     print("/analisar <função> - Analisa impacto de mudanças")
     print("/verificar - Verifica conformidade com especificação")
@@ -33,8 +33,13 @@ async def cli_main():
             if user_input.lower() == "/sair":
                 break
             elif user_input.lower().startswith("/memoria"):
-                query = user_input[len("/memoria"):].strip() or "recent"
-                memories = ai.memory.search(query, top_k=5)
+                query = user_input[len("/memoria"):].strip()
+                if query.startswith("tipo:"):
+                    tag = query.split(":", 1)[1].strip()
+                    memories = ai.memory.search("", top_k=5, memory_type=tag)
+                else:
+                    q = query or "recent"
+                    memories = ai.memory.search(q, top_k=5)
                 print("\nMemórias relevantes:")
                 for m in memories:
                     print(f"- [{m['similarity_score']:.2f}] {m['content'][:80]}... (tags: {', '.join(m['tags'])})")
@@ -123,7 +128,7 @@ async def cli_main():
                     feedback_db.add(parts[0], parts[1], parts[2])
                     print("Feedback registrado")
             else:
-                response = await ai.generate_response(user_input)
+                response = await ai.generate_response(user_input, double_check=ai.double_check)
                 print("\nResposta:")
                 print(response)
         except Exception as e:

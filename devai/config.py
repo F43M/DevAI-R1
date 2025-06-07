@@ -37,6 +37,7 @@ class Config:
     LOCAL_MODEL: str = os.getenv("LOCAL_MODEL", "")
     COMPLEXITY_HISTORY: str = "complexity_history.json"
     LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
+    DOUBLE_CHECK: bool = False
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import List, Dict, Sequence
+from .prompt_engine import SYSTEM_PROMPT_CONTEXT
 
 
 def build_user_query_prompt(query: str, memories: Sequence[Dict], chunks: Sequence[Dict]) -> str:
@@ -25,15 +26,15 @@ def build_cot_prompt(query: str, memories: Sequence[Dict], chunks: Sequence[Dict
 def build_analysis_prompt(code: str, issues: Sequence[str]) -> str:
     """Prompt asking the model to review a code snippet."""
     return (
-        "Analise o código a seguir e sugira melhorias de forma breve:\n"
-        f"{code}\nProblemas detectados: {', '.join(issues)}"
+        f"{SYSTEM_PROMPT_CONTEXT}\nAnalise o código a seguir e sugira melhorias de forma breve:\n"
+        f"{code}\nProblemas detectados: {', '.join(issues)}\nVamos pensar passo a passo antes de responder."
     )
 
 
 def build_refactor_prompt(code: str) -> str:
     """Prompt asking for a refactored version of the code."""
     return (
-        "Refatore o código a seguir mantendo a funcionalidade e melhore o estilo:\n"
-        f"{code}\n### Código refatorado:\n"
+        f"{SYSTEM_PROMPT_CONTEXT}\nRefatore o código a seguir mantendo a funcionalidade e melhore o estilo:\n"
+        f"{code}\n### Código refatorado:\nVamos pensar passo a passo antes de responder.\n"
     )
 
