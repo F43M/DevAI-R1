@@ -113,11 +113,13 @@ class CodeAnalyzer:
                         )
             self.code_chunks.update({c["name"]: c for c in chunks})
             for chunk in chunks:
+                from .symbolic_memory_tagger import tag_memory_entry
+                base_tags = ["code", chunk['type'].lower(), os.path.basename(chunk['file'])]
                 memory_entry = {
                     "type": "code_chunk",
                     "content": f"{chunk['type']} {chunk['name']} em {chunk['file']}",
                     "metadata": chunk,
-                    "tags": ["code", chunk['type'].lower(), os.path.basename(chunk['file'])],
+                    "tags": base_tags + tag_memory_entry(chunk),
                 }
                 self.memory.save(memory_entry)
         except Exception as e:
@@ -172,12 +174,14 @@ class CodeAnalyzer:
             self.code_graph.add_node(name, **chunk)
 
         self.code_chunks.update({c["name"]: c for c in chunks})
+        from .symbolic_memory_tagger import tag_memory_entry
         for chunk in chunks:
+            base_tags = ["code", ftype, os.path.basename(chunk['file'])]
             self.memory.save({
                 "type": "code_chunk",
                 "content": f"{chunk['type']} {chunk['name']} em {chunk['file']}",
                 "metadata": chunk,
-                "tags": ["code", ftype, os.path.basename(chunk['file'])],
+                "tags": base_tags + tag_memory_entry(chunk),
             })
 
     def _get_dependencies(self, node):

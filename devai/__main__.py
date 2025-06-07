@@ -11,6 +11,7 @@ def main():
     parser = argparse.ArgumentParser(description="CodeMemoryAI - Assistente de Código Inteligente")
     parser.add_argument("--api", action="store_true", help="Inicia o servidor API")
     parser.add_argument("--cli", action="store_true", help="Inicia a interface de linha de comando")
+    parser.add_argument("--observer", action="store_true", help="Modo observador passivo")
     args = parser.parse_args()
     check_dependencies()
     if not config.OPENROUTER_API_KEY:
@@ -19,6 +20,9 @@ def main():
     if args.api:
         ai = CodeMemoryAI()
         asyncio.run(ai.run())
+    elif args.observer:
+        ai = CodeMemoryAI()
+        asyncio.run(ai._learning_loop())
     elif args.cli:
         asyncio.run(cli_main())
     else:

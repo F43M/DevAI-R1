@@ -154,6 +154,9 @@ class AIModel:
 
         response_id = uuid4().hex
         annotation = f"# IA usada: {used_model}\n# PromptID: {prompt_id}\n# RespostaID: {response_id}\n"
+        from .symbolic_verification import evaluate_ai_response
+        from .decision_log import log_decision
+        score, details = evaluate_ai_response(response_text)
         entry = {
             "timestamp": datetime.now().isoformat(),
             "model": used_model,
@@ -161,12 +164,31 @@ class AIModel:
             "response_id": response_id,
             "prompt": messages[-1]["content"],
             "response": response_text,
+            "evaluation": {"score": score, "details": details},
+            "fallback": used_model != self.current,
         }
         try:
             with open("prompt_log.jsonl", "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
             logger.error("Erro ao registrar prompt", error=str(e))
+
+        from pathlib import Path
+        hist_dir = Path("history/prompts")
+        hist_dir.mkdir(parents=True, exist_ok=True)
+        hist_file = hist_dir / f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{used_model}.txt"
+        hist_file.write_text(response_text)
+
+        fallback = used_model != self.current
+        log_decision(
+            "resposta",
+            "ai_model",
+            "geracao",
+            used_model,
+            response_text,
+            score=score,
+            fallback=fallback,
+        )
 
         self.cache.add(key, response_text)
         return annotation + response_text

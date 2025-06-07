@@ -6,3 +6,4 @@ dependencias_principais:
   - networkx
   - aiohttp
 objetivo: Assistente de desenvolvimento com IA e memoria vetorial
+task_mode: step_by_step
