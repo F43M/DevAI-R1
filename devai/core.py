@@ -195,6 +195,22 @@ class CodeMemoryAI:
             diff = "\n".join(unified_diff(old, new, fromfile="old", tofile="new"))
             return {"diff": diff}
 
+        @self.app.post("/dry_run")
+        async def dry_run(file_path: str, suggested_code: str):
+            from .shadow_mode import simulate_update, evaluate_change_with_ia, log_simulation, run_tests_in_temp
+            diff, temp_root, sim_id = simulate_update(file_path, suggested_code)
+            tests_ok, test_output = run_tests_in_temp(temp_root)
+            evaluation = await evaluate_change_with_ia(diff)
+            status = "shadow_failed" if not tests_ok else "shadow_declined"
+            log_simulation(file_path, evaluation["analysis"], status)
+            return {
+                "id": sim_id,
+                "diff": diff,
+                "tests_passed": tests_ok,
+                "test_output": test_output,
+                "evaluation": evaluation,
+            }
+
         @self.app.get("/deep_analysis")
         async def deep_analysis(token: str = ""):
             """Run a project wide analysis and return a summary."""
