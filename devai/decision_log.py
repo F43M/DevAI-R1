@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Tuple
 
 try:
-    import yaml
-except Exception:  # pragma: no cover - optional dependency
-    yaml = None
+    import yaml  # type: ignore
+except Exception:  # pragma: no cover - fallback when PyYAML is missing
+    from . import yaml_fallback as yaml
 
 from .config import logger
 
@@ -25,7 +25,7 @@ def log_decision(
     """Register a decision entry in ``decision_log.yaml`` and ``decision_log.md``."""
     path = Path("decision_log.yaml")
     data = []
-    if path.exists() and yaml is not None:
+    if path.exists():
         try:
             data = yaml.safe_load(path.read_text()) or []
         except Exception:
@@ -46,8 +46,7 @@ def log_decision(
     if fallback is not None:
         entry["fallback"] = fallback
     data.append(entry)
-    if yaml is not None:
-        path.write_text(yaml.safe_dump(data, allow_unicode=True))
+    path.write_text(yaml.safe_dump(data, allow_unicode=True))
 
     # Also append a short summary in Markdown for quick human inspection
     md_path = Path("decision_log.md")

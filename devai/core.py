@@ -179,7 +179,10 @@ class CodeMemoryAI:
             from pathlib import Path
             path = Path("decision_log.yaml")
             if path.exists():
-                import yaml  # type: ignore
+                try:
+                    import yaml  # type: ignore
+                except Exception:  # pragma: no cover - fallback when PyYAML is missing
+                    from . import yaml_fallback as yaml
                 return yaml.safe_load(path.read_text())
             return []
 
