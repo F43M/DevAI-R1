@@ -206,7 +206,7 @@ class TaskManager:
                         prompt = build_analysis_prompt(
                             chunk["code"], analysis["issues"] + analysis["rule_findings"]
                         )
-                        suggestion = await self.ai_model.generate(prompt, max_length=200)
+                        suggestion = await self.ai_model.safe_api_call(prompt, 200, prompt, self.memory)
                         analysis["ai_suggestion"] = suggestion.strip()
                     except Exception as e:
                         logger.error("Erro ao gerar sugestão da IA", chunk=chunk["name"], error=str(e))
@@ -410,7 +410,12 @@ class TaskManager:
         from .prompt_utils import build_refactor_prompt
         prompt = build_refactor_prompt(original, file_path)
         try:
-            suggestion = await self.ai_model.generate(prompt, max_length=len(original) + 200)
+            suggestion = await self.ai_model.safe_api_call(
+                prompt,
+                len(original) + 200,
+                prompt,
+                self.memory,
+            )
         except Exception as e:
             logger.error("Erro ao gerar refatoração", error=str(e))
             return {"error": str(e)}
@@ -430,7 +435,12 @@ class TaskManager:
             from .prompt_engine import build_debug_prompt
             debug = build_debug_prompt(out, "", original[:200])
             try:
-                suggestion = await self.ai_model.generate(debug, max_length=len(original) + 200)
+                suggestion = await self.ai_model.safe_api_call(
+                    debug,
+                    len(original) + 200,
+                    debug,
+                    self.memory,
+                )
             except Exception as e:
                 logger.error("Erro no fallback de refatoracao", error=str(e))
                 return {"error": str(e)}

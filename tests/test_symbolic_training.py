@@ -15,6 +15,9 @@ class DummyModel:
             return 'Padronizar estrutura'
         return 'ok'
 
+    async def safe_api_call(self, prompt, max_tokens, context="", memory=None):
+        return await self.generate(prompt, max_length=max_tokens)
+
 
 def test_run_symbolic_training(tmp_path, monkeypatch):
     code_root = tmp_path / 'app'

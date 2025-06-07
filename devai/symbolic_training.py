@@ -40,13 +40,29 @@ async def run_symbolic_training(
         meta = {"file": str(file_path)}
         if history:
             meta["historico_erros"] = history
-        explain = await ai_model.generate(f"O que esse codigo faz?\n{code}")
-        bad = await ai_model.generate(f"Ha padroes ruins aqui?\n{code}")
-        risk = await ai_model.generate(
-            f"Considerando erros passados {history}, que erro pode se repetir?\n{code}"
+        explain = await ai_model.safe_api_call(
+            f"O que esse codigo faz?\n{code}",
+            config.MAX_CONTEXT_LENGTH,
+            code,
+            memory,
         )
-        improve = await ai_model.generate(
-            f"Como melhorar isso com seguranca? Pense passo a passo.\n{code}"
+        bad = await ai_model.safe_api_call(
+            f"Ha padroes ruins aqui?\n{code}",
+            config.MAX_CONTEXT_LENGTH,
+            code,
+            memory,
+        )
+        risk = await ai_model.safe_api_call(
+            f"Considerando erros passados {history}, que erro pode se repetir?\n{code}",
+            config.MAX_CONTEXT_LENGTH,
+            code,
+            memory,
+        )
+        improve = await ai_model.safe_api_call(
+            f"Como melhorar isso com seguranca? Pense passo a passo.\n{code}",
+            config.MAX_CONTEXT_LENGTH,
+            code,
+            memory,
         )
         memory.save(
             {"type": "symbolic_training", "memory_type": "ponto_critico", "content": explain, "metadata": meta}

@@ -20,6 +20,39 @@ except Exception:  # pragma: no cover - optional dependency
     AutoTokenizer = None
 
 from .config import config, logger, metrics
+import re
+from pathlib import Path
+from .memory import MemoryManager
+
+
+def is_response_incomplete(response: str) -> bool:
+    """Heuristically detect if the response looks truncated."""
+    text = response.rstrip()
+    if not text:
+        return True
+    if text.endswith("..."):
+        return True
+    if re.search(r"\b(portanto|logo|entao|isso significa que|ou seja|em conclusao)$", text, re.IGNORECASE):
+        return True
+    if text.count("```") % 2 == 1:
+        return True
+    if text.count("{") > text.count("}") or text.count("[") > text.count("]") or text.count("(") > text.count(")"):
+        return True
+    if (text.startswith("{") or text.startswith("[")) and not text.endswith("}") and not text.endswith("]"):
+        return True
+    if not text.endswith((".", "!", "?", "\n", "`", "'", '"', ")", "}", "]")):
+        return True
+    return False
+
+
+def rebuild_response(original: str, continuation: str) -> str:
+    """Join two parts of a response avoiding duplicates."""
+    orig = original.rstrip()
+    cont = continuation.lstrip()
+    for i in range(min(len(orig), len(cont)), 0, -1):
+        if orig.endswith(cont[:i]):
+            return orig + cont[i:]
+    return orig + "\n" + cont
 
 
 class PromptCache:
@@ -205,3 +238,47 @@ class AIModel:
 
     async def close(self):
         await self.session.close()
+
+    async def safe_api_call(
+        self,
+        prompt: str,
+        max_tokens: int,
+        context: str = "",
+        memory: "MemoryManager | None" = None,
+    ) -> str:
+        """Call the model ensuring the answer is complete."""
+        available = max_tokens - len(prompt.split()) - len(context.split())
+        if available <= 0:
+            available = max_tokens
+        attempts = 0
+        note = ""
+        response = await self.generate(prompt, max_length=available)
+        while attempts < 3 and (is_response_incomplete(response) or len(response.split()) >= available - 1):
+            attempts += 1
+            cont_prompt = f"{context}\nContinue exatamente de onde você parou. Não repita partes da resposta anterior."
+            continuation = await self.generate(cont_prompt, max_length=available)
+            response = rebuild_response(response, continuation)
+        if attempts:
+            note = "Essa resposta foi reconstruída após corte automático.\n"
+        incomplete = is_response_incomplete(response)
+        if incomplete:
+            try:
+                Path("logs").mkdir(exist_ok=True)
+                with open("logs/api_recovery_log.md", "a", encoding="utf-8") as f:
+                    f.write(
+                        f"- {datetime.now().isoformat()} | tokens:{available} | tentativas:{attempts} | prompt:{prompt[:60]}\n"
+                    )
+            except Exception:
+                pass
+            note += "[Resposta possivelmente incompleta]\n"
+            if attempts >= 3 and memory is not None:
+                memory.save(
+                    {
+                        "type": "recovery",
+                        "memory_type": "resposta_cortada",
+                        "content": response,
+                        "metadata": {"prompt": prompt, "status": "incompleto"},
+                        "resposta_recomposta": attempts > 0,
+                    }
+                )
+        return note + response

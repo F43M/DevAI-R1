@@ -25,6 +25,9 @@ def test_generate_response_short_query(monkeypatch):
         async def generate(self, prompt, max_length=0):
             return "ok"
 
+        async def safe_api_call(self, prompt, max_tokens, context="", memory=None):
+            return "ok"
+
     ai.ai_model = DummyModel()
 
     async def run():
