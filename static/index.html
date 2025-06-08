@@ -10,6 +10,8 @@
   #sidebar { width:220px; background:#f0f0f0; overflow-y:auto; border-right:1px solid #ccc; padding:8px; }
   #main { flex:1; display:flex; flex-direction:column; }
   #editor { flex:1; }
+  .diff .added{color:green;}
+  .diff .removed{color:red;}
   #console { height:150px; background:#111; color:#0f0; overflow-y:auto; font-family:monospace; padding:4px; }
   #inputArea { display:flex; border-top:1px solid #ccc; }
   #inputArea textarea { flex:1; }
@@ -33,11 +35,13 @@
     <button id="trainSymbolic">🧠 Treinar com base em erros passados</button>
     <button id="autoMonitor">🧭 Autoavaliação Inteligente</button>
     <button id="shadowRefactor">🕶️ Simular Refatoração</button>
+    <button id="applyRefactor">✅ Aplicar Refatoração</button>
   </div>
 </div>
 <div id="aiPanel">
   <h3>Painel IA</h3>
   <pre id="aiOutput"></pre>
+  <pre id="diffOutput" class="diff"></pre>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
 <script>
@@ -118,11 +122,27 @@ document.getElementById('autoMonitor').onclick=async()=>{
 document.getElementById('shadowRefactor').onclick=async()=>{
   if(!window.currentFile) return;
   const code=editor.getValue();
+  window.lastDryRunCode=code;
   appendConsole('Simulando refatoração...');
   const r=await fetch('/dry_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:code})});
   const data=await r.json();
-  appendConsole(data.diff);
-  document.getElementById('aiOutput').textContent=data.evaluation.analysis;
+  const diffLines=data.diff.split("\n").map(l=>{
+    if(l.startsWith('+')) return '<span class="added">'+l+'</span>';
+    if(l.startsWith('-')) return '<span class="removed">'+l+'</span>';
+    return l;
+  }).join('\n');
+  document.getElementById('diffOutput').innerHTML=diffLines;
+  let summary='';
+  if(data.tests_passed){summary+='✅ Todos os testes passaram.';}
+  else if(!data.test_output){summary+='⚠️ Nenhum teste encontrado no projeto.';}
+  else{summary+='⚠️ Alguns testes falharam.';}
+  document.getElementById('aiOutput').textContent=summary+'\n'+data.evaluation.analysis;
+};
+document.getElementById('applyRefactor').onclick=async()=>{
+  if(!window.currentFile||!window.lastDryRunCode) return;
+  const r=await fetch('/apply_refactor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:window.lastDryRunCode})});
+  const d=await r.json();
+  appendConsole(d.status||'applied');
 };
 </script>
 </body>

@@ -54,3 +54,9 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - Implementar rastreamento de origem das regras aprendidas
 - Executar treinamento simbólico de forma assíncrona
 - Autoavaliação com rastreamento simbólico por regra
+
+## Melhoria pendente – Aplicação de refatoração simulada
+- Permitir aplicar automaticamente o código sugerido pelo /dry_run preservando backup.
+
+## Melhoria pendente – Análise inteligente do test_output
+- Filtrar falhas individuais e exibir mensagens mais claras no resumo da simulação.
