@@ -42,7 +42,7 @@ class TaskManager:
 
     def _load_tasks(self, task_file: str) -> Dict:
         if os.path.exists(task_file):
-            with open(task_file, "r") as f:
+            with open(task_file, "r", encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         return {}
 
