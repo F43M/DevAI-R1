@@ -232,6 +232,23 @@ class CodeMemoryAI:
                 "evaluation": evaluation,
             }
 
+        @self.app.post("/apply_refactor")
+        async def apply_refactor(file_path: str, suggested_code: str, token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            path = Path(file_path)
+            old_lines = path.read_text().splitlines()
+            path.write_text(suggested_code)
+            self.history.record(file_path, "edit", old=old_lines, new=suggested_code.splitlines())
+            self.memory.save({
+                "type": "refatoracao",
+                "memory_type": "refatoracao aprovada",
+                "content": f"Refatoracao aplicada em {file_path}",
+                "metadata": {"arquivo": file_path, "contexto": "dry_run"},
+            })
+            return {"status": "applied"}
+
+
         @self.app.get("/deep_analysis")
         async def deep_analysis(token: str = ""):
             """Run a project wide analysis and return a summary."""
