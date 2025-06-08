@@ -68,8 +68,8 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - Executar treinamento simbólico de forma assíncrona
 - Autoavaliação com rastreamento simbólico por regra
 
-## Melhoria pendente – Aplicação de refatoração simulada
-- Permitir aplicar automaticamente o código sugerido pelo /dry_run preservando backup.
+## Melhoria implementada – Aplicação de refatoração simulada
+- Código do /dry_run pode ser aplicado automaticamente com backup e rollback.
 
 ## Melhoria pendente – Análise inteligente do test_output
 - Filtrar falhas individuais e exibir mensagens mais claras no resumo da simulação.

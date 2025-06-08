@@ -410,24 +410,38 @@ class CodeMemoryAI:
         async def apply_refactor(req: ApplyRefactorRequest, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
+
+            from .update_manager import UpdateManager
+
             path = Path(req.file_path)
             old_lines = path.read_text().splitlines()
-            path.write_text(req.suggested_code)
-            self.history.record(
-                req.file_path,
-                "edit",
-                old=old_lines,
-                new=req.suggested_code.splitlines(),
-            )
-            self.memory.save(
-                {
-                    "type": "refatoracao",
-                    "memory_type": "refatoracao aprovada",
-                    "content": f"Refatoracao aplicada em {req.file_path}",
-                    "metadata": {"arquivo": req.file_path, "contexto": "dry_run"},
-                }
-            )
-            return {"status": "applied"}
+
+            def apply_func(p: Path) -> None:
+                p.write_text(req.suggested_code)
+
+            updater = UpdateManager()
+            success = updater.safe_apply(path, apply_func, keep_backup=True)
+
+            if success:
+                self.history.record(
+                    req.file_path,
+                    "edit",
+                    old=old_lines,
+                    new=req.suggested_code.splitlines(),
+                )
+                self.memory.save(
+                    {
+                        "type": "refatoracao",
+                        "memory_type": "refatoracao aprovada",
+                        "content": f"Refatoracao aplicada em {req.file_path}",
+                        "metadata": {"arquivo": req.file_path, "contexto": "dry_run"},
+                    }
+                )
+                status = "applied"
+            else:
+                status = "rolled_back"
+
+            return {"status": status}
 
         @self.app.get("/deep_analysis")
         async def deep_analysis(token: str = ""):
