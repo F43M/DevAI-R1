@@ -77,3 +77,9 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 
 ## Melhoria pendente – Sandbox de execuções de teste
 - Aplicar sandbox de execução com limite de CPU e memória para testes isolados.
+
+## Adaptive Prompt Construction
+- Implementar filtragem condicional de contextos no prompt.
+- Registrar no log quais blocos foram incluídos e por quê.
+- Ajustar a frase "Explique antes de responder." apenas quando necessário.
+- #future-enhancement:intent-routing

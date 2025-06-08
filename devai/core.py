@@ -462,7 +462,7 @@ class CodeMemoryAI:
             actions = self.tasks.last_actions()
             graph_summary = self.analyzer.graph_summary()
             from .prompt_engine import (
-                build_cot_prompt,
+                build_dynamic_prompt,
                 collect_recent_logs,
                 SYSTEM_PROMPT_CONTEXT,
             )
@@ -472,12 +472,16 @@ class CodeMemoryAI:
             self.reason_stack.append("Memórias coletadas")
             # FIXME: Ativar explicação apenas em modo Raciocinar
             # query += "\nExplique antes de responder."
-            prompt = build_cot_prompt(
+            context_blocks = {
+                "memories": contextual_memories,
+                "graph": graph_summary,
+                "actions": actions,
+                "logs": logs,
+            }
+            prompt = build_dynamic_prompt(
                 query,
-                graph_summary,
-                contextual_memories,
-                actions,
-                logs,
+                context_blocks,
+                "deep" if double_check else "normal",
             )
             if double_check:
                 plan = await self.ai_model.safe_api_call(
@@ -539,16 +543,16 @@ class CodeMemoryAI:
             suggestions = self.memory.search(query, top_k=1)
             actions = self.tasks.last_actions()
             graph_summary = self.analyzer.graph_summary()
-            from .prompt_engine import build_cot_prompt, collect_recent_logs
+            from .prompt_engine import build_dynamic_prompt, collect_recent_logs
 
             logs = collect_recent_logs()
-            prompt = build_cot_prompt(
-                query,
-                graph_summary,
-                contextual_memories,
-                actions,
-                logs,
-            )
+            context_blocks = {
+                "memories": contextual_memories,
+                "graph": graph_summary,
+                "actions": actions,
+                "logs": logs,
+            }
+            prompt = build_dynamic_prompt(query, context_blocks, "deep")
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
 
