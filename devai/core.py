@@ -29,6 +29,7 @@ from .tasks import TaskManager
 from .log_monitor import LogMonitor
 from .ai_model import AIModel
 from .learning_engine import LearningEngine
+from .conversation_handler import ConversationHandler
 
 
 class CodeMemoryAI:
@@ -53,14 +54,23 @@ class CodeMemoryAI:
         self.background_tasks = set()
         self.last_average_complexity = 0.0
         self.reason_stack = []
-        # FUTURE: Implementar contexto multi-turno para /analyze via self.conversation_history
-        self.conversation_history: List[Dict[str, str]] = []
+        # Gerencia o histórico de cada sessão de conversa
+        self.conv_handler = ConversationHandler()
         self.double_check = config.DOUBLE_CHECK
         self._start_background_tasks()
         logger.info(
             "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter",
             code_root=config.CODE_ROOT,
         )
+
+    @property
+    def conversation_history(self) -> List[Dict[str, str]]:
+        """Compatibilidade com histórico padrão."""
+        return self.conv_handler.history("default")
+
+    @conversation_history.setter
+    def conversation_history(self, value: List[Dict[str, str]]):
+        self.conv_handler.conversation_context["default"] = value
 
     def _start_background_tasks(self):
         from .metacognition import MetacognitionLoop
@@ -104,18 +114,20 @@ class CodeMemoryAI:
             return token == config.API_SECRET
 
         @self.app.post("/analyze")
-        async def analyze_code(query: str):
-            return await self.generate_response(query, double_check=self.double_check)
+        async def analyze_code(query: str, session_id: str = "default"):
+            return await self.generate_response(
+                query, double_check=self.double_check, session_id=session_id
+            )
 
         @self.app.post("/reset_conversation")
-        async def reset_conversation():
-            self.conversation_history.clear()
-            return {"status": "reset"}
+        async def reset_conversation(session_id: str = "default"):
+            self.conv_handler.reset(session_id)
+            return {"status": "reset", "session": session_id}
 
         @self.app.post("/analyze_deep")
-        async def analyze_deep(query: str):
+        async def analyze_deep(query: str, session_id: str = "default"):
             """Perform a deeper analysis returning plan and answer separately."""
-            return await self.generate_response_with_plan(query)
+            return await self.generate_response_with_plan(query, session_id=session_id)
 
         @self.app.get("/memory")
         async def search_memory(query: str, top_k: int = 5, level: str | None = None):
@@ -440,18 +452,20 @@ class CodeMemoryAI:
             self.last_average_complexity = avg
             self.complexity_tracker.record(avg)
 
-    async def _process_command(self, query: str) -> str | None:
+    async def _process_command(self, query: str, session_id: str) -> str | None:
         if query.strip() == "/resetar":
-            self.conversation_history.clear()
+            self.conv_handler.reset(session_id)
             return "Conversa resetada."
         if query.startswith("/teste"):
             output = await self.tasks.run_task("run_tests")
             return "\n".join(output)
         return None
 
-    async def generate_response(self, query: str, double_check: bool = False) -> str:
+    async def generate_response(
+        self, query: str, double_check: bool = False, session_id: str = "default"
+    ) -> str:
         try:
-            cmd = await self._process_command(query)
+            cmd = await self._process_command(query, session_id)
             if cmd is not None:
                 return cmd
             if len(query.split()) < 3:
@@ -500,16 +514,22 @@ class CodeMemoryAI:
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
             self.reason_stack.append("Prompt preparado")
+            history = (
+                self.conv_handler.last(session_id, 4) if session_id else []
+            )
             messages = (
                 [{"role": "system", "content": SYSTEM_PROMPT_CONTEXT}]
-                + self.conversation_history[-4:]
+                + history
                 + [{"role": "user", "content": prompt}]
             )
             result = await self.ai_model.safe_api_call(
                 messages, config.MAX_CONTEXT_LENGTH, prompt, self.memory
             )
-            self.conversation_history.append({"role": "user", "content": query})
-            self.conversation_history.append({"role": "assistant", "content": result})
+            if session_id:
+                self.conv_handler.append(session_id, "user", query)
+                self.conv_handler.append(session_id, "assistant", result)
+            else:
+                logger.info("multi_turn_fallback", session=session_id)
             self.reason_stack.append("Resposta gerada")
             return (
                 result
@@ -528,9 +548,11 @@ class CodeMemoryAI:
         logger.warning("A IA não retornou plano separado. Verificar prompt.")
         return "", text.strip()
 
-    async def generate_response_with_plan(self, query: str) -> Dict[str, str]:
+    async def generate_response_with_plan(
+        self, query: str, session_id: str = "default"
+    ) -> Dict[str, str]:
         try:
-            cmd = await self._process_command(query)
+            cmd = await self._process_command(query, session_id)
             if cmd is not None:
                 return {"plan": "", "response": cmd}
             if len(query.split()) < 3:
@@ -563,9 +585,10 @@ class CodeMemoryAI:
                 "2. Depois, forneça a resposta final ao pedido do usuário com base nesse plano.\n"
                 "Separe o plano da resposta com a marcação ===RESPOSTA===."
             )
+            history = self.conv_handler.last(session_id, 4) if session_id else []
             messages = [
                 {"role": "system", "content": system_msg},
-                *self.conversation_history[-4:],
+                *history,
                 {"role": "user", "content": prompt},
             ]
             raw = await self.ai_model.safe_api_call(
@@ -576,8 +599,11 @@ class CodeMemoryAI:
                 temperature=0.2,
             )
             plan, resp = self._split_plan_response(raw)
-            self.conversation_history.append({"role": "user", "content": query})
-            self.conversation_history.append({"role": "assistant", "content": resp})
+            if session_id:
+                self.conv_handler.append(session_id, "user", query)
+                self.conv_handler.append(session_id, "assistant", resp)
+            else:
+                logger.info("multi_turn_fallback", session=session_id)
             return {"plan": plan, "response": resp}
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))

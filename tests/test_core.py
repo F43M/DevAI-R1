@@ -2,8 +2,10 @@ import asyncio
 import types
 from datetime import datetime
 from devai.core import CodeMemoryAI
+from devai.conversation_handler import ConversationHandler
 
 ai = object.__new__(CodeMemoryAI)
+ai.conv_handler = ConversationHandler()
 ai.analyzer = types.SimpleNamespace(
     graph_summary=lambda: "",
     code_chunks={},
@@ -30,6 +32,7 @@ def test_infer_return_type():
 def test_generate_response_short_query(monkeypatch):
     ai.memory = type("M", (), {"search": lambda self, q, level=None, top_k=5: []})()
     ai._find_relevant_code = lambda q: []
+    ai.conv_handler = ConversationHandler()
     ai.conversation_history = []
     ai.tasks = type(
         "T",
@@ -58,6 +61,7 @@ def test_generate_response_short_query(monkeypatch):
 
 def test_reset_command(monkeypatch):
     ai.memory = type("M", (), {"search": lambda self, q, level=None, top_k=5: []})()
+    ai.conv_handler = ConversationHandler()
     ai.conversation_history = []
     ai.tasks = type(
         "T",
@@ -86,6 +90,7 @@ def test_reset_command(monkeypatch):
 
 def test_conversation_history(monkeypatch):
     ai.memory = type("M", (), {"search": lambda self, q, level=None, top_k=5: []})()
+    ai.conv_handler = ConversationHandler()
     ai.conversation_history = []
     ai.tasks = type(
         "T",

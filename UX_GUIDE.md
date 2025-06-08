@@ -43,6 +43,14 @@ mostrando a mensagem:
 "🔄 Sessão recuperada – continue de onde parou.". Há também um botão
 **🧹 Limpar Sessão** que apaga os dados salvos e confirma a ação no console.
 
+## Contexto de Conversa
+
+O DevAI mantém o histórico de cada sessão para oferecer respostas mais
+coerentes em interações de múltiplos turnos. As últimas mensagens são
+reenviadas ao modelo sempre que você faz uma nova pergunta. Use o botão
+"🔄 Nova conversa" ou o endpoint `/reset_conversation` para limpar o
+histórico atual quando desejar começar do zero.
+
 ## Chave de API ausente ou inválida
 
 Se a variável `OPENROUTER_API_KEY` não estiver configurada ou for rejeitada pelo

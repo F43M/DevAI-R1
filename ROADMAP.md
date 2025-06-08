@@ -83,3 +83,8 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - Registrar no log quais blocos foram incluídos e por quê.
 - Ajustar a frase "Explique antes de responder." apenas quando necessário.
 - #future-enhancement:intent-routing
+
+## MULTI_TURN_CHAT
+- Persistir histórico de conversa por sessão via `ConversationHandler`.
+- Limitar o contexto às 10 mensagens mais recentes.
+- Endpoint `/reset_conversation` aceita `session_id` e limpa apenas aquela sessão.

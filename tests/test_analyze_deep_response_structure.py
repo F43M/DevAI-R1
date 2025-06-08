@@ -2,6 +2,7 @@ import asyncio
 import types
 from datetime import datetime
 from devai.core import CodeMemoryAI
+from devai.conversation_handler import ConversationHandler
 
 ai = object.__new__(CodeMemoryAI)
 ai.analyzer = types.SimpleNamespace(
@@ -16,6 +17,7 @@ ai.tasks = type(
     (),
     {"run_task": lambda self, n: ["ok"], "last_actions": lambda self: []},
 )()
+ai.conv_handler = ConversationHandler()
 ai.conversation_history = []
 
 

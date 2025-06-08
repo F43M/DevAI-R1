@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from devai.core import CodeMemoryAI
+from devai.conversation_handler import ConversationHandler
 import types
 
 class DummyGraph:
@@ -47,6 +48,7 @@ async def run_deep():
     ai.tasks = None
     ai.log_monitor = None
     ai.complexity_tracker = None
+    ai.conv_handler = ConversationHandler()
     ai.conversation_history = []
     ai.double_check = False
 
