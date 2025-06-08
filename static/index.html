@@ -31,12 +31,17 @@
   <div id="inputArea">
     <textarea id="query" rows="2"></textarea>
     <button id="send" title="Faz uma análise simples da dúvida ou trecho enviado">🔎 Analisar</button>
-    <button id="deep" title="Gera explicação com plano de raciocínio antes da resposta">🧠 Análise Profunda</button>
     <button id="investigate" title="Escaneia o projeto em busca de melhorias e complexidades">📊 Deep Analysis</button>
-    <button id="trainSymbolic" title="Faz a IA aprender com erros passados e melhorar suas regras internas">🧠 Treinar</button>
-    <button id="autoMonitor" title="Executa um diagnóstico geral do sistema e aplica aprendizado automático, se necessário">🧭 Auto Monitor</button>
-    <button id="shadowRefactor" title="Aplica uma mudança sugerida pela IA em modo simulado, sem afetar o código real">🕶️ Simular Refatoração</button>
-    <button id="applyRefactor" title="Aplica a mudança sugerida diretamente no código (usa backup interno)">💾 Aplicar Refatoração</button>
+    <div class="dropdown">
+      <button class="dropbtn">⚙️ Funções Avançadas</button>
+      <div class="dropdown-content">
+        <button id="deep" title="Gera explicação com plano de raciocínio antes da resposta">🧠 Análise Profunda</button>
+        <button id="shadowRefactor" title="Aplica uma mudança sugerida pela IA em modo simulado, sem afetar o código real">🕶️ Simular Refatoração</button>
+        <button id="applyRefactor" title="Aplica a mudança sugerida diretamente no código (usa backup interno)">💾 Aplicar Refatoração</button>
+        <button id="trainSymbolic" title="Faz a IA aprender com erros passados e melhorar suas regras internas">🧠 Treinar</button>
+        <button id="autoMonitor" title="Executa um diagnóstico geral do sistema e aplica aprendizado automático, se necessário">🧭 Auto Monitor</button>
+      </div>
+    </div>
   </div>
 </div>
 <div id="aiPanel">
@@ -55,6 +60,7 @@
     <li><strong>🧠 Treinar</strong>: faz o DevAI aprender com falhas anteriores.</li>
     <li><strong>📊 Deep Analysis</strong>: escaneia todo o projeto por complexidades.</li>
     <li><strong>🧭 Auto Monitor</strong>: verifica se há algo a corrigir e toma ações autônomas se necessário.</li>
+    <li><strong>⚙️ Funções Avançadas</strong>: contém ações mais profundas como treinar com base em erros, monitorar automaticamente ou refatorar código com IA.</li>
   </ul>
   <button onclick="hideHelpOverlay()">Fechar</button>
 </div>
