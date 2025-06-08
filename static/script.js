@@ -31,6 +31,12 @@ function hideLoading(){
   }catch(e){}
 }
 
+function toggleReasoning(){
+  const el=document.getElementById('reasoningOutput');
+  if(!el) return;
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
 function renderStructuredResponse(data){
   const container=document.createElement('div');
   const addSection=(title,list,cls)=>{
@@ -88,6 +94,7 @@ function displayAIResponseFormatted(data){
 }
 
 const SESSION_KEY='devai_history';
+let showReasoningByDefault=false;
 
 function saveSession(obj){
   try{localStorage.setItem(SESSION_KEY,JSON.stringify(obj));}catch(e){}
@@ -102,6 +109,7 @@ function persistUI(){
   saveSession({
     console:consoleLines,
     aiOutput:document.getElementById('aiOutput').innerHTML,
+    reasoning:document.getElementById('reasoningOutput').innerHTML,
     diffOutput:document.getElementById('diffOutput').innerHTML,
     ts:Date.now()
   });
@@ -111,6 +119,7 @@ function clearSession(){
   localStorage.removeItem(SESSION_KEY);
   document.getElementById('console').textContent='';
   document.getElementById('aiOutput').innerHTML='';
+  document.getElementById('reasoningOutput').innerHTML='';
   document.getElementById('diffOutput').innerHTML='';
   appendConsole('🧹 Sessão apagada com sucesso.');
 }
@@ -120,6 +129,7 @@ window.addEventListener('load',async()=>{
   if(data){
     document.getElementById('console').textContent=data.console||'';
     document.getElementById('aiOutput').innerHTML=data.aiOutput||'';
+    document.getElementById('reasoningOutput').innerHTML=data.reasoning||'';
     document.getElementById('diffOutput').innerHTML=data.diffOutput||'';
     appendConsole('🔄 Sessão recuperada – continue de onde parou.');
   }
@@ -129,5 +139,6 @@ window.addEventListener('load',async()=>{
     if(info.api_key_missing){
       document.getElementById('aiOutput').textContent='🚫 Nenhuma chave de API foi detectada. Configure OPENROUTER_API_KEY para habilitar a IA.';
     }
+    if('show_reasoning_default' in info) showReasoningByDefault=info.show_reasoning_default;
   }catch(e){}
 });

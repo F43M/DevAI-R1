@@ -150,6 +150,7 @@ class CodeMemoryAI:
                 "learned_rules": len(self.analyzer.learned_rules),
                 "last_activity": self.analyzer.last_analysis_time.isoformat(),
                 "api_key_missing": api_key_missing,
+                "show_reasoning_default": config.SHOW_REASONING_BY_DEFAULT,
             }
 
         @self.app.get("/metrics")
@@ -531,11 +532,7 @@ class CodeMemoryAI:
             else:
                 logger.info("multi_turn_fallback", session=session_id)
             self.reason_stack.append("Resposta gerada")
-            return (
-                result
-                + "\n\nRaciocinio executado:\n"
-                + "\n".join(f"-> {r}" for r in self.reason_stack)
-            )
+            return result
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
             return f"Erro ao gerar resposta: {str(e)}"
@@ -604,7 +601,16 @@ class CodeMemoryAI:
                 self.conv_handler.append(session_id, "assistant", resp)
             else:
                 logger.info("multi_turn_fallback", session=session_id)
-            return {"plan": plan, "response": resp}
+            trace = (
+                f"\ud83d\udca1 Detalhes t\u00e9cnicos: A IA consultou {len(contextual_memories)} m\u00e9morias anteriores, analisou depend\u00eancias e gerou a resposta abaixo com base no padr\u00e3o simb\u00f3lico aprendido."
+            )
+            return {
+                "plan": plan,
+                "response": resp,
+                "main_response": resp,
+                "reasoning_trace": trace,
+                "mode": "deep",
+            }
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
             return {"plan": "", "response": f"Erro ao gerar resposta: {str(e)}"}

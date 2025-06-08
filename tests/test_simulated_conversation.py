@@ -30,5 +30,5 @@ def test_simulated_conversation(monkeypatch):
         return first, second
 
     resp1, resp2 = asyncio.run(run())
-    assert "Raciocinio" in resp1
+    assert resp1 == "ok"
     assert ai.conversation_history[-2]["content"] == "E o logout?"
