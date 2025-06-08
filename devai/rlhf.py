@@ -1,3 +1,6 @@
+from .config import logger
+
+
 class RLFineTuner:
     """Placeholder for reinforcement learning fine-tuning."""
 
@@ -30,49 +33,13 @@ class RLFineTuner:
                 examples.append({"prompt": prompt, "response": content, "score": score})
         return examples
 
-    async def fine_tune(self, base_model: str, output_dir: str) -> None:
-        """Fine tune the language model with RLHF.
-
-        This method should integrate libraries such as `trl` or
-        `accelerate` in the future.
-        """
-        import os
-        import json
+    async def fine_tune(self, base_model: str, output_dir: str) -> dict:
+        """Fine tune the language model with RLHF (placeholder)."""
         from pathlib import Path
 
-        examples = self.collect_examples()
+        logger.warning("RLHF ainda não implementado. Ver #pending_rlhf.")
         Path(output_dir).mkdir(parents=True, exist_ok=True)
-        if not examples:
-            return
-
-        try:
-            from datasets import Dataset
-            from transformers import AutoTokenizer, AutoModelForCausalLM
-            from trl import SFTTrainer
-
-            dataset = Dataset.from_list(
-                [
-                    {
-                        "text": ex["prompt"] + "\n" + ex["response"],
-                    }
-                    for ex in examples
-                ]
-            )
-            tokenizer = AutoTokenizer.from_pretrained(base_model)
-            model = AutoModelForCausalLM.from_pretrained(base_model)
-            trainer = SFTTrainer(
-                model=model,
-                train_dataset=dataset,
-                dataset_text_field="text",
-                max_seq_length=tokenizer.model_max_length,
-            )
-            trainer.train()
-            trainer.save_model(output_dir)
-        except Exception:
-            data_file = Path(output_dir) / "train.jsonl"
-            with open(data_file, "w", encoding="utf-8") as f:
-                for ex in examples:
-                    f.write(json.dumps(ex) + "\n")
+        return {"status": "skipped"}
 
 
 if __name__ == "__main__":

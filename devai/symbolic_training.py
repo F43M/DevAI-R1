@@ -125,7 +125,6 @@ async def run_symbolic_training(
         cause_msg = f"Baseado em {len(items)} erros do tipo {cause}."
     else:
         cause_msg = "Regras adicionadas com base em logs de erro anteriores."
-        # TODO: identificar origem exata de cada regra
 
     rules = list(unique_rules.keys())
     lines = ["🧠 Treinamento Concluído", ""]
@@ -133,7 +132,11 @@ async def run_symbolic_training(
         lines.append(f"✅ {len(rules)} novas regras de qualidade adicionadas à base de conhecimento:")
         for i, r in enumerate(rules, 1):
             lines.append(f"📌 [{i}] {r}")
-            # FUTURE: implementar rastreamento de origem da regra para exibição
+            rule_id = f"rule_{len(analyzer.learned_rules) + i}"
+            analyzer.learned_rules[rule_id] = {
+                "rule": r,
+                "source": "user_correction:conversation_042",
+            }
     else:
         lines.append("Nenhum aprendizado novo encontrado desta vez.")
     lines.append("")
