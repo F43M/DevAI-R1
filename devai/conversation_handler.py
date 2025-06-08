@@ -13,6 +13,7 @@ class ConversationHandler:
         self.summary_threshold = summary_threshold
         self.memory = memory
         self.summarizer = DialogSummarizer()
+        self.symbolic_memories: List[str] = []
 
     @staticmethod
     def _estimate_tokens(text: str) -> int:
@@ -55,3 +56,9 @@ class ConversationHandler:
     def reset(self, session_id: str) -> None:
         self.conversation_context[session_id] = []
         logger.info("messages_cleared", session=session_id)
+
+    def clear_session(self, session_id: str = "default") -> None:
+        """Clear conversation history and temporary symbolic memories."""
+        self.conversation_context[session_id] = []
+        self.symbolic_memories = []
+        logger.info("session_reset", session=session_id)

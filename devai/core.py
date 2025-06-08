@@ -180,6 +180,12 @@ class CodeMemoryAI:
                 self.conversation = self.conv_handler.history("default")
             return {"status": "reset", "session": session_id}
 
+        @self.app.post("/session/reset")
+        async def reset_session():
+            self.conv_handler.clear_session()
+            self.conversation = self.conv_handler.history("default")
+            return {"status": "ok", "message": "Sessão reiniciada com sucesso"}
+
         @self.app.post("/analyze_deep")
         async def analyze_deep(query: str, session_id: str = "default"):
             """Perform a deeper analysis returning plan and answer separately."""
