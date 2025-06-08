@@ -10,6 +10,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Exemplos de configuração**: disponibilizar modelos de `config.yaml` e `tasks.yaml` para facilitar o uso.
 - (adicione novos itens aqui)
 - **Persistência de histórico via localStorage**
+- **Persistência de histórico de sessões entre reinicializações**
 - **Sistema simbólico de carregamento para ações demoradas**
 - **Ajuda simbólica para desenvolvedores iniciantes (GUI)**
 - **Onboarding simbólico com fluxo passo a passo**

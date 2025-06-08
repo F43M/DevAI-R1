@@ -51,6 +51,8 @@ coerentes em interações de múltiplos turnos. As últimas mensagens são
 reenviadas ao modelo sempre que você faz uma nova pergunta. Use o botão
 "🔄 Nova conversa" ou o endpoint `/reset_conversation` para limpar o
 histórico atual quando desejar começar do zero.
+Com a nova implementação de histórico estruturado, o assistente entende
+referências a perguntas anteriores e mantém o raciocínio encadeado.
 
 ## Chave de API ausente ou inválida
 

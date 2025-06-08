@@ -31,6 +31,11 @@ from .learning_engine import LearningEngine
 from .conversation_handler import ConversationHandler
 
 
+def estimate_token_count(text: str) -> int:
+    """Estimativa simples do número de tokens baseada em palavras."""
+    return len(text.split())
+
+
 class CodeMemoryAI:
     def __init__(self):
         self.memory = MemoryManager(config.MEMORY_DB, config.EMBEDDING_MODEL)
@@ -57,6 +62,9 @@ class CodeMemoryAI:
         self.response_cache_size = 32
         # Gerencia o histórico de cada sessão de conversa
         self.conv_handler = ConversationHandler()
+        self.conversation: List[Dict[str, str]] = self.conv_handler.history(
+            "default"
+        )
         self.double_check = config.DOUBLE_CHECK
         self._start_background_tasks()
         logger.info(
@@ -67,11 +75,13 @@ class CodeMemoryAI:
     @property
     def conversation_history(self) -> List[Dict[str, str]]:
         """Compatibilidade com histórico padrão."""
-        return self.conv_handler.history("default")
+        self.conversation = self.conv_handler.history("default")
+        return self.conversation
 
     @conversation_history.setter
     def conversation_history(self, value: List[Dict[str, str]]):
         self.conv_handler.conversation_context["default"] = value
+        self.conversation = self.conv_handler.history("default")
 
     def _cache_key(self, query: str) -> str:
         """Return a key representing the current state for caching."""
@@ -91,6 +101,18 @@ class CodeMemoryAI:
             )
         except Exception:
             pass
+
+    def _build_history_messages(self, session_id: str, buffer: int = 1000) -> List[Dict[str, str]]:
+        """Recupera o histórico recente sem ultrapassar o limite de tokens."""
+        hist = self.conv_handler.history(session_id)
+        selected: List[Dict[str, str]] = []
+        total = 0
+        for msg in reversed(hist):
+            total += estimate_token_count(msg.get("content", ""))
+            if total > config.MAX_CONTEXT_LENGTH - buffer:
+                break
+            selected.append(msg)
+        return list(reversed(selected))
 
     def _start_background_tasks(self):
         from .metacognition import MetacognitionLoop
@@ -154,6 +176,8 @@ class CodeMemoryAI:
         @self.app.post("/reset_conversation")
         async def reset_conversation(session_id: str = "default"):
             self.conv_handler.reset(session_id)
+            if session_id == "default":
+                self.conversation = self.conv_handler.history("default")
             return {"status": "reset", "session": session_id}
 
         @self.app.post("/analyze_deep")
@@ -488,6 +512,8 @@ class CodeMemoryAI:
     async def _process_command(self, query: str, session_id: str) -> str | None:
         if query.strip() == "/resetar":
             self.conv_handler.reset(session_id)
+            if session_id == "default":
+                self.conversation = self.conv_handler.history("default")
             return "Conversa resetada."
         if query.startswith("/teste"):
             output = await self.tasks.run_task("run_tests")
@@ -554,14 +580,12 @@ class CodeMemoryAI:
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
             self.reason_stack.append("Prompt preparado")
-            history = (
-                self.conv_handler.last(session_id, 4) if session_id else []
-            )
-            messages = (
-                [{"role": "system", "content": SYSTEM_PROMPT_CONTEXT}]
-                + history
-                + [{"role": "user", "content": prompt}]
-            )
+            history = self._build_history_messages(session_id) if session_id else []
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT_CONTEXT},
+                *history,
+                {"role": "user", "content": prompt},
+            ]
             prefetch = asyncio.create_task(self._prefetch_related(query))
             result = await self.ai_model.safe_api_call(
                 messages, config.MAX_CONTEXT_LENGTH, prompt, self.memory
@@ -634,7 +658,7 @@ class CodeMemoryAI:
                 "2. Depois, forneça a resposta final ao pedido do usuário com base nesse plano.\n"
                 "Separe o plano da resposta com a marcação ===RESPOSTA===."
             )
-            history = self.conv_handler.last(session_id, 4) if session_id else []
+            history = self._build_history_messages(session_id) if session_id else []
             messages = [
                 {"role": "system", "content": system_msg},
                 *history,
