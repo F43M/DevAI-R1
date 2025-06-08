@@ -61,3 +61,6 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 
 ## Melhoria pendente – Análise inteligente do test_output
 - Filtrar falhas individuais e exibir mensagens mais claras no resumo da simulação.
+
+## Melhoria pendente – Encerramento completo de recursos dinâmicos
+- Encerrar watchers e ciclos longos de forma previsível no método `shutdown`.
