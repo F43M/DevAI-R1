@@ -58,6 +58,13 @@ histórico atual quando desejar começar do zero.
 Com a nova implementação de histórico estruturado, o assistente entende
 referências a perguntas anteriores e mantém o raciocínio encadeado.
 
+## 🔍 Transparência de Contexto
+
+Um botão opcional **🧠 Contexto Atual** exibe as últimas mensagens trocadas,
+memórias simbólicas ativadas e trechos técnicos incluídos no prompt. Use esse
+recurso para auditar o que influenciou a resposta da IA e verificar se há
+avisos de falha de contexto.
+
 ## Chave de API ausente ou inválida
 
 Se a variável `OPENROUTER_API_KEY` não estiver configurada ou for rejeitada pelo

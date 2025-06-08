@@ -40,6 +40,7 @@ class Config:
     LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
     DOUBLE_CHECK: bool = False
     SHOW_REASONING_BY_DEFAULT: bool = False
+    SHOW_CONTEXT_BUTTON: bool = False
     START_MODE: str = "fast"  # options: fast, full, custom
     RESCAN_INTERVAL_MINUTES: int = 15  # intervalo mínimo para novas varreduras
 
