@@ -45,6 +45,7 @@ class UpdateManager:
         apply_func: Callable[[Path], None],
         max_attempts: int = 1,
         capture_output: bool = False,
+        keep_backup: bool = False,
     ):
         """Apply modifications with automatic rollback if tests fail."""
         path = Path(file_path)
@@ -75,7 +76,8 @@ class UpdateManager:
                     success = self.run_tests()
                     out = ""
                 if success:
-                    backup.unlink(missing_ok=True)
+                    if not keep_backup:
+                        backup.unlink(missing_ok=True)
                     logger.info(
                         "Atualizacao aplicada com sucesso", file=str(path)
                     )
@@ -104,7 +106,8 @@ class UpdateManager:
 
                 success2, out2 = asyncio.run(_retry())
                 if success2:
-                    backup.unlink(missing_ok=True)
+                    if not keep_backup:
+                        backup.unlink(missing_ok=True)
                     logger.info(
                         "Atualizacao aplicada com sucesso", file=str(path)
                     )

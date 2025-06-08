@@ -84,7 +84,14 @@ def test_auto_refactor(monkeypatch, tmp_path):
     class DummyUpdater:
         def __init__(self):
             self.called = False
-        def safe_apply(self, file_path, apply_func, max_attempts=1):
+        def safe_apply(
+            self,
+            file_path,
+            apply_func,
+            max_attempts=1,
+            capture_output=False,
+            keep_backup=False,
+        ):
             apply_func(Path(file_path))
             self.called = True
             return True

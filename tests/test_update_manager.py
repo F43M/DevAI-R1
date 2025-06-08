@@ -45,3 +45,18 @@ def test_safe_apply_failure(tmp_path, monkeypatch):
     assert file.read_text() == "old"
     # o backup eh movido de volta ao restaurar
     assert not file.with_suffix(".txt.bak").exists()
+
+
+def test_safe_apply_keep_backup(tmp_path, monkeypatch):
+    file = tmp_path / "f.py"
+    file.write_text("old")
+    mgr = UpdateManager()
+    monkeypatch.setattr(
+        mgr,
+        "run_tests",
+        lambda capture_output=False: (True, "") if capture_output else True,
+    )
+    result = mgr.safe_apply(file, lambda p: p.write_text("new"), keep_backup=True)
+    assert result
+    assert file.read_text() == "new"
+    assert file.with_suffix(".py.bak").exists()
