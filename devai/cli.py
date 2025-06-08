@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 
 
-async def cli_main():
+async def cli_main(guided: bool = False):
     """Interactive command loop for DevAI.
 
     Comandos principais: /lembrar, /esquecer, /ajustar, /rastrear e /memoria.
@@ -22,6 +22,17 @@ async def cli_main():
         asyncio.create_task(ai.analyzer.deep_scan_app())
     else:
         print("Deep scan adiado para /deep_analysis")
+    flag = Path.home() / ".devai_first_cli"
+    if guided or not flag.exists():
+        print("\n👋 Bem-vindo ao DevAI!")
+        print("1. Abra um arquivo com /abrir <arquivo>")
+        print("2. Faça uma pergunta ou solicite uma melhoria")
+        print("3. Veja a resposta gerada")
+        print("Dica: rode novamente com --guided para mais explicações")
+        try:
+            flag.touch()
+        except Exception:
+            pass
     print("\nDev IA Avançado Pronto!")
     print("Comandos disponíveis:")
     print("/memoria tipo:<tag> [filtro] --detalhado - Busca memórias")

@@ -10,6 +10,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Exemplos de configuração**: disponibilizar modelos de `config.yaml` e `tasks.yaml` para facilitar o uso.
 - (adicione novos itens aqui)
 - **Ajuda simbólica para desenvolvedores iniciantes (GUI)**
+- **Onboarding simbólico com fluxo passo a passo**
 - **Agrupamento simbólico de funções para reduzir carga cognitiva inicial**
 - **Melhoria simbólica** – Validação defensiva aplicada em todas as rotas e edições de arquivo.
 - **Raciocínio progressivo** com modo `step_by_step` configurável no `project_identity.yaml`.
