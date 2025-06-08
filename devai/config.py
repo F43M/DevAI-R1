@@ -31,6 +31,7 @@ class Config:
     LEARNING_LOOP_INTERVAL: int = 300
     MAX_CONTEXT_LENGTH: int = 160000
     OPENROUTER_URL: str = "https://openrouter.ai/api/v1/chat/completions"
+    MODEL_TIMEOUT: int = 60
     INDEX_FILE: str = "faiss.index"
     INDEX_IDS_FILE: str = "faiss_ids.json"
     NOTIFY_EMAIL: str = os.getenv("NOTIFY_EMAIL", "")

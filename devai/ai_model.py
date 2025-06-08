@@ -12,6 +12,11 @@ SYSTEM_MESSAGE = (
 )
 
 import aiohttp
+try:
+    from aiohttp import ClientError, ClientConnectionError
+except Exception:  # pragma: no cover - fallback for simplified aiohttp
+    ClientError = Exception
+    ClientConnectionError = Exception
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore
@@ -208,7 +213,7 @@ class AIModel:
                     cfg.get("url", config.OPENROUTER_URL),
                     headers=headers,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=60),
+                    timeout=aiohttp.ClientTimeout(total=config.MODEL_TIMEOUT),
                 )
                 if resp.status == 200:
                     data = await resp.json()
@@ -306,9 +311,39 @@ class AIModel:
             available = max_tokens
         attempts = 0
         note = ""
-        response = await self.generate(
-            prompt, max_length=available, temperature=temperature
-        )
+        try:
+            response = await self.generate(
+                prompt, max_length=available, temperature=temperature
+            )
+        except (asyncio.TimeoutError, ClientConnectionError, ClientError) as e:
+            logger.info("Retry attempt triggered after timeout...")
+            note = "⚠️ O modelo demorou para responder. Tentando novamente…\n"
+            await asyncio.sleep(2)
+            try:
+                response = await self.generate(
+                    prompt, max_length=available, temperature=temperature
+                )
+            except Exception:
+                return (
+                    "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
+                )
+        except Exception as e:
+            if getattr(e, "status", 0) in (408, 504):
+                logger.info("Retry attempt triggered after timeout...")
+                note = "⚠️ O modelo demorou para responder. Tentando novamente…\n"
+                await asyncio.sleep(2)
+                try:
+                    response = await self.generate(
+                        prompt, max_length=available, temperature=temperature
+                    )
+                except Exception:
+                    return (
+                        "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
+                    )
+            else:
+                log_error("safe_api_call", e)
+                return friendly_message(e)
+
         if "401" in response or "Unauthorized" in response:
             return (
                 "🚫 A chave de API foi rejeitada. Verifique se está correta no config.OPENROUTER_API_KEY."
