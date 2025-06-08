@@ -13,8 +13,9 @@ def check_dependencies() -> None:
             path = getattr(mod, "__file__", "")
             if path and os.path.abspath(path).startswith(os.path.join(project_dir, lib)):
                 logger.warning(
-                    "Dependência %s está usando versão simplificada; instale as bibliotecas reais para integração completa",
-                    lib,
+                    f"Dependência {lib} está usando versão simplificada; instale as bibliotecas reais para integração completa"
                 )
         except Exception as e:  # pragma: no cover - optional dependency
-            logger.error("Falha ao importar %s", lib, error=str(e))
+            logger.error(
+                f"Falha ao importar {lib}", error=str(e)
+            )
