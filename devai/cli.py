@@ -18,7 +18,12 @@ async def cli_main(guided: bool = False):
     print("Inicializando CodeMemoryAI com DeepSeek-R1...")
     ai = CodeMemoryAI()
     feedback_db = FeedbackDB()
+    run_scan = False
     if config.START_MODE == "full":
+        run_scan = True
+    elif config.START_MODE == "custom" and "scan" in config.START_TASKS:
+        run_scan = True
+    if run_scan:
         asyncio.create_task(ai.analyzer.deep_scan_app())
     else:
         print("Deep scan adiado para /deep_analysis")

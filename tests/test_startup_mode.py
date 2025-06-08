@@ -81,3 +81,47 @@ def test_startup_fast(monkeypatch):
     deep_fn = record['/deep_analysis']
     asyncio.run(deep_fn(token=''))
     assert 'scan' in calls
+
+
+def test_startup_custom(monkeypatch):
+    global calls
+    calls = []
+    monkeypatch.setattr(config, 'START_MODE', 'custom')
+    monkeypatch.setattr(config, 'START_TASKS', ['scan', 'monitor'])
+    import devai.metacognition as metacog
+    monkeypatch.setattr(metacog, 'MetacognitionLoop', DummyMeta)
+
+    class DummyTask:
+        def add_done_callback(self, fn):
+            pass
+
+    tasks = []
+
+    def fake_create_task(coro, *a, **k):
+        tasks.append(coro)
+        coro.close()
+        return DummyTask()
+
+    monkeypatch.setattr(asyncio, 'create_task', fake_create_task)
+
+    ai = object.__new__(CodeMemoryAI)
+    ai.memory = DummyMemory()
+    ai.analyzer = DummyAnalyzer()
+    ai.log_monitor = DummyLogMonitor()
+    ai.background_tasks = {}
+    ai._learning_loop = lambda: dummy_coroutine('learn')
+
+    CodeMemoryAI._start_background_tasks(ai)
+
+    assert any(
+        getattr(c, 'cr_code', None) and c.cr_code.co_name == 'deep_scan_app'
+        for c in tasks
+    )
+    assert not any(
+        getattr(c, 'cr_code', None) and c.cr_code.co_name == 'watch_app_directory'
+        for c in tasks
+    )
+    assert any(
+        getattr(c, 'cr_code', None) and c.cr_code.co_name == 'monitor_logs'
+        for c in tasks
+    )
