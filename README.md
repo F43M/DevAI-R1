@@ -133,7 +133,7 @@ Sinta‑se livre para expandir cada módulo conforme necessário.
 ## Roadmap
 
 Acompanhe [ROADMAP.md](ROADMAP.md) para sugestões de melhorias e futuras implementações.
-Veja também o histórico de versões em [RELEASE_NOTES.md](RELEASE_NOTES.md).
+Veja também o histórico de versões em [RELEASE_NOTES.md](RELEASE_NOTES.md) e o guia interno em [INTERNAL_DOCS.md](INTERNAL_DOCS.md).
 
 Melhorias em andamento:
 

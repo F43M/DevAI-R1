@@ -1,3 +1,19 @@
+"""Metacognition loop for evaluating DevAI's recent behavior.
+
+Objetivo:
+    Verificar padrões de decisão e sugerir ajustes simbólicos.
+
+Gatilhos observados:
+    - Falhas repetidas com mesmo código
+    - Sucessos recorrentes com estrutura comum
+    - Entradas corrigidas após interpretação incorreta
+
+Resultado esperado:
+    - Reforço de abordagens eficazes
+    - Sinalização de módulos problemáticos
+    - Registro de lições breves na memória
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -18,15 +34,16 @@ def build_metacognition_prompt(history: Sequence[Dict]) -> str:
         ts = item.get("timestamp", "")
         lines.append(f"{ts} - {item.get('tipo')} em {item.get('modulo')}")
     hist_text = "\n".join(lines)
-    return (
-        f"Com base nas decisões abaixo, qual próximo passo você recomendaria?\n{hist_text}\nResposta:".strip()
-    )
+    return f"Com base nas decisões abaixo, qual próximo passo você recomendaria?\n{hist_text}\nResposta:".strip()
 
 
 class MetacognitionLoop:
     """Scheduled self-reflection loop (enhanced)."""
 
-    def __init__(self, history_file: str = "decision_log.yaml", memory: Optional[Any] = None) -> None:
+    def __init__(
+        self, history_file: str = "decision_log.yaml", memory: Optional[Any] = None
+    ) -> None:
+        """Initialize loop with path to decision history and optional memory."""
         self.history_file = Path(history_file)
         self.memory = memory
 
@@ -37,6 +54,7 @@ class MetacognitionLoop:
             await asyncio.sleep(interval_hours * 3600)
 
     async def _analyze(self) -> None:
+        """Score recent decisions and log concise reflections."""
         if not self.history_file.exists():
             return
         try:
@@ -50,6 +68,7 @@ class MetacognitionLoop:
             data = []
         now = datetime.now()
         recent = []
+        # Keep only the last 24h of decisions for analysis
         for item in data:
             try:
                 ts = datetime.fromisoformat(item.get("timestamp", "1970-01-01"))
@@ -62,7 +81,10 @@ class MetacognitionLoop:
         reflections = []
         for item in recent:
             file = item.get("modulo", "desconhecido")
-            scores[file] = scores.get(file, 0) + (1 if item.get("tipo") != "erro" else -1)
+            # Positive actions increment score, errors decrement
+            scores[file] = scores.get(file, 0) + (
+                1 if item.get("tipo") != "erro" else -1
+            )
             reflections.append(
                 {
                     "contexto": file,
@@ -87,6 +109,7 @@ class MetacognitionLoop:
             for f, score in scores.items():
                 if score < -2:
                     summary = f"Arquivo {f} apresentou recorrência de erros."
+                    # Persist a short lesson if a module accumulates negative score
                     self.memory.save(
                         {
                             "type": "reflection",
