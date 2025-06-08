@@ -42,16 +42,34 @@ class CodeAnalyzer:
         self.last_analysis_time = datetime.now()
         self.scan_progress = 0.0
 
+    async def _save_scan_status(self) -> None:
+        """Persist current scan progress to disk."""
+        status = {
+            "progress": round(self.scan_progress, 2),
+            "timestamp": datetime.now().isoformat(),
+        }
+        path = Path("logs/deep_scan_status.json")
+        path.parent.mkdir(exist_ok=True)
+        async with aiofiles.open(path, "w") as f:
+            await f.write(json.dumps(status))
+
     async def deep_scan_app(self):
         logger.info("Iniciando varredura profunda do aplicativo")
         self.scan_progress = 0.0
+        await self._save_scan_status()
         await self.scan_app()
         self.scan_progress = 0.6
+        logger.info("Construindo grafo de dependências", progress=self.scan_progress)
+        await self._save_scan_status()
         self.last_scan_time = datetime.now()
         await self._build_semantic_relations()
         self.scan_progress = 0.8
+        logger.info("Analisando padrões", progress=self.scan_progress)
+        await self._save_scan_status()
         await self._analyze_patterns()
         self.scan_progress = 1.0
+        logger.info("Varredura concluída", progress=self.scan_progress)
+        await self._save_scan_status()
         logger.info(
             "Varredura profunda concluída",
             functions=len(self.code_chunks),
@@ -79,6 +97,12 @@ class CodeAnalyzer:
             await self.parse_file(file_path)
             if total:
                 self.scan_progress = i / total * 0.5
+                if i % max(1, total // 10) == 0 or i == total:
+                    await self._save_scan_status()
+                    logger.info(
+                        "Progresso da varredura",
+                        progress=round(self.scan_progress, 2),
+                    )
         logger.info("Aplicativo escaneado", files_processed=total)
 
     async def parse_file(self, file_path: Path):
