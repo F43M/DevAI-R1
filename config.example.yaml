@@ -13,3 +13,5 @@ LOCAL_MODEL: ''
 COMPLEXITY_HISTORY: complexity_history.json
 START_MODE: fast  # options: fast, full, custom
 RESCAN_INTERVAL_MINUTES: 15
+MODEL_TIMEOUT: 60  # Tempo máximo de espera por resposta da IA (em segundos)
+
