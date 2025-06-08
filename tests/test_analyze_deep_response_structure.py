@@ -48,3 +48,8 @@ def test_plan_present():
 def test_separator_removed():
     assert "===RESPOSTA===" not in result["plan"]
     assert "===RESPOSTA===" not in result["response"]
+
+def test_new_structure_present():
+    assert result["main_response"] == result["response"]
+    assert result["mode"] == "deep"
+    assert "Detalhes" in result["reasoning_trace"]

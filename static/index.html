@@ -55,6 +55,8 @@
 <div id="aiPanel">
   <h3>Painel IA</h3>
   <pre id="aiOutput"></pre>
+  <button id="toggleReason" style="display:none;" onclick="toggleReasoning()">👁️ Ver raciocínio da IA</button>
+  <pre id="reasoningOutput" class="info-box" style="display:none;"></pre>
   <pre id="diffOutput" class="diff"></pre>
   <div id="loading-indicator" class="spinner" style="display:none;">
     <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span> Processando...
@@ -118,9 +120,17 @@ async function send(cot){
   const r=await fetch(url+'?'+new URLSearchParams({query:q}),{method:'POST'});
   if(cot){
     let data;
-    try{ data=await r.json(); }catch(e){ data={plan:'',response:await r.text()}; }
+    try{ data=await r.json(); }catch(e){ data={}; }
     if(data.plan) appendConsole('🧠 Plano de Raciocínio:\n'+data.plan);
-    document.getElementById('aiOutput').textContent=data.response;
+    document.getElementById('aiOutput').textContent=data.main_response||data.response||'';
+    if(data.reasoning_trace){
+      const msg='🧠 Este trecho explica como a IA chegou na resposta. Pode conter termos técnicos simbólicos usados para autoavaliação e aprendizado.';
+      const el=document.getElementById('reasoningOutput');
+      el.textContent=msg+'\n\n'+data.reasoning_trace;
+      const btn=document.getElementById('toggleReason');
+      btn.style.display='block';
+      el.style.display=showReasoningByDefault?'block':'none';
+    }
     appendConsole('> '+q);
   }else{
     const text=await r.text();
