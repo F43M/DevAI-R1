@@ -85,3 +85,9 @@
   50% { opacity: 1; }
   100% { opacity: 0.2; }
 }
+
+.result-success { color: green; font-weight: bold; }
+.result-warning { color: orange; }
+.result-danger  { color: red; font-weight: bold; }
+.result-section { margin: 8px 0; padding: 6px; border-left: 4px solid #ccc; }
+.result-section h4 { margin: 4px 0; font-size: 14px; }

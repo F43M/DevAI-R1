@@ -48,6 +48,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Paralelismo de tarefas** acelerando lint e testes *(implementado em parte)*
 - **Uso de modelos menores** para otimizar embeddings *(futuro)*
 - **Padronização simbólica de termos e responsividade total**
+- **Renderização semântica para resultados complexos**
 
 
 ## Melhoria pendente – Função /analyze

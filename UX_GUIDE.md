@@ -26,3 +26,11 @@ Todas essas strings ficam definidas em `static/lang.js` para permitir traduçõe
 ## Indicadores de carregamento
 
 Quando uma ação pode levar mais tempo (como aprendizado simbólico ou monitoramento automático), o painel exibe o texto "Processando..." com um pequeno efeito de piscar. Todos os botões são desativados até a conclusão, evitando cliques repetidos.
+
+## Exibição de resultados complexos
+
+Resultados retornados em JSON agora são formatados em blocos coloridos no painel.
+- **Verde** indica sucesso ou resumo.
+- **Laranja** mostra sugestões de melhoria.
+- **Vermelho** destaca riscos ou alertas.
+Caso o formato não seja reconhecido, o JSON bruto é exibido com indentação para facilitar a leitura.

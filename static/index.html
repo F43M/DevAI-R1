@@ -140,7 +140,7 @@ document.getElementById('investigate').onclick=async()=>{
   try{
     const r=await fetch('/deep_analysis');
     const data=await r.json();
-    document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
+    displayAIResponseFormatted(data);
   }finally{
     hideLoading();
   }
@@ -153,7 +153,7 @@ document.getElementById('trainSymbolic').onclick=async()=>{
   try{
     const r=await fetch('/symbolic_training',{method:'POST'});
     const data=await r.json();
-    out.textContent=data.report||'Nenhum aprendizado novo encontrado desta vez.';
+    displayAIResponseFormatted(data);
   }catch(e){
     out.textContent='Erro durante o treinamento simbólico.';
   }finally{
@@ -167,7 +167,7 @@ document.getElementById('autoMonitor').onclick=async()=>{
     const r=await fetch('/auto_monitor');
     const data=await r.json();
     if(data.logs) appendConsole(data.logs);
-    document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
+    displayAIResponseFormatted(data);
   }finally{
     hideLoading();
   }
