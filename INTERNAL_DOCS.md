@@ -28,6 +28,12 @@ As memórias ficam disponíveis para novas rodadas de sugestão de código, refo
 - Em sessões curtas, o botão “🧠 Contexto Atual” pode não retornar memórias ainda.
 - Reset parcial de sessões (limpar conversa, mas manter memórias preferenciais)
 
+## pending_rlhf
+- Integração com `trl` para RLHF ainda não implementada.
+
+#pending_logic: run_symbolic_training - origem das regras ainda não rastreada
+#pending_logic: fine_tune - RLHF precisa da lib trl (não instalada)
+
 ## pending_fixes
 - stub_fallback:fastapi
 - stub_fallback:uvicorn

@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Callable, Awaitable, TypeVar
 
 from .config import logger
+import json
+import aiofiles
 
 # simple in-memory record of recent errors
 error_memory = []  # FUTURE: persist across runs
@@ -37,6 +39,20 @@ def log_error(func_name: str, e: Exception) -> None:
     )
     if len(error_memory) > 100:
         error_memory.pop(0)
+
+
+async def persist_errors() -> None:
+    """Persist the in-memory error log to disk."""
+    async with aiofiles.open("errors_log.jsonl", "a") as f:
+        for err in error_memory:
+            data = {
+                "timestamp": err["timestamp"].isoformat(),
+                "tipo": err["tipo"],
+                "mensagem": err["mensagem"],
+                "funcao": err["função"],
+            }
+            await f.write(json.dumps(data) + "\n")
+    error_memory.clear()
 
 def friendly_message(e: Exception) -> str:
     """Map technical errors to friendly messages for the user."""

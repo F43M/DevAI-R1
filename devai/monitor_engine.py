@@ -10,6 +10,10 @@ from .memory import MemoryManager
 from .analyzer import CodeAnalyzer
 from .ai_model import AIModel
 from .symbolic_training import run_symbolic_training
+from collections import defaultdict
+
+# track how many cycles executed per stage
+stage_counters: Dict[str, int] = defaultdict(int)
 
 
 async def auto_monitor_cycle(
@@ -30,7 +34,12 @@ async def auto_monitor_cycle(
         logs.append(msg)
         logger.info(msg)
 
-    # FUTURE: limitar ciclos por etapa no auto_monitor_cycle
+    stage = "monitor"
+    stage_counters[stage] += 1
+    limit = getattr(config, "MAX_CYCLES_PER_STAGE", 10)
+    if stage_counters[stage] > limit:
+        logger.warning(f"Estágio {stage} excedeu limite de ciclos.")
+        return {"report": "limite excedido", "logs": "", "data": {"training_executed": False}}
 
     now = datetime.now()
     last_training = datetime.fromtimestamp(0)

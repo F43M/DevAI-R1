@@ -125,6 +125,13 @@ class CodeMemoryAI:
             self.log_monitor.monitor_logs(),
             meta.run(),
         ]
+        mode = getattr(config, "OPERATING_MODE", "standard")
+        if mode == "continuous":
+            from .monitor_engine import auto_monitor_cycle
+            tasks.append(auto_monitor_cycle(self.analyzer, self.memory, self.ai_model))
+        elif mode == "sandbox":
+            logger.info("Modo sandbox ativo: background tasks desativadas.")
+            tasks = []
         if config.START_MODE == "full":
             tasks.extend(
                 [
@@ -563,8 +570,11 @@ class CodeMemoryAI:
             logs = collect_recent_logs()
             self.reason_stack = []
             self.reason_stack.append("Memórias coletadas")
-            # FIXME: Ativar explicação apenas em modo Raciocinar
-            # query += "\nExplique antes de responder."
+            mode = getattr(config, "MODE", "")
+            if mode == "reasoning":
+                query += "\nExplique antes de responder."
+            elif mode:
+                logger.info("Modo %s não reconhecido", mode)
             context_blocks = {
                 "memories": contextual_memories,
                 "graph": graph_summary,
@@ -887,5 +897,8 @@ class CodeMemoryAI:
             await self.ai_model.shutdown()
         for task in list(self.background_tasks):
             task.cancel()
+        real_tasks = [t for t in self.background_tasks if isinstance(t, asyncio.Task)]
+        if real_tasks:
+            await asyncio.gather(*real_tasks, return_exceptions=True)
         # FUTURE: shutdown this resource when implemented
         logger.info("🛑 DevAI finalizado com limpeza simbólica de recursos.")
