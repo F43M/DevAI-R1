@@ -56,6 +56,9 @@
   <h3>Painel IA</h3>
   <pre id="aiOutput"></pre>
   <pre id="diffOutput" class="diff"></pre>
+  <div id="loading-indicator" class="spinner" style="display:none;">
+    <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span> Processando...
+  </div>
 </div>
 <button onclick="showHelpOverlay()" class="help-button">❔ Ajuda</button>
 <div id="help-overlay" class="hidden">
@@ -133,49 +136,76 @@ document.getElementById('send').onclick=()=>send(false);
 document.getElementById('deep').onclick=()=>send(true);
 document.getElementById('investigate').onclick=async()=>{
   appendConsole('Analisando projeto...');
-  const r=await fetch('/deep_analysis');
-  const data=await r.json();
-  document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
+  showLoading();
+  try{
+    const r=await fetch('/deep_analysis');
+    const data=await r.json();
+    document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
+  }finally{
+    hideLoading();
+  }
 };
 document.getElementById('trainSymbolic').onclick=async()=>{
   appendConsole('Aprendendo com erros passados...');
   const out=document.getElementById('aiOutput');
+  showLoading();
   out.textContent='🔄 Treinando...';
-  const r=await fetch('/symbolic_training',{method:'POST'});
-  const data=await r.json();
-  out.textContent=data.report||'Nenhum aprendizado novo encontrado desta vez.';
+  try{
+    const r=await fetch('/symbolic_training',{method:'POST'});
+    const data=await r.json();
+    out.textContent=data.report||'Nenhum aprendizado novo encontrado desta vez.';
+  }catch(e){
+    out.textContent='Erro durante o treinamento simbólico.';
+  }finally{
+    hideLoading();
+  }
 };
 document.getElementById('autoMonitor').onclick=async()=>{
   appendConsole('Executando monitoramento automático...');
-  const r=await fetch('/auto_monitor');
-  const data=await r.json();
-  if(data.logs) appendConsole(data.logs);
-  document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
+  showLoading();
+  try{
+    const r=await fetch('/auto_monitor');
+    const data=await r.json();
+    if(data.logs) appendConsole(data.logs);
+    document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
+  }finally{
+    hideLoading();
+  }
 };
 document.getElementById('shadowRefactor').onclick=async()=>{
   if(!requireFile()) return;
   const code=editor.getValue();
   window.lastDryRunCode=code;
   appendConsole('Simulando refatoração...');
-  const r=await fetch('/dry_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:code})});
-  const data=await r.json();
-  const diffLines=data.diff.split("\n").map(l=>{
-    if(l.startsWith('+')) return '<span class="added">'+l+'</span>';
-    if(l.startsWith('-')) return '<span class="removed">'+l+'</span>';
-    return l;
-  }).join('\n');
-  document.getElementById('diffOutput').innerHTML=diffLines;
-  let summary='';
-  if(data.tests_passed){summary+='✅ Todos os testes passaram.';}
-  else if(!data.test_output){summary+='⚠️ Nenhum teste encontrado no projeto.';}
-  else{summary+='⚠️ Alguns testes falharam.';}
-  document.getElementById('aiOutput').textContent=summary+'\n'+data.evaluation.analysis;
+  showLoading();
+  try{
+    const r=await fetch('/dry_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:code})});
+    const data=await r.json();
+    const diffLines=data.diff.split("\n").map(l=>{
+      if(l.startsWith('+')) return '<span class="added">'+l+'</span>';
+      if(l.startsWith('-')) return '<span class="removed">'+l+'</span>';
+      return l;
+    }).join('\n');
+    document.getElementById('diffOutput').innerHTML=diffLines;
+    let summary='';
+    if(data.tests_passed){summary+='✅ Todos os testes passaram.';}
+    else if(!data.test_output){summary+='⚠️ Nenhum teste encontrado no projeto.';}
+    else{summary+='⚠️ Alguns testes falharam.';}
+    document.getElementById('aiOutput').textContent=summary+'\n'+data.evaluation.analysis;
+  }finally{
+    hideLoading();
+  }
 };
 document.getElementById('applyRefactor').onclick=async()=>{
   if(!requireFile()||!window.lastDryRunCode) return;
-  const r=await fetch('/apply_refactor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:window.lastDryRunCode})});
-  const d=await r.json();
-  appendConsole(d.status||'applied');
+  showLoading();
+  try{
+    const r=await fetch('/apply_refactor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:window.lastDryRunCode})});
+    const d=await r.json();
+    appendConsole(d.status||'applied');
+  }finally{
+    hideLoading();
+  }
 };
 </script>
 </body>

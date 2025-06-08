@@ -71,3 +71,17 @@
   max-height: 70vh;
   overflow-y: auto;
 }
+
+.spinner {
+  color: #ccc;
+  font-size: 14px;
+  font-style: italic;
+  margin-top: 10px;
+  animation: blink 1.2s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}

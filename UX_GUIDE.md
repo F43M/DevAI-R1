@@ -22,3 +22,7 @@ Exemplos:
 - 🧭 **Monitoramento Automático** – substitui "Auto Monitor".
 
 Todas essas strings ficam definidas em `static/lang.js` para permitir traduções futuras e consistência entre o código e a interface.
+
+## Indicadores de carregamento
+
+Quando uma ação pode levar mais tempo (como aprendizado simbólico ou monitoramento automático), o painel exibe o texto "Processando..." com um pequeno efeito de piscar. Todos os botões são desativados até a conclusão, evitando cliques repetidos.
