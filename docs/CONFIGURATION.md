@@ -12,3 +12,7 @@ MODELS:
 
 O campo `MODEL_NAME` está **obsoleto** e será ignorado futuramente. Utilize `config.model_name` para obter o nome ativo do modelo em código.
 
+
+## Limites de acesso
+O DevAI valida caminhos fornecidos nas rotas e funções internas, impedindo leituras ou escritas fora de `CODE_ROOT`. Linhas negativas ou além do tamanho do arquivo resultam em erro.
+

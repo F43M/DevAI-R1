@@ -9,6 +9,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Dependências opcionais**: oferecer fallback ou mensagens de erro mais amigáveis caso `sentence_transformers` ou `faiss` não estejam instalados. *(implementado)*
 - **Exemplos de configuração**: disponibilizar modelos de `config.yaml` e `tasks.yaml` para facilitar o uso.
 - (adicione novos itens aqui)
+- **Melhoria simbólica** – Validação defensiva aplicada em todas as rotas e edições de arquivo.
 - **Raciocínio progressivo** com modo `step_by_step` configurável no `project_identity.yaml`.
 - **Verificação simbólica de coerência** registrando pontuação e detalhes no `prompt_log.jsonl`.
 - **Tagging automático de memória** para funções novas ou refatoradas (`symbolic_memory_tagger.py`).

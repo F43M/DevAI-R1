@@ -10,6 +10,14 @@ import ast
 import networkx as nx
 import uvicorn
 from fastapi import FastAPI
+from pathlib import Path
+from .api_schemas import (
+    FileEditRequest,
+    FileCreateRequest,
+    FileDeleteRequest,
+    DirRequest,
+    ApplyRefactorRequest,
+)
 from fastapi.staticfiles import StaticFiles
 
 from .config import config, logger, metrics
@@ -64,10 +72,12 @@ class CodeMemoryAI:
             meta.run(),
         ]
         if config.START_MODE == "full":
-            tasks.extend([
-                self.analyzer.deep_scan_app(),
-                self.analyzer.watch_app_directory(),
-            ])
+            tasks.extend(
+                [
+                    self.analyzer.deep_scan_app(),
+                    self.analyzer.watch_app_directory(),
+                ]
+            )
         else:
             # FUTURE: permitir que o modo custom defina quais tarefas rodam
             logger.info("🔄 deep_scan_app() adiado para execução sob demanda.")
@@ -156,38 +166,55 @@ class CodeMemoryAI:
             return {"file": file, "lines": lines}
 
         @self.app.post("/file/edit")
-        async def edit_file(file: str, line: int, content: str, token: str = ""):
+        async def edit_file(req: FileEditRequest, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
-            ok = await self.analyzer.edit_line(file, line, content)
+            try:
+                ok = await self.analyzer.edit_line(
+                    Path(req.file), req.line, req.content
+                )
+            except ValueError as e:
+                return {"error": str(e)}
             return {"status": "ok" if ok else "error"}
 
         @self.app.post("/file/create")
-        async def create_file(file: str, content: str = "", token: str = ""):
+        async def create_file(req: FileCreateRequest, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
-            ok = await self.analyzer.create_file(file, content)
+            try:
+                ok = await self.analyzer.create_file(Path(req.file), req.content)
+            except ValueError as e:
+                return {"error": str(e)}
             return {"status": "ok" if ok else "error"}
 
         @self.app.post("/file/delete")
-        async def delete_file(file: str, token: str = ""):
+        async def delete_file(req: FileDeleteRequest, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
-            ok = await self.analyzer.delete_file(file)
+            try:
+                ok = await self.analyzer.delete_file(Path(req.file))
+            except ValueError as e:
+                return {"error": str(e)}
             return {"status": "ok" if ok else "error"}
 
         @self.app.post("/dir/create")
-        async def create_dir(path: str, token: str = ""):
+        async def create_dir(req: DirRequest, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
-            ok = await self.analyzer.create_directory(path)
+            try:
+                ok = await self.analyzer.create_directory(Path(req.path))
+            except ValueError as e:
+                return {"error": str(e)}
             return {"status": "ok" if ok else "error"}
 
         @self.app.post("/dir/delete")
-        async def delete_dir(path: str, token: str = ""):
+        async def delete_dir(req: DirRequest, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
-            ok = await self.analyzer.delete_directory(path)
+            try:
+                ok = await self.analyzer.delete_directory(Path(req.path))
+            except ValueError as e:
+                return {"error": str(e)}
             return {"status": "ok" if ok else "error"}
 
         @self.app.get("/history")
@@ -245,21 +272,27 @@ class CodeMemoryAI:
             }
 
         @self.app.post("/apply_refactor")
-        async def apply_refactor(file_path: str, suggested_code: str, token: str = ""):
+        async def apply_refactor(req: ApplyRefactorRequest, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
-            path = Path(file_path)
+            path = Path(req.file_path)
             old_lines = path.read_text().splitlines()
-            path.write_text(suggested_code)
-            self.history.record(file_path, "edit", old=old_lines, new=suggested_code.splitlines())
-            self.memory.save({
-                "type": "refatoracao",
-                "memory_type": "refatoracao aprovada",
-                "content": f"Refatoracao aplicada em {file_path}",
-                "metadata": {"arquivo": file_path, "contexto": "dry_run"},
-            })
+            path.write_text(req.suggested_code)
+            self.history.record(
+                req.file_path,
+                "edit",
+                old=old_lines,
+                new=req.suggested_code.splitlines(),
+            )
+            self.memory.save(
+                {
+                    "type": "refatoracao",
+                    "memory_type": "refatoracao aprovada",
+                    "content": f"Refatoracao aplicada em {req.file_path}",
+                    "metadata": {"arquivo": req.file_path, "contexto": "dry_run"},
+                }
+            )
             return {"status": "applied"}
-
 
         @self.app.get("/deep_analysis")
         async def deep_analysis(token: str = ""):
@@ -269,6 +302,7 @@ class CodeMemoryAI:
             await self.analyzer.deep_scan_app()
             modules = await self.analyzer.summary_by_module()
             from .auto_review import run_autoreview
+
             review = await run_autoreview(self.analyzer, self.memory)
             high_complex = sum(m["complex_functions"] for m in modules.values())
             stable_funcs = len(self.analyzer.code_chunks) - high_complex
@@ -328,6 +362,7 @@ class CodeMemoryAI:
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
 
         if hasattr(self.app, "on_event"):
+
             @self.app.on_event("shutdown")
             async def _shutdown_event():
                 await self.shutdown()
