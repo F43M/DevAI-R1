@@ -94,7 +94,7 @@ class AIModel:
         self.session = aiohttp.ClientSession()
         self.models = config.MODELS or {
             "default": {
-                "name": config.MODEL_NAME,
+                "name": config.model_name,
                 "api_key": config.OPENROUTER_API_KEY,
                 "url": config.OPENROUTER_URL,
             }
@@ -191,7 +191,7 @@ class AIModel:
                 "Content-Type": "application/json",
             }
             payload = {
-                "model": cfg.get("name", config.MODEL_NAME),
+                "model": cfg.get("name", config.model_name),
                 "messages": messages,
                 "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
                 "temperature": temperature,

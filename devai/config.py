@@ -18,7 +18,7 @@ class Config:
     """Application configuration loaded from YAML with simple validation."""
 
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
-    MODEL_NAME: str = "deepseek/deepseek-r1-0528:free"
+    MODEL_NAME: str = "deepseek/deepseek-r1-0528:free"  # DEPRECATED
     MODELS: Dict[str, Any] = field(default_factory=dict)
     CODE_ROOT: str = "./app"
     MEMORY_DB: str = "memory.sqlite"
@@ -51,6 +51,15 @@ class Config:
         cfg = load_config(path, defaults)
         for key, value in cfg.items():
             setattr(self, key, value)
+        if "MODEL_NAME" in cfg:
+            logging.getLogger("devai").warning(
+                "\u26a0\ufe0f 'MODEL_NAME' est\xe1 obsoleto. Use 'MODELS.default.name'."
+            )
+            models_name = cfg.get("MODELS", {}).get("default", {}).get("name")
+            if models_name and models_name != cfg["MODEL_NAME"]:
+                logging.getLogger("devai").warning(
+                    "Valores divergentes para 'MODEL_NAME' e 'MODELS.default.name'"
+                )
         self._validate()
 
     def _validate(self) -> None:
@@ -62,6 +71,18 @@ class Config:
             raise ValueError("START_MODE must be 'fast', 'full' or 'custom'")
         if not isinstance(self.RESCAN_INTERVAL_MINUTES, int):
             raise ValueError("RESCAN_INTERVAL_MINUTES must be integer")
+
+    @property
+    def model_name(self) -> str:
+        """Return the active model name from MODELS.default."""
+        name = self.MODELS.get("default", {}).get("name")
+        if not name and hasattr(self, "MODEL_NAME"):
+            name = self.MODEL_NAME
+        if hasattr(self, "MODEL_NAME") and name != self.MODEL_NAME:
+            logging.getLogger("devai").warning(
+                "\u26a0\ufe0f 'MODEL_NAME' est\xe1 obsoleto. Use 'MODELS.default.name'."
+            )
+        return name
 
 
 class Metrics:
