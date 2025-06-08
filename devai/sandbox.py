@@ -9,8 +9,28 @@ class Sandbox:
         self.image = image
 
     def run(self, command: List[str], timeout: int = 30) -> str:
-        """Run a command inside a container.
+        """Run a command inside a container using Docker.
 
-        TODO: integrate with Docker/Podman for real isolation.
+        Parameters
+        ----------
+        command:
+            Command and arguments to execute inside the container.
+        timeout:
+            Maximum time in seconds to allow the command to run.
+
+        Returns
+        -------
+        str
+            Captured standard output from the command.
         """
-        raise NotImplementedError("Sandbox execution not implemented yet")
+        docker_cmd = ["docker", "run", "--rm", self.image, *command]
+        try:
+            proc = subprocess.run(
+                docker_cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            return proc.stdout
+        except subprocess.TimeoutExpired as e:
+            raise TimeoutError(f"Command timed out after {timeout}s") from e
