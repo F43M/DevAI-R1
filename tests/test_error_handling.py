@@ -5,6 +5,8 @@ from devai.error_handler import (
     friendly_message,
     log_error,
     error_memory,
+    persist_errors,
+    load_persisted_errors,
 )
 
 
@@ -51,3 +53,15 @@ def test_log_error_records():
 def test_friendly_unknown():
     msg = friendly_message(RuntimeError("x"))
     assert "Algo deu errado" in msg
+
+
+def test_persist_and_load_errors(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    error_memory.clear()
+    log_error("unit_test", ValueError("boom"))
+    asyncio.run(persist_errors())
+    assert (tmp_path / "errors_log.jsonl").exists()
+    error_memory.clear()
+    load_persisted_errors()
+    assert error_memory
+    assert error_memory[-1]["função"] == "unit_test"

@@ -21,6 +21,7 @@ from .api_schemas import (
 from fastapi.staticfiles import StaticFiles
 
 from .config import config, logger, metrics, api_key_missing
+from .error_handler import load_persisted_errors, persist_errors
 from .complexity_tracker import ComplexityTracker
 from .memory import MemoryManager
 from .analyzer import CodeAnalyzer
@@ -1060,4 +1061,5 @@ class CodeMemoryAI:
                     self.watchers.pop(name, None)
         if hasattr(self, "memory") and hasattr(self.memory, "close"):
             self.memory.close()
+        await persist_errors()
         logger.info("🛑 DevAI finalizado com limpeza simbólica de recursos.")

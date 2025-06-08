@@ -3,13 +3,46 @@ import random
 import subprocess
 from datetime import datetime
 from typing import Callable, Awaitable, TypeVar
+from pathlib import Path
 
 from .config import logger
 import json
 import aiofiles
 
 # simple in-memory record of recent errors
-error_memory = []  # FUTURE: persist across runs
+error_memory = []  # persist across runs
+
+def load_persisted_errors() -> None:
+    """Load errors from previous runs into memory."""
+    path = Path("errors_log.jsonl")
+    if not path.exists():
+        return
+    try:
+        for line in path.read_text().splitlines():
+            try:
+                data = json.loads(line)
+                ts = data.get("timestamp")
+                if ts:
+                    timestamp = datetime.fromisoformat(ts)
+                else:
+                    timestamp = datetime.now()
+                func = data.get("função") or data.get("funcao", "")
+                error_memory.append(
+                    {
+                        "timestamp": timestamp,
+                        "tipo": data.get("tipo", ""),
+                        "mensagem": data.get("mensagem", ""),
+                        "função": func,
+                    }
+                )
+                if len(error_memory) > 100:
+                    error_memory.pop(0)
+            except Exception as e:
+                logger.warning("Erro ao carregar linha do log", error=str(e))
+    except Exception as e:
+        logger.warning("Erro ao ler log persistido", error=str(e))
+
+load_persisted_errors()
 
 T = TypeVar("T")
 
