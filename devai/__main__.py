@@ -1,6 +1,8 @@
 import asyncio
 import argparse
 import json
+import difflib
+import tempfile
 from pathlib import Path
 
 from .config import config
@@ -83,12 +85,41 @@ def main():
                 return
             elif cmd[0] == "simular" and len(cmd) > 2:
                 from .shadow_mode import simulate_update, evaluate_change_with_ia, log_simulation, run_tests_in_temp
-                file_path = cmd[1]
-                new_code = " ".join(cmd[2:])
+
+                args = cmd[1:]
+                save_patch = False
+                side_by_side = False
+                if "--patch" in args:
+                    save_patch = True
+                    args.remove("--patch")
+                if "--html" in args:
+                    side_by_side = True
+                    args.remove("--html")
+                if len(args) < 2:
+                    print("Uso: simular <arquivo> <codigo> [--patch] [--html]")
+                    return
+
+                file_path = args[0]
+                new_code = " ".join(args[1:])
                 diff, temp_root, sim_id = simulate_update(file_path, new_code)
                 tests_ok, _ = run_tests_in_temp(temp_root)
                 evaluation = await evaluate_change_with_ia(diff)
-                print(diff)
+
+                if side_by_side:
+                    original = Path(file_path).read_text().splitlines()
+                    updated = new_code.splitlines()
+                    html = difflib.HtmlDiff().make_table(
+                        original, updated, fromdesc="original", todesc="sugerido", context=True
+                    )
+                    print(html)
+                else:
+                    print(diff)
+
+                if save_patch:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".patch", mode="w", encoding="utf-8") as f:
+                        f.write(diff)
+                    print(f"Patch salvo em {f.name}")
+
                 print(evaluation["analysis"])
                 if tests_ok and input("Aplicar? [s/N] ").lower() == "s":
                     from .update_manager import UpdateManager
