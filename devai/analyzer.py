@@ -370,6 +370,10 @@ class CodeAnalyzer:
                 lines.append(f"Função {node} chama {', '.join(deps)}")
         return "\n".join(lines)
 
+    async def graph_summary_async(self, limit: int = 20) -> str:
+        """Async wrapper for graph_summary."""
+        return await asyncio.to_thread(self.graph_summary, limit)
+
     async def watch_app_directory(self, interval: int = 5):
         logger.info(
             "Iniciando monitoramento da pasta de código", path=str(self.code_root)

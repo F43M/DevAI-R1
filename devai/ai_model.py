@@ -2,7 +2,7 @@ import asyncio
 from collections import OrderedDict
 from datetime import datetime
 from difflib import SequenceMatcher
-from typing import Mapping, Sequence, Union
+from typing import Mapping, Sequence, Union, AsyncGenerator
 import json
 from uuid import uuid4
 
@@ -146,7 +146,8 @@ class AIModel:
         prompt: Union[str, Sequence[Mapping[str, str]]],
         max_length: int = config.MAX_CONTEXT_LENGTH,
         temperature: float = 0.7,
-    ) -> str:
+        stream: bool = False,
+    ) -> str | AsyncGenerator[str, None]:
         if isinstance(prompt, str):
             key = prompt
             messages = [
@@ -179,7 +180,7 @@ class AIModel:
             except Exception as e:  # pragma: no cover - heavy dep
                 logger.error("Erro no modelo local", error=str(e))
 
-        async def _call(model_name: str) -> str:
+        async def _call(model_name: str):
             cfg = self.models.get(model_name, {})
             if cfg.get("local") and self.local_model and self.local_tokenizer:
                 try:
@@ -207,6 +208,8 @@ class AIModel:
                 "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
                 "temperature": temperature,
             }
+            if stream:
+                payload["stream"] = True
 
             async def _request() -> str:
                 resp = await self.session.post(
@@ -223,8 +226,37 @@ class AIModel:
                 setattr(err, "status", resp.status)
                 raise err
 
+            async def _request_stream():
+                resp = await self.session.post(
+                    cfg.get("url", config.OPENROUTER_URL),
+                    headers=headers,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=config.MODEL_TIMEOUT),
+                )
+                if resp.status != 200:
+                    text = await resp.text()
+                    err = Exception(f"HTTP {resp.status}: {text}")
+                    setattr(err, "status", resp.status)
+                    raise err
+                async for line in resp.content:
+                    if not line:
+                        continue
+                    text = line.decode().strip()
+                    if text.startswith("data:"):
+                        text = text[5:].strip()
+                    if text and text != "[DONE]":
+                        try:
+                            data = json.loads(text)
+                            token = data["choices"][0]["delta"].get("content")
+                            if token:
+                                yield token
+                        except Exception:
+                            continue
+
             start = datetime.now()
             try:
+                if stream:
+                    return _request_stream()
                 return await with_retry_async(_request)
             except Exception as e:
                 log_error("api_call", e)
@@ -233,6 +265,17 @@ class AIModel:
                 metrics.record_call((datetime.now() - start).total_seconds())
 
         model_order = [self.current] + [m for m in self.models if m != self.current]
+        if stream:
+            async def _stream():
+                used = self.current
+                for name in model_order:
+                    async for token in _call(name):
+                        used = name
+                        yield token
+                    break
+                metrics.record_call(0)
+            return _stream()
+
         response_text = ""
         for name in model_order:
             text = await _call(name)
@@ -395,3 +438,25 @@ class AIModel:
                     }
                 )
         return note + response
+
+    async def safe_api_stream(
+        self,
+        prompt: Union[str, Sequence[Mapping[str, str]]],
+        max_tokens: int,
+        temperature: float = 0.7,
+    ) -> AsyncGenerator[str, None]:
+        """Stream response from the model when supported."""
+        if isinstance(prompt, str):
+            prompt_len = len(prompt.split())
+        else:
+            prompt_len = sum(len(m.get("content", "").split()) for m in prompt)
+        available = max_tokens - prompt_len
+        if available <= 0:
+            available = max_tokens
+        try:
+            async for token in self.generate(prompt, max_length=available, temperature=temperature, stream=True):
+                yield token
+        except Exception:
+            text = await self.safe_api_call(prompt, max_tokens, "")
+            for tok in text.split():
+                yield tok
