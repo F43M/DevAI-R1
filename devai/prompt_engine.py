@@ -142,6 +142,12 @@ def build_dynamic_prompt(query: str, context_blocks: Dict[str, Any], mode: str) 
         parts.append(mem_text)
         included.append("memories")
 
+    symbolic = context_blocks.get("symbolic_memories") or []
+    sym_text = _format_memories(symbolic)
+    if sym_text:
+        parts.append(sym_text)
+        included.append("memorias_simbolicas")
+
     if any(k in q for k in ["arquitetura", "módulo", "modulo", "depend", "grafo"]):
         graph = context_blocks.get("graph")
         if graph:
