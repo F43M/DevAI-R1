@@ -46,6 +46,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Componente de metacognição** para aprendizado contínuo *(futuro)*
 - **Paralelismo de tarefas** acelerando lint e testes *(implementado em parte)*
 - **Uso de modelos menores** para otimizar embeddings *(futuro)*
+- **Padronização simbólica de termos e responsividade total**
 
 
 ## Melhoria pendente – Função /analyze

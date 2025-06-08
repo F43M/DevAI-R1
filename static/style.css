@@ -56,3 +56,18 @@
   color: #ccc;
   line-height: 1.6;
 }
+
+/* Responsividade para botoes em telas pequenas */
+@media screen and (max-width: 600px) {
+  .toolbar button {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}
+
+/* Permite rolagem em dropdowns extensos */
+.dropdown-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
