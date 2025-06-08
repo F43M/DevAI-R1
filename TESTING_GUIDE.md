@@ -6,5 +6,5 @@ Este documento explica como executar e o que validar nos testes.
 - Os testes de integração simulam o ciclo IA → sugestão → teste → aplicação.
 - Rode-os sempre que alterar fluxos principais do DevAI.
 
-Alguns testes estão marcados com `@pytest.mark.skip` pois a memória multi-turno
-não está habilitada. Consulte `testing_fallbacks.md` para detalhes.
+Todos os testes são executados normalmente. O suporte a memória multi-turno está
+ativo, portanto não há casos marcados com `skip`.
