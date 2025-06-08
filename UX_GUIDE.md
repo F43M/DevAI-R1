@@ -34,3 +34,11 @@ Resultados retornados em JSON agora são formatados em blocos coloridos no paine
 - **Laranja** mostra sugestões de melhoria.
 - **Vermelho** destaca riscos ou alertas.
 Caso o formato não seja reconhecido, o JSON bruto é exibido com indentação para facilitar a leitura.
+
+## Recuperação automática da sessão
+
+O painel web salva o histórico recente de interações no `localStorage`.
+Ao recarregar a página, o DevAI restaura o conteúdo do painel e do console,
+mostrando a mensagem:
+"🔄 Sessão recuperada – continue de onde parou.". Há também um botão
+**🧹 Limpar Sessão** que apaga os dados salvos e confirma a ação no console.

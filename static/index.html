@@ -59,6 +59,7 @@
   <div id="loading-indicator" class="spinner" style="display:none;">
     <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span> Processando...
   </div>
+  <button id="clearSessionBtn" onclick="clearSession()" style="margin-top:8px;">🧹 Limpar Sessão</button>
 </div>
 <button onclick="showHelpOverlay()" class="help-button">❔ Ajuda</button>
 <div id="help-overlay" class="hidden">
@@ -126,6 +127,7 @@ async function send(cot){
     appendConsole('> '+q+'\n'+text);
   }
   document.getElementById('query').value='';
+  persistUI();
 }
 function appendConsole(msg){
   const c=document.getElementById('console');
@@ -141,6 +143,7 @@ document.getElementById('investigate').onclick=async()=>{
     const r=await fetch('/deep_analysis');
     const data=await r.json();
     displayAIResponseFormatted(data);
+    persistUI();
   }finally{
     hideLoading();
   }
@@ -154,6 +157,7 @@ document.getElementById('trainSymbolic').onclick=async()=>{
     const r=await fetch('/symbolic_training',{method:'POST'});
     const data=await r.json();
     displayAIResponseFormatted(data);
+    persistUI();
   }catch(e){
     out.textContent='Erro durante o treinamento simbólico.';
   }finally{
@@ -168,6 +172,7 @@ document.getElementById('autoMonitor').onclick=async()=>{
     const data=await r.json();
     if(data.logs) appendConsole(data.logs);
     displayAIResponseFormatted(data);
+    persistUI();
   }finally{
     hideLoading();
   }
@@ -192,6 +197,7 @@ document.getElementById('shadowRefactor').onclick=async()=>{
     else if(!data.test_output){summary+='⚠️ Nenhum teste encontrado no projeto.';}
     else{summary+='⚠️ Alguns testes falharam.';}
     document.getElementById('aiOutput').textContent=summary+'\n'+data.evaluation.analysis;
+    persistUI();
   }finally{
     hideLoading();
   }
@@ -203,6 +209,7 @@ document.getElementById('applyRefactor').onclick=async()=>{
     const r=await fetch('/apply_refactor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:window.lastDryRunCode})});
     const d=await r.json();
     appendConsole(d.status||'applied');
+    persistUI();
   }finally{
     hideLoading();
   }
