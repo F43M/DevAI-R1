@@ -28,7 +28,9 @@ async def run_symbolic_training(
     except Exception:
         items = []
     pending_items = [i for i in items if not i.get("processed")]
-    pending_items = sorted(pending_items, key=lambda x: x.get("timestamp", ""), reverse=True)[:max_logs]
+    pending_items = sorted(
+        pending_items, key=lambda x: x.get("timestamp", ""), reverse=True
+    )[:max_logs]
     lesson_map: Dict[str, List[str]] = {}
     for it in pending_items:
         lesson_map.setdefault(it.get("arquivo", ""), []).append(it.get("erro", ""))
@@ -40,7 +42,18 @@ async def run_symbolic_training(
     sensitive: List[str] = []
     patterns: List[str] = []
     sugg_lines: List[str] = []
-    unique_rules: Dict[str, Dict[str, set[str]]] = {}
+    unique_rules: Dict[str, Dict[str, set[str] | set[int]]] = {}
+
+    file_line_map: Dict[str, int] = {}
+    for chunk in analyzer.code_chunks.values():
+        f = chunk.get("file")
+        if not f:
+            continue
+        line = chunk.get("line_start", 1)
+        if f not in file_line_map:
+            file_line_map[f] = line
+        else:
+            file_line_map[f] = min(file_line_map[f], line)
 
     for file_path in code_root.rglob("*.py"):
         total_files += 1
@@ -80,13 +93,28 @@ async def run_symbolic_training(
             memory,
         )
         memory.save(
-            {"type": "symbolic_training", "memory_type": "ponto_critico", "content": explain, "metadata": meta}
+            {
+                "type": "symbolic_training",
+                "memory_type": "ponto_critico",
+                "content": explain,
+                "metadata": meta,
+            }
         )
         memory.save(
-            {"type": "symbolic_training", "memory_type": "risco_reincidente", "content": risk, "metadata": meta}
+            {
+                "type": "symbolic_training",
+                "memory_type": "risco_reincidente",
+                "content": risk,
+                "metadata": meta,
+            }
         )
         memory.save(
-            {"type": "symbolic_training", "memory_type": "refatoracao_sugerida", "content": improve, "metadata": meta}
+            {
+                "type": "symbolic_training",
+                "memory_type": "refatoracao_sugerida",
+                "content": improve,
+                "metadata": meta,
+            }
         )
         if bad.strip():
             patterns.append(f"- {bad.strip().splitlines()[0]}")
@@ -97,9 +125,11 @@ async def run_symbolic_training(
             first = improve.strip().splitlines()[0]
             sugg_lines.append(f"- {first}")
             if first not in unique_rules:
-                unique_rules[first] = {"files": set(), "logs": set()}
+                unique_rules[first] = {"files": set(), "logs": set(), "lines": set()}
             unique_rules[first]["files"].add(str(file_path))
             unique_rules[first]["logs"].update(history)
+            line_no = file_line_map.get(str(file_path), 1)
+            unique_rules[first]["lines"].add(line_no)
         await asyncio.sleep(0)
 
     report = ["# Relatório de Treinamento Simbólico Profundo", ""]
@@ -133,13 +163,19 @@ async def run_symbolic_training(
     rules = list(unique_rules.items())
     lines = ["🧠 Treinamento Concluído", ""]
     if rules:
-        lines.append(f"✅ {len(rules)} novas regras de qualidade adicionadas à base de conhecimento:")
+        lines.append(
+            f"✅ {len(rules)} novas regras de qualidade adicionadas à base de conhecimento:"
+        )
         for i, (r, info) in enumerate(rules, 1):
             lines.append(f"📌 [{i}] {r}")
             rule_id = f"rule_{len(analyzer.learned_rules) + i}"
             analyzer.learned_rules[rule_id] = {
                 "rule": r,
-                "source": {"files": list(info["files"]), "logs": list(info["logs"])},
+                "source": {
+                    "files": list(info["files"]),
+                    "lines": list(info.get("lines", [])),
+                    "logs": list(info["logs"]),
+                },
             }
             memory.save(
                 {
@@ -148,6 +184,7 @@ async def run_symbolic_training(
                     "content": r,
                     "metadata": {
                         "files": list(info["files"]),
+                        "lines": list(info.get("lines", [])),
                         "logs": list(info["logs"]),
                     },
                     "tags": ["rule", "learning"],
@@ -176,7 +213,14 @@ async def run_symbolic_training(
             "sugestoes": suggestions,
             "new_rules": len(rules),
             "rules_added": [r for r, _ in rules],
-            "rule_sources": {r: {"files": list(info["files"]), "logs": list(info["logs"])} for r, info in rules},
+            "rule_sources": {
+                r: {
+                    "files": list(info["files"]),
+                    "lines": list(info.get("lines", [])),
+                    "logs": list(info["logs"]),
+                }
+                for r, info in rules
+            },
             "errors_processed": len(pending_items),
         },
     }
