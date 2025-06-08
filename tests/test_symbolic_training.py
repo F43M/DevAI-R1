@@ -26,6 +26,10 @@ def test_run_symbolic_training(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "devai.symbolic_training.LESSONS_FILE", tmp_path / "lessons.json"
     )
+    monkeypatch.setattr(
+        "devai.symbolic_training.STATUS_FILE",
+        tmp_path / "logs" / "symbolic_training_status.json",
+    )
     for i in range(3):
         f = code_root / f"f{i}.py"
         f.write_text('print("hi")')
@@ -52,3 +56,9 @@ def test_run_symbolic_training(tmp_path, monkeypatch):
         assert data["rule_sources"][first_rule]["lines"]
     report = Path(log_dir / "symbolic_training_report.md")
     assert report.exists()
+    status = Path(log_dir / "symbolic_training_status.json")
+    assert status.exists()
+
+    registrar_licao_negativa(str(code_root / "f0.py"), "erro_novo")
+    result2 = asyncio.run(run())
+    assert result2["data"]["errors_processed"] == 1

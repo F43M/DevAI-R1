@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from typing import Dict, List
 import json
+from datetime import datetime
 
 from .learning_engine import LESSONS_FILE
 
@@ -11,6 +12,8 @@ from .config import config, logger
 from .memory import MemoryManager
 from .analyzer import CodeAnalyzer
 from .ai_model import AIModel
+
+STATUS_FILE = Path(config.LOG_DIR) / "symbolic_training_status.json"
 
 
 async def run_symbolic_training(
@@ -23,11 +26,31 @@ async def run_symbolic_training(
     await analyzer.scan_app()
     code_root = Path(config.CODE_ROOT)
 
+    last_analysis: datetime | None = None
+    if STATUS_FILE.exists():
+        try:
+            data = json.loads(STATUS_FILE.read_text())
+            if "last_analysis" in data:
+                last_analysis = datetime.fromisoformat(data["last_analysis"])
+        except Exception:
+            last_analysis = None
+
     try:
         items = json.loads(LESSONS_FILE.read_text()) if LESSONS_FILE.exists() else []
     except Exception:
         items = []
     pending_items = [i for i in items if not i.get("processed")]
+    if last_analysis:
+        pending_items.extend(
+            [
+                i
+                for i in items
+                if i not in pending_items
+                and i.get("timestamp")
+                and datetime.fromisoformat(i["timestamp"]) > last_analysis
+            ]
+        )
+    pending_items = list({id(it): it for it in pending_items}.values())
     pending_items = sorted(
         pending_items, key=lambda x: x.get("timestamp", ""), reverse=True
     )[:max_logs]
@@ -215,6 +238,13 @@ async def run_symbolic_training(
         LESSONS_FILE.write_text(json.dumps(items, indent=2))
     except Exception:
         logger.warning("Nao foi possivel atualizar lessons.json")
+
+    try:
+        STATUS_FILE.write_text(
+            json.dumps({"last_analysis": datetime.now().isoformat()}, indent=2)
+        )
+    except Exception:
+        logger.warning("Nao foi possivel atualizar symbolic_training_status.json")
 
     return {
         "report": "\n".join(lines),
