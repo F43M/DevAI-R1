@@ -48,7 +48,7 @@ async def run_deep():
     ai.tasks = None
     ai.log_monitor = None
     ai.complexity_tracker = None
-    ai.conv_handler = ConversationHandler()
+    ai.conv_handler = ConversationHandler(memory=ai.memory)
     ai.conversation_history = []
     ai.double_check = False
 

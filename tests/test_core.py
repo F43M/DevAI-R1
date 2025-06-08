@@ -32,7 +32,7 @@ def test_infer_return_type():
 def test_generate_response_short_query(monkeypatch):
     ai.memory = type("M", (), {"search": lambda self, q, level=None, top_k=5: []})()
     ai._find_relevant_code = lambda q: []
-    ai.conv_handler = ConversationHandler()
+    ai.conv_handler = ConversationHandler(memory=ai.memory)
     ai.conversation_history = []
     ai.tasks = type(
         "T",
@@ -61,7 +61,7 @@ def test_generate_response_short_query(monkeypatch):
 
 def test_reset_command(monkeypatch):
     ai.memory = type("M", (), {"search": lambda self, q, level=None, top_k=5: []})()
-    ai.conv_handler = ConversationHandler()
+    ai.conv_handler = ConversationHandler(memory=ai.memory)
     ai.conversation_history = []
     ai.tasks = type(
         "T",
@@ -90,7 +90,7 @@ def test_reset_command(monkeypatch):
 
 def test_conversation_history(monkeypatch):
     ai.memory = type("M", (), {"search": lambda self, q, level=None, top_k=5: []})()
-    ai.conv_handler = ConversationHandler()
+    ai.conv_handler = ConversationHandler(memory=ai.memory)
     ai.conversation_history = []
     ai.tasks = type(
         "T",
