@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser(description="CodeMemoryAI - Assistente de Código Inteligente")
     parser.add_argument("--api", action="store_true", help="Inicia o servidor API")
     parser.add_argument("--cli", action="store_true", help="Inicia a interface de linha de comando")
+    parser.add_argument("--guided", action="store_true", help="Mostra orientações passo a passo")
     parser.add_argument("--observer", action="store_true", help="Modo observador passivo")
     parser.add_argument("command", nargs="*", help="Comandos adicionais")
     args = parser.parse_args()
@@ -29,7 +30,7 @@ def main():
         asyncio.run(ai._learning_loop())
         return
     if args.cli:
-        asyncio.run(cli_main())
+        asyncio.run(cli_main(guided=args.guided))
         return
 
     if args.command:

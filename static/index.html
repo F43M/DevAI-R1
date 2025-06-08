@@ -26,6 +26,14 @@
   <ul id="fileList"></ul>
 </div>
 <div id="main">
+  <div id="welcome-message" class="info-box">
+    👋 Bem-vindo ao DevAI!
+    <ul>
+      <li>📂 <strong>1º passo:</strong> Abra um arquivo do projeto à esquerda.</li>
+      <li>🧠 <strong>2º passo:</strong> Faça uma pergunta sobre o código ou peça uma melhoria.</li>
+      <li>🤖 <strong>3º passo:</strong> Veja a resposta da IA no painel à direita.</li>
+    </ul>
+  </div>
   <div id="editor"></div>
   <div id="console"></div>
   <div id="inputArea">
@@ -95,6 +103,8 @@ async function loadFile(f){
   const data = await r.json();
   editor.setValue(data.lines.join('\n'));
   window.currentFile=f;
+  const w=document.getElementById('welcome-message');
+  if(w) w.style.display='none';
 }
 async function send(cot){
   const q=document.getElementById('query').value.trim();
@@ -142,7 +152,7 @@ document.getElementById('autoMonitor').onclick=async()=>{
   document.getElementById('aiOutput').textContent=data.report||JSON.stringify(data,null,2);
 };
 document.getElementById('shadowRefactor').onclick=async()=>{
-  if(!window.currentFile) return;
+  if(!requireFile()) return;
   const code=editor.getValue();
   window.lastDryRunCode=code;
   appendConsole('Simulando refatoração...');
@@ -161,7 +171,7 @@ document.getElementById('shadowRefactor').onclick=async()=>{
   document.getElementById('aiOutput').textContent=summary+'\n'+data.evaluation.analysis;
 };
 document.getElementById('applyRefactor').onclick=async()=>{
-  if(!window.currentFile||!window.lastDryRunCode) return;
+  if(!requireFile()||!window.lastDryRunCode) return;
   const r=await fetch('/apply_refactor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:window.lastDryRunCode})});
   const d=await r.json();
   appendConsole(d.status||'applied');
