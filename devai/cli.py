@@ -2,6 +2,7 @@ import asyncio
 import json
 
 from .config import config, logger
+from .error_handler import friendly_message, log_error
 from .core import CodeMemoryAI
 from .feedback import FeedbackDB, registrar_preferencia
 from .decision_log import log_decision
@@ -225,5 +226,5 @@ async def cli_main():
                 print("\nResposta:")
                 print(response)
         except Exception as e:
-            logger.error("Erro na CLI", input=user_input, error=str(e))
-            print(f"Erro: {str(e)}")
+            log_error("CLI", e)
+            print(friendly_message(e))

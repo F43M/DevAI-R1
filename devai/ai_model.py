@@ -20,6 +20,7 @@ except Exception:  # pragma: no cover - optional dependency
     AutoTokenizer = None
 
 from .config import config, logger, metrics
+from .error_handler import with_retry_async, friendly_message, log_error
 import re
 from pathlib import Path
 from .memory import MemoryManager
@@ -182,8 +183,9 @@ class AIModel:
                         output[0], skip_special_tokens=True
                     )
                 except Exception as e:  # pragma: no cover - heavy dep
-                    logger.error("Erro no modelo local", error=str(e))
-                    return f"Erro: {str(e)}"
+                    log_error("local_model", e)
+                    return friendly_message(e)
+
             headers = {
                 "Authorization": f"Bearer {cfg.get('api_key', '')}",
                 "Content-Type": "application/json",
@@ -194,8 +196,8 @@ class AIModel:
                 "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
                 "temperature": temperature,
             }
-            start = datetime.now()
-            try:
+
+            async def _request() -> str:
                 resp = await self.session.post(
                     cfg.get("url", config.OPENROUTER_URL),
                     headers=headers,
@@ -205,14 +207,17 @@ class AIModel:
                 if resp.status == 200:
                     data = await resp.json()
                     return data["choices"][0]["message"]["content"]
-                error = await resp.text()
-                logger.error(
-                    "Erro ao chamar modelo", model=model_name, status=resp.status
-                )
-                return f"Erro: {error}"
+                text = await resp.text()
+                err = Exception(f"HTTP {resp.status}: {text}")
+                setattr(err, "status", resp.status)
+                raise err
+
+            start = datetime.now()
+            try:
+                return await with_retry_async(_request)
             except Exception as e:
-                logger.error("Falha na conexao", model=model_name, error=str(e))
-                return f"Erro: {str(e)}"
+                log_error("api_call", e)
+                return friendly_message(e)
             finally:
                 metrics.record_call((datetime.now() - start).total_seconds())
 
@@ -220,7 +225,7 @@ class AIModel:
         response_text = ""
         for name in model_order:
             text = await _call(name)
-            if text and "Erro" not in text:
+            if text and not text.startswith(("⏱️", "📡", "🧱", "⚠️")):
                 response_text = text
                 used_model = name
                 break
