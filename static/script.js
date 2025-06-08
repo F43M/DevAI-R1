@@ -102,13 +102,32 @@ function renderFallbackJSON(data){
   return pre;
 }
 
+function renderReport(text){
+  const pre=document.createElement('pre');
+  text.split('\n').forEach(line=>{
+    const span=document.createElement('span');
+    if(line.includes('🚩')||line.includes('❌')) span.classList.add('report-danger');
+    else if(line.includes('⚠️')) span.classList.add('report-warning');
+    else if(line.includes('✅')) span.classList.add('report-success');
+    else if(line.includes('💡')) span.classList.add('report-info');
+    span.textContent=line;
+    pre.appendChild(span);
+    pre.appendChild(document.createElement('br'));
+  });
+  return pre;
+}
+
 function displayAIResponseFormatted(data){
   const panel=document.getElementById('aiOutput');
   panel.innerHTML='';
   try{
     const parsed=typeof data==='string'?JSON.parse(data):data;
+    if(parsed.report){
+      panel.appendChild(renderReport(parsed.report));
+    }
     const structured=renderStructuredResponse(parsed);
-    if(structured) panel.appendChild(structured); else panel.appendChild(renderFallbackJSON(parsed));
+    if(structured) panel.appendChild(structured);
+    else if(!parsed.report) panel.appendChild(renderFallbackJSON(parsed));
   }catch(e){
     panel.appendChild(renderFallbackJSON(data));
   }
