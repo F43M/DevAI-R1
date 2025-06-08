@@ -17,6 +17,7 @@ class ConversationHandler:
         history_dir: str | None = None,
     ) -> None:
         self.conversation_context: Dict[str, List[Dict[str, str]]] = {}
+        self._mtimes: Dict[str, float] = {}
         self.max_history = max_history
         self.summary_threshold = summary_threshold
         self.memory = memory
@@ -36,22 +37,34 @@ class ConversationHandler:
         file = self._history_file(session_id)
         if file.exists():
             try:
-                return json.loads(file.read_text())
+                data = json.loads(file.read_text())
+                self._mtimes[session_id] = file.stat().st_mtime
+                return data
             except Exception:
                 return []
         return []
 
     def _save_session(self, session_id: str) -> None:
         try:
-            self._history_file(session_id).write_text(
+            file = self._history_file(session_id)
+            file.write_text(
                 json.dumps(self.conversation_context.get(session_id, []), indent=2)
             )
+            self._mtimes[session_id] = file.stat().st_mtime
         except Exception:
             pass
 
     def history(self, session_id: str) -> List[Dict[str, str]]:
-        if session_id not in self.conversation_context:
-            self.conversation_context[session_id] = self._load_session(session_id)
+        file = self._history_file(session_id)
+        if file.exists():
+            mtime = file.stat().st_mtime
+            if (
+                session_id not in self.conversation_context
+                or self._mtimes.get(session_id) != mtime
+            ):
+                self.conversation_context[session_id] = self._load_session(session_id)
+        else:
+            self.conversation_context.setdefault(session_id, [])
         return self.conversation_context[session_id]
 
     def append(self, session_id: str, role: str, content: str) -> None:
