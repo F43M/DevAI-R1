@@ -49,6 +49,9 @@ class Config:
     SHOW_CONTEXT_BUTTON: bool = False
     START_MODE: str = "fast"  # options: fast, full, custom
     RESCAN_INTERVAL_MINUTES: int = 15  # intervalo mínimo para novas varreduras
+    TESTS_USE_ISOLATION: bool = True
+    TEST_CPU_LIMIT: int = 1  # limite de segundos de CPU por processo de teste
+    TEST_MEMORY_LIMIT_MB: int = 512  # memória máxima em MB para testes
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -80,6 +83,12 @@ class Config:
             raise ValueError("START_MODE must be 'fast', 'full' or 'custom'")
         if not isinstance(self.RESCAN_INTERVAL_MINUTES, int):
             raise ValueError("RESCAN_INTERVAL_MINUTES must be integer")
+        if not isinstance(self.TEST_CPU_LIMIT, int):
+            raise ValueError("TEST_CPU_LIMIT must be integer")
+        if not isinstance(self.TEST_MEMORY_LIMIT_MB, int):
+            raise ValueError("TEST_MEMORY_LIMIT_MB must be integer")
+        if not isinstance(self.TESTS_USE_ISOLATION, bool):
+            raise ValueError("TESTS_USE_ISOLATION must be boolean")
 
     @property
     def model_name(self) -> str:

@@ -5,32 +5,49 @@ from typing import List
 class Sandbox:
     """Isolated execution environment using containers."""
 
-    def __init__(self, image: str = "python:3.10-slim"):
+    def __init__(self, image: str = "python:3.10-slim", cpus: str = "1", memory: str = "512m"):
         self.image = image
+        self.cpus = cpus
+        self.memory = memory
+        self._processes: List[subprocess.Popen] = []
 
     def run(self, command: List[str], timeout: int = 30) -> str:
-        """Run a command inside a container using Docker.
-
-        Parameters
-        ----------
-        command:
-            Command and arguments to execute inside the container.
-        timeout:
-            Maximum time in seconds to allow the command to run.
-
-        Returns
-        -------
-        str
-            Captured standard output from the command.
-        """
-        docker_cmd = ["docker", "run", "--rm", self.image, *command]
+        """Run a command inside a container using Docker."""
+        docker_cmd = [
+            "docker",
+            "run",
+            "--rm",
+            "--cpus",
+            self.cpus,
+            "--memory",
+            self.memory,
+            self.image,
+            *command,
+        ]
+        proc = subprocess.Popen(
+            docker_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        self._processes.append(proc)
         try:
-            proc = subprocess.run(
-                docker_cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-            return proc.stdout
+            out, _ = proc.communicate(timeout=timeout)
+            return out
         except subprocess.TimeoutExpired as e:
+            proc.kill()
             raise TimeoutError(f"Command timed out after {timeout}s") from e
+        finally:
+            if proc in self._processes:
+                self._processes.remove(proc)
+
+    def shutdown(self) -> None:
+        for p in list(self._processes):
+            p.kill()
+            self._processes.remove(p)
+
+    def __enter__(self) -> "Sandbox":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.shutdown()

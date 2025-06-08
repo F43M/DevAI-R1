@@ -11,7 +11,7 @@ def check_dependencies() -> None:
         try:
             mod = importlib.import_module(lib)
             path = getattr(mod, "__file__", "")
-            if path and os.path.abspath(path).startswith(os.path.join(project_dir, lib)):
+            if not path or os.path.abspath(path).startswith(os.path.join(project_dir, lib)):
                 logger.warning(
                     f"Dependência {lib} está usando versão simplificada; instale as bibliotecas reais para integração completa"
                 )

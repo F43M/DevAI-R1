@@ -4,31 +4,66 @@ from devai import sandbox
 
 
 def test_run_executes(monkeypatch):
-    sb = sandbox.Sandbox("img")
+    sb = sandbox.Sandbox("img", cpus="2", memory="128m")
 
     captured = {}
 
-    class DummyResult:
-        stdout = "ok"
+    class DummyProc:
+        def communicate(self, timeout=None):
+            captured["timeout"] = timeout
+            return ("ok", "")
 
-    def fake_run(cmd, capture_output, text, timeout):
+    def fake_popen(cmd, stdout, stderr, text):
         captured["cmd"] = cmd
-        captured["timeout"] = timeout
-        return DummyResult()
+        return DummyProc()
 
-    monkeypatch.setattr(sandbox.subprocess, "run", fake_run)
+    monkeypatch.setattr(sandbox.subprocess, "Popen", fake_popen)
     out = sb.run(["echo", "hi"], timeout=5)
     assert out == "ok"
-    assert captured["cmd"] == ["docker", "run", "--rm", "img", "echo", "hi"]
+    assert captured["cmd"] == [
+        "docker",
+        "run",
+        "--rm",
+        "--cpus",
+        "2",
+        "--memory",
+        "128m",
+        "img",
+        "echo",
+        "hi",
+    ]
     assert captured["timeout"] == 5
 
 
 def test_run_timeout(monkeypatch):
     sb = sandbox.Sandbox()
 
-    def fake_run(cmd, capture_output, text, timeout):
-        raise subprocess.TimeoutExpired(cmd, timeout)
+    class DummyProc:
+        def communicate(self, timeout=None):
+            raise subprocess.TimeoutExpired(cmd="x", timeout=timeout)
+        def kill(self):
+            captured.append("killed")
 
-    monkeypatch.setattr(sandbox.subprocess, "run", fake_run)
+    captured = []
+
+    def fake_popen(cmd, stdout, stderr, text):
+        return DummyProc()
+
+    monkeypatch.setattr(sandbox.subprocess, "Popen", fake_popen)
     with pytest.raises(TimeoutError):
         sb.run(["sleep", "2"], timeout=1)
+    assert "killed" in captured
+
+
+def test_shutdown_terminates_processes(monkeypatch):
+    sb = sandbox.Sandbox()
+
+    class DummyProc:
+        def kill(self):
+            captured.append(True)
+
+    captured = []
+    sb._processes.append(DummyProc())
+    sb.shutdown()
+    assert captured == [True]
+    assert sb._processes == []

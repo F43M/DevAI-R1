@@ -16,3 +16,15 @@ O campo `MODEL_NAME` está **obsoleto** e será ignorado futuramente. Utilize `c
 ## Limites de acesso
 O DevAI valida caminhos fornecidos nas rotas e funções internas, impedindo leituras ou escritas fora de `CODE_ROOT`. Linhas negativas ou além do tamanho do arquivo resultam em erro.
 
+## Isolamento de testes
+
+Os testes automatizados podem ser executados em ambiente isolado. Utilize os campos abaixo no `config.yaml`:
+
+```yaml
+TESTS_USE_ISOLATION: true  # desative para rodar direto no sistema
+TEST_CPU_LIMIT: 1          # limite de CPU (segundos) ou --cpus no Docker
+TEST_MEMORY_LIMIT_MB: 512  # memória máxima em MB
+```
+
+Quando `TESTS_USE_ISOLATION` for `true`, o DevAI executará `pytest` em um container Docker com os limites configurados.
+

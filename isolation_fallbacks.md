@@ -1,6 +1,5 @@
 # Fallbacks para execuções isoladas
 
-- Sem limite de memória implementado no runner.
-- Sem mecanismo para encerrar watchers externos automaticamente.
-- # FUTURE: implementar sandbox de CPU e memória para testes isolados.
+- Limites de CPU e memória aplicados apenas quando `TESTS_USE_ISOLATION` está habilitado.
+- Watchers externos encerrados pelo método `Sandbox.shutdown`.
 
