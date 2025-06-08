@@ -166,7 +166,7 @@ Melhorias em andamento:
 - Sistema de plugins para novas tarefas *(implementado)*
 - Prompts com raciocínio em etapas *(Chain-of-Thought)*
 - Estrutura para treinamento via RLHF (execute `python -m devai fine_tune <modelo> <pasta>`)
-- Sandbox de execução para testes isolados *(planejado)*
+- Sandbox de execução para testes isolados *(implementado)*
 - Relatórios de cobertura integrados
 - Monitoramento de complexidade ao longo do tempo
   (histórico salvo em `complexity_history.json`)

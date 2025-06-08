@@ -43,7 +43,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Integração com IDEs (VSCode, etc.)** *(futuro)*
 - **Treinamento incremental com dados do histórico** *(futuro)*
 - **Fine-tuning com RLHF** *(experimental)* – use `python -m devai.rlhf <modelo> <saida>`
-- **Sandbox de execução com containers** *(planejado)*
+- **Sandbox de execução com containers** *(implementado)*
 - **Prompts com Chain-of-Thought** *(parcialmente implementado)*
 - **Planejamento multi-turn interativo** *(futuro)*
 - **Confirmação antes de ações críticas** *(futuro)*
@@ -71,14 +71,14 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 ## Melhoria implementada – Aplicação de refatoração simulada
 - Código do /dry_run pode ser aplicado automaticamente com backup e rollback.
 
-## Melhoria pendente – Análise inteligente do test_output
-- Filtrar falhas individuais e exibir mensagens mais claras no resumo da simulação.
+## Melhoria implementada – Análise inteligente do test_output
+- Falhas individuais são destacadas e resumos mais claros são gerados.
 
 ## Melhoria pendente – Encerramento completo de recursos dinâmicos
 - Encerrar watchers e ciclos longos de forma previsível no método `shutdown`.
 
-## Melhoria pendente – Sandbox de execuções de teste
-- Aplicar sandbox de execução com limite de CPU e memória para testes isolados.
+## Melhoria implementada – Sandbox de execuções de teste
+- Sandbox de execução com limite de CPU e memória para testes isolados.
 
 ## Adaptive Prompt Construction
 - Implementar filtragem condicional de contextos no prompt.
