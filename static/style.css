@@ -112,3 +112,9 @@
   border-radius: 6px;
   max-width: 90%;
 }
+
+/* Cores para severidade do relatório */
+.report-success { color: #4caf50; }
+.report-warning { color: orange; }
+.report-danger  { color: red; }
+.report-info    { color: deepskyblue; }

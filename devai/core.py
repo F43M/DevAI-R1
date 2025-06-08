@@ -4,6 +4,7 @@ import json
 from collections import defaultdict, OrderedDict
 from datetime import datetime
 from typing import Dict, List, Optional, Any, AsyncGenerator
+import re
 from pathlib import Path
 import ast
 
@@ -736,8 +737,14 @@ class CodeMemoryAI:
 
     @staticmethod
     def _split_plan_response(text: str) -> tuple[str, str]:
-        if "===RESPOSTA===" in text:
-            plan, resp = text.split("===RESPOSTA===", 1)
+        """Split the AI response into plan and final answer.
+
+        Accept minor variations like spaces around the marker.
+        """
+        m = re.search(r"===\s*RESPOSTA\s*===", text)
+        if m:
+            plan = text[: m.start()]
+            resp = text[m.end() :]
             return plan.strip(), resp.strip()
         logger.warning("A IA não retornou plano separado. Verificar prompt.")
         return "", text.strip()
