@@ -27,7 +27,12 @@ class CodeMemoryAI:
     def __init__(self):
         self.memory = MemoryManager(config.MEMORY_DB, config.EMBEDDING_MODEL)
         self.history = FileHistory(config.FILE_HISTORY)
-        self.analyzer = CodeAnalyzer(config.CODE_ROOT, self.memory, self.history)
+        self.analyzer = CodeAnalyzer(
+            config.CODE_ROOT,
+            self.memory,
+            self.history,
+            config.RESCAN_INTERVAL_MINUTES,
+        )
         self.ai_model = AIModel()
         self.learning_engine = LearningEngine(self.analyzer, self.memory, self.ai_model)
         self.tasks = TaskManager(
@@ -53,13 +58,20 @@ class CodeMemoryAI:
         from .metacognition import MetacognitionLoop
 
         meta = MetacognitionLoop(memory=self.memory)
-        for coro in [
+        tasks = [
             self._learning_loop(),
             self.log_monitor.monitor_logs(),
-            self.analyzer.deep_scan_app(),
-            self.analyzer.watch_app_directory(),
             meta.run(),
-        ]:
+        ]
+        if config.START_MODE == "full":
+            tasks.extend([
+                self.analyzer.deep_scan_app(),
+                self.analyzer.watch_app_directory(),
+            ])
+        else:
+            # FUTURE: permitir que o modo custom defina quais tarefas rodam
+            logger.info("🔄 deep_scan_app() adiado para execução sob demanda.")
+        for coro in tasks:
             task = asyncio.create_task(coro)
             self.background_tasks.add(task)
             task.add_done_callback(self.background_tasks.discard)

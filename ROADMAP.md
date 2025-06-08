@@ -49,6 +49,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 ## Melhoria pendente – Análise Explicada (/analyze_deep)
 - Avaliar estabilidade da divisão plano/resposta e ajustar a UI conforme necessário.
 \n## Melhoria pendente – Análise de Projeto\n- Aprimorar visualização colorida do relatório gerado.\n- Permitir execução assíncrona do deep_scan_app.
+- Controle de modo de inicialização do DevAI
 
 ## Melhoria pendente – Aprendizado Simbólico
 - Implementar rastreamento de origem das regras aprendidas
