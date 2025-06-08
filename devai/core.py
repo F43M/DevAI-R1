@@ -327,6 +327,11 @@ class CodeMemoryAI:
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
 
+        if hasattr(self.app, "on_event"):
+            @self.app.on_event("shutdown")
+            async def _shutdown_event():
+                await self.shutdown()
+
     async def _learning_loop(self):
         error_count = 0
         while True:
@@ -652,3 +657,12 @@ class CodeMemoryAI:
         )
         server = uvicorn.Server(cfg)
         await server.serve()
+
+    async def shutdown(self):
+        """Finaliza recursos como AIModel, watchers e ciclos ativos."""
+        if hasattr(self, "ai_model") and hasattr(self.ai_model, "shutdown"):
+            await self.ai_model.shutdown()
+        for task in list(self.background_tasks):
+            task.cancel()
+        # FUTURE: shutdown this resource when implemented
+        logger.info("🛑 DevAI finalizado com limpeza simbólica de recursos.")

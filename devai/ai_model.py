@@ -123,6 +123,12 @@ class AIModel:
             self.local_model = None
             self.local_tokenizer = None
 
+    async def shutdown(self):
+        """Fecha a sessão HTTP e limpa recursos associados ao AIModel."""
+        if self.session and not getattr(self.session, "closed", False):
+            await self.session.close()
+            logger.info("🔒 Sessão HTTP do AIModel encerrada com sucesso.")
+
     def set_model(self, name: str) -> None:
         if name in self.models:
             self.current = name
@@ -280,7 +286,7 @@ class AIModel:
         return annotation + response_text
 
     async def close(self):
-        await self.session.close()
+        await self.shutdown()
 
     async def safe_api_call(
         self,
