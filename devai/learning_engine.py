@@ -45,6 +45,7 @@ def registrar_licao_negativa(arquivo: str, erro: str) -> None:
             "erro": erro,
             "tipo": "licao_negativa",
             "timestamp": datetime.now().isoformat(),
+            "processed": False,
         }
     )
     LESSONS_FILE.write_text(json.dumps(data, indent=2))

@@ -112,6 +112,10 @@ async def auto_monitor_cycle(
         if rules:
             plural = "s" if rules != 1 else ""
             lines.append(f"📌 {rules} nova{plural} regra{plural} aprendida.")
+            sources = result_data.get("rule_sources", {})
+            for idx, (rule, info) in enumerate(sources.items(), 1):
+                origin = info.get("files", ["?"])[0]
+                lines.append(f"🔗 Regra {idx} originada de {origin}")
         else:
             lines.append("🧠 Regras simbólicas atualizadas com base em novos erros.")
         logs_proc = result_data.get("errors_processed", 0)
