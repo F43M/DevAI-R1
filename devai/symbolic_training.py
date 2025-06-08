@@ -27,9 +27,10 @@ async def run_symbolic_training(
         items = json.loads(LESSONS_FILE.read_text()) if LESSONS_FILE.exists() else []
     except Exception:
         items = []
-    items = sorted(items, key=lambda x: x.get("timestamp", ""), reverse=True)[:max_logs]
+    pending_items = [i for i in items if not i.get("processed")]
+    pending_items = sorted(pending_items, key=lambda x: x.get("timestamp", ""), reverse=True)[:max_logs]
     lesson_map: Dict[str, List[str]] = {}
-    for it in items:
+    for it in pending_items:
         lesson_map.setdefault(it.get("arquivo", ""), []).append(it.get("erro", ""))
 
     total_files = 0
@@ -39,7 +40,7 @@ async def run_symbolic_training(
     sensitive: List[str] = []
     patterns: List[str] = []
     sugg_lines: List[str] = []
-    unique_rules: Dict[str, None] = {}
+    unique_rules: Dict[str, Dict[str, set[str]]] = {}
 
     for file_path in code_root.rglob("*.py"):
         total_files += 1
@@ -95,7 +96,10 @@ async def run_symbolic_training(
             suggestions += 1
             first = improve.strip().splitlines()[0]
             sugg_lines.append(f"- {first}")
-            unique_rules[first] = None
+            if first not in unique_rules:
+                unique_rules[first] = {"files": set(), "logs": set()}
+            unique_rules[first]["files"].add(str(file_path))
+            unique_rules[first]["logs"].update(history)
         await asyncio.sleep(0)
 
     report = ["# Relatório de Treinamento Simbólico Profundo", ""]
@@ -116,31 +120,52 @@ async def run_symbolic_training(
     logger.info("Relatorio de treinamento salvo", file="symbolic_training_report.md")
 
     error_counts: Dict[str, int] = {}
-    for it in items:
+    for it in pending_items:
         typ = it.get("erro", "").split(":")[0].split()[0]
         if typ:
             error_counts[typ] = error_counts.get(typ, 0) + 1
     if error_counts:
         cause = ", ".join(f"{k} ({v})" for k, v in error_counts.items())
-        cause_msg = f"Baseado em {len(items)} erros do tipo {cause}."
+        cause_msg = f"Baseado em {len(pending_items)} erros do tipo {cause}."
     else:
         cause_msg = "Regras adicionadas com base em logs de erro anteriores."
 
-    rules = list(unique_rules.keys())
+    rules = list(unique_rules.items())
     lines = ["🧠 Treinamento Concluído", ""]
     if rules:
         lines.append(f"✅ {len(rules)} novas regras de qualidade adicionadas à base de conhecimento:")
-        for i, r in enumerate(rules, 1):
+        for i, (r, info) in enumerate(rules, 1):
             lines.append(f"📌 [{i}] {r}")
             rule_id = f"rule_{len(analyzer.learned_rules) + i}"
             analyzer.learned_rules[rule_id] = {
                 "rule": r,
-                "source": "user_correction:conversation_042",
+                "source": {"files": list(info["files"]), "logs": list(info["logs"])},
             }
+            memory.save(
+                {
+                    "type": "learned_rule",
+                    "memory_type": "rule",
+                    "content": r,
+                    "metadata": {
+                        "files": list(info["files"]),
+                        "logs": list(info["logs"]),
+                    },
+                    "tags": ["rule", "learning"],
+                }
+            )
     else:
         lines.append("Nenhum aprendizado novo encontrado desta vez.")
     lines.append("")
     lines.append(f"🔎 Causa: {cause_msg}")
+
+    # mark logs as processed
+    for entry in items:
+        if entry in pending_items:
+            entry["processed"] = True
+    try:
+        LESSONS_FILE.write_text(json.dumps(items, indent=2))
+    except Exception:
+        logger.warning("Nao foi possivel atualizar lessons.json")
 
     return {
         "report": "\n".join(lines),
@@ -150,7 +175,8 @@ async def run_symbolic_training(
             "em_risco": at_risk,
             "sugestoes": suggestions,
             "new_rules": len(rules),
-            "rules_added": rules,
-            "errors_processed": len(items),
+            "rules_added": [r for r, _ in rules],
+            "rule_sources": {r: {"files": list(info["files"]), "logs": list(info["logs"])} for r, info in rules},
+            "errors_processed": len(pending_items),
         },
     }
