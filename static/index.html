@@ -52,17 +52,20 @@
     </div>
   </div>
 </div>
-<div id="aiPanel">
-  <h3>Painel IA</h3>
-  <pre id="aiOutput"></pre>
-  <button id="toggleReason" style="display:none;" onclick="toggleReasoning()">👁️ Ver raciocínio da IA</button>
-  <pre id="reasoningOutput" class="info-box" style="display:none;"></pre>
-  <pre id="diffOutput" class="diff"></pre>
-  <div id="loading-indicator" class="spinner" style="display:none;">
-    <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span> Processando...
+  <div id="aiPanel">
+    <h3>Painel IA</h3>
+    <div id="ia-panel" class="chat"></div>
+    <pre id="aiOutput"></pre>
+    <button id="toggleReason" style="display:none;" onclick="toggleReasoning()">👁️ Ver raciocínio da IA</button>
+    <pre id="reasoningOutput" class="info-box" style="display:none;"></pre>
+    <pre id="diffOutput" class="diff"></pre>
+    <div id="loading-indicator" class="spinner" style="display:none;">
+      <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span> Processando...
+    </div>
+    <div id="history-warning" class="info-box hidden"></div>
+    <button id="clearHistoryBtn" style="margin-top:8px;">🧹 Limpar histórico</button>
+    <button id="clearSessionBtn" onclick="clearSession()" style="margin-top:8px;">🧹 Limpar Sessão</button>
   </div>
-  <button id="clearSessionBtn" onclick="clearSession()" style="margin-top:8px;">🧹 Limpar Sessão</button>
-</div>
 <button onclick="showHelpOverlay()" class="help-button">❔ Ajuda</button>
 <div id="help-overlay" class="hidden">
   <h3>🧭 Guia Rápido do DevAI</h3>
@@ -116,13 +119,16 @@ async function loadFile(f){
 async function send(cot){
   const q=document.getElementById('query').value.trim();
   if(!q) return;
+  addChat('user',q);
   const url=cot?'/analyze_deep':'/analyze_stream';
   if(cot){
     const r=await fetch(url+'?'+new URLSearchParams({query:q}),{method:'POST'});
     let data;
     try{ data=await r.json(); }catch(e){ data={}; }
     if(data.plan) appendConsole('🧠 Plano de Raciocínio:\n'+data.plan);
-    document.getElementById('aiOutput').textContent=data.main_response||data.response||'';
+    const answer=data.main_response||data.response||'';
+    document.getElementById('aiOutput').textContent=answer;
+    addChat('assistant',answer);
     if(data.reasoning_trace){
       const msg='🧠 Este trecho explica como a IA chegou na resposta. Pode conter termos técnicos simbólicos usados para autoavaliação e aprendizado.';
       const el=document.getElementById('reasoningOutput');
@@ -135,9 +141,10 @@ async function send(cot){
   }else{
     appendConsole('> '+q);
     const out=document.getElementById('console');
+    let resp='';
     const es=new EventSource(url+'?'+new URLSearchParams({query:q}));
-    es.onmessage=e=>{out.textContent+=e.data+' ';out.scrollTop=out.scrollHeight;};
-    es.onerror=()=>es.close();
+    es.onmessage=e=>{out.textContent+=e.data+' ';resp+=e.data+' ';out.scrollTop=out.scrollHeight;};
+    es.onerror=()=>{es.close();addChat('assistant',resp.trim());};
   }
   document.getElementById('query').value='';
   persistUI();

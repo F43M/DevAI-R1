@@ -90,3 +90,4 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - Persistir histórico de conversa por sessão via `ConversationHandler`.
 - Limitar o contexto às 10 mensagens mais recentes.
 - Endpoint `/reset_conversation` aceita `session_id` e limpa apenas aquela sessão.
+- Sincronizar automaticamente `chatHistory` local com o backend quando o endpoint `/history` estiver disponível.

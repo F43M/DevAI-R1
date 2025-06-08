@@ -94,7 +94,65 @@ function displayAIResponseFormatted(data){
 }
 
 const SESSION_KEY='devai_history';
+const CHAT_KEY='chatHistory';
 let showReasoningByDefault=false;
+
+window.chatHistory=[];
+let storageOK=true;
+
+function saveChat(){
+  try{localStorage.setItem(CHAT_KEY,JSON.stringify(window.chatHistory));}
+  catch(e){storageOK=false;showHistoryWarning();}
+}
+
+function loadChat(){
+  try{const d=JSON.parse(localStorage.getItem(CHAT_KEY));if(Array.isArray(d)) window.chatHistory=d;}
+  catch(e){storageOK=false;}
+}
+
+function renderChatHistory(){
+  const panel=document.getElementById('ia-panel');
+  if(!panel) return;
+  panel.innerHTML='';
+  window.chatHistory.forEach(msg=>{
+    const bubble=document.createElement('div');
+    bubble.className=msg.role==='user'?'user-msg':'ai-msg';
+    bubble.textContent=msg.content;
+    panel.appendChild(bubble);
+  });
+}
+
+function addChat(role,content){
+  window.chatHistory.push({role,content});
+  saveChat();
+  renderChatHistory();
+}
+
+function clearChat(){
+  window.chatHistory=[];
+  try{localStorage.removeItem(CHAT_KEY);}catch(e){}
+  renderChatHistory();
+}
+
+function showHistoryWarning(){
+  const el=document.getElementById('history-warning');
+  if(el){
+    el.textContent='⚠️ Histórico de conversa será perdido ao recarregar.';
+    el.classList.remove('hidden');
+  }
+}
+
+async function syncChatFromBackend(){
+  try{
+    const r=await fetch('/history');
+    const hist=await r.json();
+    if(Array.isArray(hist)){
+      window.chatHistory=hist;
+      saveChat();
+      renderChatHistory();
+    }
+  }catch(e){}
+}
 
 function saveSession(obj){
   try{localStorage.setItem(SESSION_KEY,JSON.stringify(obj));}catch(e){}
@@ -125,6 +183,8 @@ function clearSession(){
 }
 
 window.addEventListener('load',async()=>{
+  loadChat();
+  renderChatHistory();
   const data=loadSession();
   if(data){
     document.getElementById('console').textContent=data.console||'';
@@ -141,4 +201,8 @@ window.addEventListener('load',async()=>{
     }
     if('show_reasoning_default' in info) showReasoningByDefault=info.show_reasoning_default;
   }catch(e){}
+  // syncChatFromBackend(); // habilitar quando endpoint /history estiver disponível
+  const btn=document.getElementById('clearHistoryBtn');
+  if(btn) btn.onclick=clearChat;
+  if(!storageOK) showHistoryWarning();
 });
