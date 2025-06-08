@@ -78,6 +78,12 @@ def main():
                 result = await run_symbolic_training(ai.analyzer, ai.memory, ai.ai_model)
                 print(json.dumps(result, indent=2))
                 return
+            elif cmd[0] == "fine_tune" and len(cmd) > 2:
+                from .rlhf import RLFineTuner
+                tuner = RLFineTuner(ai.memory)
+                result = await tuner.fine_tune(cmd[1], cmd[2])
+                print(json.dumps(result, indent=2))
+                return
             elif cmd[0] == "preferencia" and len(cmd) > 1:
                 from .feedback import registrar_preferencia
                 registrar_preferencia(" ".join(cmd[1:]))

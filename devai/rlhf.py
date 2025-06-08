@@ -1,17 +1,19 @@
-from .config import logger
+from __future__ import annotations
+
 import json
+from pathlib import Path
+
+from .config import logger, config
 
 
 class RLFineTuner:
-    """Placeholder for reinforcement learning fine-tuning."""
+    """Simple RLHF fine-tuning helper using TRL."""
 
     def __init__(self, memory_manager):
         self.memory = memory_manager
 
-    def collect_examples(self):
-        """Gather examples from memory for future RLHF datasets."""
-
-        import json
+    def _collect_from_memory(self) -> list[dict]:
+        """Gather scored dialog examples stored in the memory bank."""
 
         cursor = self.memory.conn.cursor()
         cursor.execute(
@@ -33,6 +35,33 @@ class RLFineTuner:
             if prompt:
                 examples.append({"prompt": prompt, "response": content, "score": score})
         return examples
+
+    def _collect_from_logs(self, log_dir: str | None = None) -> list[dict]:
+        """Extract simple Q/A pairs from log files."""
+        examples: list[dict] = []
+        dir_path = Path(log_dir or config.LOG_DIR)
+        if not dir_path.exists():
+            return examples
+        for file in dir_path.glob("*.log"):
+            try:
+                text = file.read_text()
+            except Exception:
+                continue
+            lines = text.splitlines()
+            for i in range(len(lines) - 1):
+                if lines[i].startswith("User:") and lines[i + 1].startswith("Assistant:"):
+                    q = lines[i].split("User:", 1)[1].strip()
+                    a = lines[i + 1].split("Assistant:", 1)[1].strip()
+                    if q and a:
+                        examples.append({"prompt": q, "response": a, "score": 1})
+        return examples
+
+    def collect_examples(self, log_dir: str | None = None) -> list[dict]:
+        """Gather examples from memory and optional log files."""
+
+        data = self._collect_from_memory()
+        data.extend(self._collect_from_logs(log_dir))
+        return data
 
     async def fine_tune(self, base_model: str, output_dir: str) -> dict:
         """Fine tune the language model with RLHF using the TRL library."""

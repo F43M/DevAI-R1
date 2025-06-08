@@ -33,6 +33,15 @@ def test_collect_examples_returns_content(tmp_path):
     assert data and data[0]["prompt"] == "question"
 
 
+def test_collect_log_examples(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("User: hi\nAssistant: hello\n")
+    mem = _create_memory(tmp_path)
+    tuner = rlhf.RLFineTuner(mem)
+    data = tuner._collect_from_logs(str(tmp_path))
+    assert {"prompt": "hi", "response": "hello", "score": 1} in data
+
+
 def test_fine_tune_creates_output(tmp_path):
     mem = _create_memory(tmp_path)
     tuner = rlhf.RLFineTuner(mem)

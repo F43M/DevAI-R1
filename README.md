@@ -124,7 +124,7 @@ python -m devai --cli
 Depois de registrar feedback positivo via API ou CLI, é possível refinar o modelo base utilizando a biblioteca [`trl`](https://github.com/huggingface/trl). Instale as dependências do projeto e execute:
 
 ```bash
-python -m devai.rlhf <modelo_base> ./model_ft
+python -m devai fine_tune <modelo_base> ./model_ft
 ```
 
 O comando coleta os exemplos do banco de memória, monta um pequeno dataset supervisionado e chama o `SFTTrainer` da `trl`. Os checkpoints do modelo e o arquivo `metrics.json` são gravados em `./model_ft`.
@@ -165,7 +165,7 @@ Melhorias em andamento:
 - Cache de memória para acelerar consultas
 - Sistema de plugins para novas tarefas *(implementado)*
 - Prompts com raciocínio em etapas *(Chain-of-Thought)*
-- Estrutura para treinamento via RLHF (execute `python -m devai.rlhf <modelo> <pasta>`)
+- Estrutura para treinamento via RLHF (execute `python -m devai fine_tune <modelo> <pasta>`)
 - Sandbox de execução para testes isolados *(planejado)*
 - Relatórios de cobertura integrados
 - Monitoramento de complexidade ao longo do tempo
