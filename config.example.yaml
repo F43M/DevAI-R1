@@ -12,3 +12,5 @@ NOTIFY_EMAIL: ''
 # Caminho opcional para um modelo local da HuggingFace
 LOCAL_MODEL: ''
 COMPLEXITY_HISTORY: complexity_history.json
+START_MODE: fast  # options: fast, full, custom
+RESCAN_INTERVAL_MINUTES: 15

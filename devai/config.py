@@ -38,6 +38,8 @@ class Config:
     COMPLEXITY_HISTORY: str = "complexity_history.json"
     LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
     DOUBLE_CHECK: bool = False
+    START_MODE: str = "fast"  # options: fast, full, custom
+    RESCAN_INTERVAL_MINUTES: int = 15  # intervalo mínimo para novas varreduras
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -56,6 +58,10 @@ class Config:
             raise ValueError("API_PORT must be integer")
         if not isinstance(self.LEARNING_LOOP_INTERVAL, int):
             raise ValueError("LEARNING_LOOP_INTERVAL must be integer")
+        if self.START_MODE not in {"fast", "full", "custom"}:
+            raise ValueError("START_MODE must be 'fast', 'full' or 'custom'")
+        if not isinstance(self.RESCAN_INTERVAL_MINUTES, int):
+            raise ValueError("RESCAN_INTERVAL_MINUTES must be integer")
 
 
 class Metrics:

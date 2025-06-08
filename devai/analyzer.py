@@ -21,10 +21,18 @@ from .memory import MemoryManager
 class CodeAnalyzer:
     """Parse source files and build dependency graphs."""
 
-    def __init__(self, code_root: str, memory: MemoryManager, history=None):
+    def __init__(
+        self,
+        code_root: str,
+        memory: MemoryManager,
+        history=None,
+        rescan_interval: int = 15,
+    ):
         self.code_root = Path(code_root)
         self.memory = memory
         self.history = history
+        self.rescan_interval = rescan_interval * 60
+        self.last_scan_time = datetime.fromtimestamp(0)
         self.code_chunks: Dict[str, Dict] = {}
         self.code_graph = nx.DiGraph()
         self.vectorizer = TfidfVectorizer()
@@ -36,6 +44,7 @@ class CodeAnalyzer:
     async def deep_scan_app(self):
         logger.info("Iniciando varredura profunda do aplicativo")
         await self.scan_app()
+        self.last_scan_time = datetime.now()
         await self._build_semantic_relations()
         await self._analyze_patterns()
         logger.info(
@@ -321,7 +330,10 @@ class CodeAnalyzer:
         logger.info("Iniciando monitoramento da pasta de código", path=str(self.code_root))
         while True:
             try:
-                await self.scan_app()
+                now = datetime.now()
+                if now.timestamp() - self.last_scan_time.timestamp() >= self.rescan_interval:
+                    await self.scan_app()
+                    self.last_scan_time = now
                 await asyncio.sleep(interval)
             except Exception as e:
                 logger.error("Erro no monitoramento da pasta", error=str(e))
