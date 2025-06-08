@@ -20,7 +20,7 @@ from .api_schemas import (
 )
 from fastapi.staticfiles import StaticFiles
 
-from .config import config, logger, metrics
+from .config import config, logger, metrics, api_key_missing
 from .complexity_tracker import ComplexityTracker
 from .memory import MemoryManager
 from .analyzer import CodeAnalyzer
@@ -137,6 +137,7 @@ class CodeMemoryAI:
                 "memory_items": len(self.memory.indexed_ids),
                 "learned_rules": len(self.analyzer.learned_rules),
                 "last_activity": self.analyzer.last_analysis_time.isoformat(),
+                "api_key_missing": api_key_missing,
             }
 
         @self.app.get("/metrics")

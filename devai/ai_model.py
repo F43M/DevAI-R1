@@ -309,6 +309,10 @@ class AIModel:
         response = await self.generate(
             prompt, max_length=available, temperature=temperature
         )
+        if "401" in response or "Unauthorized" in response:
+            return (
+                "🚫 A chave de API foi rejeitada. Verifique se está correta no config.OPENROUTER_API_KEY."
+            )
         while attempts < 3 and (
             is_response_incomplete(response) or len(response.split()) >= available - 1
         ):
