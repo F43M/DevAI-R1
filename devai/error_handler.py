@@ -1,5 +1,6 @@
 import asyncio
 import random
+import subprocess
 from datetime import datetime
 from typing import Callable, Awaitable, TypeVar
 
@@ -41,8 +42,12 @@ def friendly_message(e: Exception) -> str:
     """Map technical errors to friendly messages for the user."""
     if isinstance(e, asyncio.TimeoutError):
         return "⏱️ A IA demorou para responder. Pode estar ocupada."
+    if isinstance(e, subprocess.TimeoutExpired):
+        return "🕒 Testes cancelados por excederem o tempo máximo permitido"
     if isinstance(e, ConnectionError):
         return "📡 Não foi possível conectar à IA. Verifique sua rede ou aguarde reconexão automática."
+    if isinstance(e, MemoryError):
+        return "💥 Testes encerrados por falta de memória"
     if getattr(e, "status", 0) >= 500:
         return "🧱 A IA retornou um erro interno. Isso pode ser temporário."
     return "⚠️ Algo deu errado. Consulte os logs ou tente novamente."

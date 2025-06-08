@@ -7,6 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 from datetime import datetime
 from typing import Tuple
+from threading import Thread
 
 from .ai_model import AIModel
 from .config import config, logger
@@ -76,12 +77,46 @@ def log_simulation(
     )
 
 
-def run_tests_in_temp(temp_dir: str) -> Tuple[bool, str]:
-    """Execute pytest in a temporary directory copy of the project."""
+def run_test_isolated(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
+    """Run pytest in a subprocess with a timeout to avoid freezes."""
+    cwd = Path(path)
+    try:
+        proc = subprocess.run(
+            ["pytest", "-q"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=cwd,
+            timeout=timeout,
+        )
+        return proc.returncode == 0, proc.stdout.decode()
+    except subprocess.TimeoutExpired:
+        return False, f"\U0001F6D1 Tempo excedido: os testes demoraram mais de {timeout}s e foram cancelados."
+    except Exception as e:  # pragma: no cover - unexpected errors
+        return False, f"\u26A0\uFE0F Erro ao executar testes: {e}"
+
+
+def run_tests_in_temp(temp_dir: str, timeout: int = 30) -> Tuple[bool, str]:
+    """Execute pytest in a temporary directory copy of the project using isolation."""
     project_subdir = Path(temp_dir) / Path(config.CODE_ROOT).name
     cwd = project_subdir if project_subdir.exists() else Path(temp_dir)
-    proc = subprocess.run(
-        ["pytest", "-q"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=cwd
-    )
-    return proc.returncode == 0, proc.stdout.decode()
+
+    result: Tuple[bool, str] | None = None
+
+    def _target() -> None:
+        nonlocal result
+        result = run_test_isolated(cwd, timeout=timeout)
+
+    t = Thread(target=_target, daemon=True)
+    t.start()
+    t.join(timeout + 5)
+    if result is None:
+        return False, f"\U0001F6D1 Tempo excedido: os testes demoraram mais de {timeout}s e foram cancelados."
+    return result
+
+
+def run_tests_async(path: str, timeout: int = 30) -> None:
+    """Run tests asynchronously in a daemon thread."""
+    Thread(target=lambda: run_test_isolated(path, timeout), daemon=True).start()
+
+
 

@@ -64,3 +64,6 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 
 ## Melhoria pendente – Encerramento completo de recursos dinâmicos
 - Encerrar watchers e ciclos longos de forma previsível no método `shutdown`.
+
+## Melhoria pendente – Sandbox de execuções de teste
+- Aplicar sandbox de execução com limite de CPU e memória para testes isolados.
