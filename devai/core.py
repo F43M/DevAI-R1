@@ -1,7 +1,7 @@
 import asyncio
 import os
 import json
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -10,7 +10,6 @@ import ast
 import networkx as nx
 import uvicorn
 from fastapi import FastAPI
-from pathlib import Path
 from .api_schemas import (
     FileEditRequest,
     FileCreateRequest,
@@ -54,6 +53,8 @@ class CodeMemoryAI:
         self.background_tasks = set()
         self.last_average_complexity = 0.0
         self.reason_stack = []
+        self.response_cache: "OrderedDict[str, Dict]" = OrderedDict()
+        self.response_cache_size = 32
         # Gerencia o histórico de cada sessão de conversa
         self.conv_handler = ConversationHandler()
         self.double_check = config.DOUBLE_CHECK
@@ -71,6 +72,25 @@ class CodeMemoryAI:
     @conversation_history.setter
     def conversation_history(self, value: List[Dict[str, str]]):
         self.conv_handler.conversation_context["default"] = value
+
+    def _cache_key(self, query: str) -> str:
+        """Return a key representing the current state for caching."""
+        import hashlib
+
+        last_time = getattr(self.analyzer, "last_analysis_time", datetime.now())
+        idx_len = len(getattr(self.memory, "indexed_ids", []))
+        state = f"{last_time.isoformat()}-{idx_len}"
+        return hashlib.md5(f"{query}-{state}".encode()).hexdigest()
+
+    async def _prefetch_related(self, query: str) -> None:
+        """Preload memories and suggestions in background."""
+        try:
+            await asyncio.gather(
+                self.memory.search(query, top_k=2),
+                self.tasks.run_task("impact_analysis", query),
+            )
+        except Exception:
+            pass
 
     def _start_background_tasks(self):
         from .metacognition import MetacognitionLoop
@@ -118,6 +138,18 @@ class CodeMemoryAI:
             return await self.generate_response(
                 query, double_check=self.double_check, session_id=session_id
             )
+
+        @self.app.get("/analyze_stream")
+        async def analyze_stream(query: str, session_id: str = "default"):
+            from fastapi.responses import StreamingResponse
+
+            async def event_gen():
+                text = await self.generate_response(
+                    query, session_id=session_id
+                )
+                for token in text.split():
+                    yield f"data: {token}\n\n"
+            return StreamingResponse(event_gen(), media_type="text/event-stream")
 
         @self.app.post("/reset_conversation")
         async def reset_conversation(session_id: str = "default"):
@@ -466,9 +498,16 @@ class CodeMemoryAI:
         self, query: str, double_check: bool = False, session_id: str = "default"
     ) -> str:
         try:
+            if not hasattr(self, "response_cache"):
+                self.response_cache = OrderedDict()
+                self.response_cache_size = 32
             cmd = await self._process_command(query, session_id)
             if cmd is not None:
                 return cmd
+            key = self._cache_key(query)
+            if key in self.response_cache:
+                logger.info("cache_hit", query=query)
+                return self.response_cache[key]["response"]
             if len(query.split()) < 3:
                 return "Por favor, forneça mais detalhes sobre sua solicitação."
 
@@ -523,15 +562,21 @@ class CodeMemoryAI:
                 + history
                 + [{"role": "user", "content": prompt}]
             )
+            prefetch = asyncio.create_task(self._prefetch_related(query))
             result = await self.ai_model.safe_api_call(
                 messages, config.MAX_CONTEXT_LENGTH, prompt, self.memory
             )
+            prefetch.cancel()
             if session_id:
                 self.conv_handler.append(session_id, "user", query)
                 self.conv_handler.append(session_id, "assistant", result)
             else:
                 logger.info("multi_turn_fallback", session=session_id)
             self.reason_stack.append("Resposta gerada")
+            self.response_cache[key] = {"response": result}
+            self.response_cache.move_to_end(key)
+            if len(self.response_cache) > self.response_cache_size:
+                self.response_cache.popitem(last=False)
             return result
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
@@ -549,9 +594,16 @@ class CodeMemoryAI:
         self, query: str, session_id: str = "default"
     ) -> Dict[str, str]:
         try:
+            if not hasattr(self, "response_cache"):
+                self.response_cache = OrderedDict()
+                self.response_cache_size = 32
             cmd = await self._process_command(query, session_id)
             if cmd is not None:
                 return {"plan": "", "response": cmd}
+            key = self._cache_key(query)
+            if key in self.response_cache:
+                logger.info("cache_hit", query=query)
+                return self.response_cache[key]
             if len(query.split()) < 3:
                 return {
                     "plan": "",
@@ -588,6 +640,7 @@ class CodeMemoryAI:
                 *history,
                 {"role": "user", "content": prompt},
             ]
+            prefetch = asyncio.create_task(self._prefetch_related(query))
             raw = await self.ai_model.safe_api_call(
                 messages,
                 4096,
@@ -595,6 +648,7 @@ class CodeMemoryAI:
                 self.memory,
                 temperature=0.2,
             )
+            prefetch.cancel()
             plan, resp = self._split_plan_response(raw)
             if session_id:
                 self.conv_handler.append(session_id, "user", query)
@@ -604,13 +658,18 @@ class CodeMemoryAI:
             trace = (
                 f"\ud83d\udca1 Detalhes t\u00e9cnicos: A IA consultou {len(contextual_memories)} m\u00e9morias anteriores, analisou depend\u00eancias e gerou a resposta abaixo com base no padr\u00e3o simb\u00f3lico aprendido."
             )
-            return {
+            result = {
                 "plan": plan,
                 "response": resp,
                 "main_response": resp,
                 "reasoning_trace": trace,
                 "mode": "deep",
             }
+            self.response_cache[key] = result
+            self.response_cache.move_to_end(key)
+            if len(self.response_cache) > self.response_cache_size:
+                self.response_cache.popitem(last=False)
+            return result
         except Exception as e:
             logger.error("Erro ao gerar resposta", error=str(e))
             return {"plan": "", "response": f"Erro ao gerar resposta: {str(e)}"}

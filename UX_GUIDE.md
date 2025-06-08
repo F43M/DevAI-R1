@@ -26,6 +26,7 @@ Todas essas strings ficam definidas em `static/lang.js` para permitir traduçõe
 ## Indicadores de carregamento
 
 Quando uma ação pode levar mais tempo (como aprendizado simbólico ou monitoramento automático), o painel exibe o texto "Processando..." com um pequeno efeito de piscar. Todos os botões são desativados até a conclusão, evitando cliques repetidos.
+Desde esta versão, as respostas da IA são enviadas em tempo real pelo endpoint `/analyze_stream`. O console vai sendo preenchido token a token, oferecendo feedback imediato de que o sistema está ativo.
 
 ## Exibição de resultados complexos
 
