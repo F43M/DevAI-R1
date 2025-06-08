@@ -86,3 +86,41 @@ function displayAIResponseFormatted(data){
     panel.appendChild(renderFallbackJSON(data));
   }
 }
+
+const SESSION_KEY='devai_history';
+
+function saveSession(obj){
+  try{localStorage.setItem(SESSION_KEY,JSON.stringify(obj));}catch(e){}
+}
+
+function loadSession(){
+  try{return JSON.parse(localStorage.getItem(SESSION_KEY))||null;}catch(e){return null;}
+}
+
+function persistUI(){
+  const consoleLines=document.getElementById('console').textContent.split('\n').slice(-20).join('\n');
+  saveSession({
+    console:consoleLines,
+    aiOutput:document.getElementById('aiOutput').innerHTML,
+    diffOutput:document.getElementById('diffOutput').innerHTML,
+    ts:Date.now()
+  });
+}
+
+function clearSession(){
+  localStorage.removeItem(SESSION_KEY);
+  document.getElementById('console').textContent='';
+  document.getElementById('aiOutput').innerHTML='';
+  document.getElementById('diffOutput').innerHTML='';
+  appendConsole('🧹 Sessão apagada com sucesso.');
+}
+
+window.addEventListener('load',()=>{
+  const data=loadSession();
+  if(data){
+    document.getElementById('console').textContent=data.console||'';
+    document.getElementById('aiOutput').innerHTML=data.aiOutput||'';
+    document.getElementById('diffOutput').innerHTML=data.diffOutput||'';
+    appendConsole('🔄 Sessão recuperada – continue de onde parou.');
+  }
+});
