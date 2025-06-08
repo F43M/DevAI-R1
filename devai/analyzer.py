@@ -76,10 +76,15 @@ class CodeAnalyzer:
 
     async def parse_file(self, file_path: Path):
         try:
-            async with aiofiles.open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            async with aiofiles.open(
+                file_path, "r", encoding="utf-8", errors="ignore"
+            ) as f:
                 content = await f.read()
             file_hash = hashlib.md5(content.encode()).hexdigest()
-            if str(file_path) in self.file_hashes and self.file_hashes[str(file_path)] == file_hash:
+            if (
+                str(file_path) in self.file_hashes
+                and self.file_hashes[str(file_path)] == file_hash
+            ):
                 return
             self.file_hashes[str(file_path)] = file_hash
             if file_path.suffix == ".py":
@@ -96,7 +101,9 @@ class CodeAnalyzer:
             tree = ast.parse(content)
             chunks = []
             for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):
+                if isinstance(
+                    node, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)
+                ):
                     chunk = {
                         "name": node.name,
                         "type": type(node).__name__,
@@ -124,7 +131,10 @@ class CodeAnalyzer:
                         )
                     self.external_dependencies.update(chunk["external_deps"])
                     chunks.append(chunk)
-                    if node.name in self.code_chunks and self.code_chunks[node.name]["hash"] != file_hash:
+                    if (
+                        node.name in self.code_chunks
+                        and self.code_chunks[node.name]["hash"] != file_hash
+                    ):
                         logger.warning(
                             "Código modificado",
                             chunk=node.name,
@@ -134,7 +144,12 @@ class CodeAnalyzer:
             self.code_chunks.update({c["name"]: c for c in chunks})
             for chunk in chunks:
                 from .symbolic_memory_tagger import tag_memory_entry
-                base_tags = ["code", chunk['type'].lower(), os.path.basename(chunk['file'])]
+
+                base_tags = [
+                    "code",
+                    chunk["type"].lower(),
+                    os.path.basename(chunk["file"]),
+                ]
                 memory_entry = {
                     "type": "code_chunk",
                     "content": f"{chunk['type']} {chunk['name']} em {chunk['file']}",
@@ -209,14 +224,17 @@ class CodeAnalyzer:
 
         self.code_chunks.update({c["name"]: c for c in chunks})
         from .symbolic_memory_tagger import tag_memory_entry
+
         for chunk in chunks:
-            base_tags = ["code", ftype, os.path.basename(chunk['file'])]
-            self.memory.save({
-                "type": "code_chunk",
-                "content": f"{chunk['type']} {chunk['name']} em {chunk['file']}",
-                "metadata": chunk,
-                "tags": base_tags + tag_memory_entry(chunk),
-            })
+            base_tags = ["code", ftype, os.path.basename(chunk["file"])]
+            self.memory.save(
+                {
+                    "type": "code_chunk",
+                    "content": f"{chunk['type']} {chunk['name']} em {chunk['file']}",
+                    "metadata": chunk,
+                    "tags": base_tags + tag_memory_entry(chunk),
+                }
+            )
 
     def _get_dependencies(self, node):
         deps = set()
@@ -252,7 +270,9 @@ class CodeAnalyzer:
         """Rudimentary cyclomatic complexity estimation."""
         complexity = 1
         for child in ast.walk(node):
-            if isinstance(child, (ast.If, ast.For, ast.While, ast.Match, ast.With, ast.Try)):
+            if isinstance(
+                child, (ast.If, ast.For, ast.While, ast.Match, ast.With, ast.Try)
+            ):
                 complexity += 1
         return complexity
 
@@ -266,7 +286,9 @@ class CodeAnalyzer:
             AND json_extract(metadata, '$.name') IS NOT NULL
             """
         )
-        code_memories = {json.loads(row[1])["name"]: row[0] for row in cursor.fetchall()}
+        code_memories = {
+            json.loads(row[1])["name"]: row[0] for row in cursor.fetchall()
+        }
         for source, target, data in self.code_graph.edges(data=True):
             if source in code_memories and target in code_memories:
                 rel = "calls" if data.get("type") == "call" else "depends_on"
@@ -277,15 +299,22 @@ class CodeAnalyzer:
                     rel,
                     strength=strength,
                 )
-        all_code = [(mid, json.loads(meta)["name"]) for name, mid in code_memories.items()]
+        all_code = [
+            (mid, json.loads(meta)["name"]) for name, mid in code_memories.items()
+        ]
         for i, (mid1, name1) in enumerate(all_code):
             for j, (mid2, name2) in enumerate(all_code[i + 1 :], i + 1):
                 if self._name_similarity(name1, name2) > 0.7:
-                    self.memory.add_semantic_relation(mid1, mid2, "similar_name", strength=0.7)
-        logger.info("Relações semânticas construídas", relations=len(self.code_graph.edges()))
+                    self.memory.add_semantic_relation(
+                        mid1, mid2, "similar_name", strength=0.7
+                    )
+        logger.info(
+            "Relações semânticas construídas", relations=len(self.code_graph.edges())
+        )
 
     def _name_similarity(self, name1: str, name2: str) -> float:
         from difflib import SequenceMatcher
+
         return SequenceMatcher(None, name1.lower(), name2.lower()).ratio()
 
     async def _analyze_patterns(self):
@@ -303,17 +332,25 @@ class CodeAnalyzer:
                                 {
                                     "type": "learned_rule",
                                     "content": f"Função com muitos parâmetros detectada: {chunk['name']}",
-                                    "metadata": {"rule": rule_name, "condition": condition, "example": chunk["name"]},
+                                    "metadata": {
+                                        "rule": rule_name,
+                                        "condition": condition,
+                                        "example": chunk["name"],
+                                    },
                                     "tags": ["rule", "code_smell"],
                                 }
                             )
             except Exception as e:
-                logger.error("Erro ao analisar padrão", chunk=chunk["name"], error=str(e))
+                logger.error(
+                    "Erro ao analisar padrão", chunk=chunk["name"], error=str(e)
+                )
         logger.info("Análise de padrões concluída", rules=len(self.learned_rules))
 
     def get_code_graph(self) -> Dict:
         return {
-            "nodes": [{"id": n, **data} for n, data in self.code_graph.nodes(data=True)],
+            "nodes": [
+                {"id": n, **data} for n, data in self.code_graph.nodes(data=True)
+            ],
             "links": [{"source": u, "target": v} for u, v in self.code_graph.edges()],
         }
 
@@ -327,11 +364,16 @@ class CodeAnalyzer:
         return "\n".join(lines)
 
     async def watch_app_directory(self, interval: int = 5):
-        logger.info("Iniciando monitoramento da pasta de código", path=str(self.code_root))
+        logger.info(
+            "Iniciando monitoramento da pasta de código", path=str(self.code_root)
+        )
         while True:
             try:
                 now = datetime.now()
-                if now.timestamp() - self.last_scan_time.timestamp() >= self.rescan_interval:
+                if (
+                    now.timestamp() - self.last_scan_time.timestamp()
+                    >= self.rescan_interval
+                ):
                     await self.scan_app()
                     self.last_scan_time = now
                 await asyncio.sleep(interval)
@@ -342,17 +384,24 @@ class CodeAnalyzer:
     async def list_dir(self, subpath: str = "") -> List[str]:
         """List files and folders inside CODE_ROOT."""
         target = (self.code_root / subpath).resolve()
-        if not str(target).startswith(str(self.code_root.resolve())) or not target.exists():
+        if (
+            not str(target).startswith(str(self.code_root.resolve()))
+            or not target.exists()
+        ):
             return []
         return [
             f"{p.relative_to(self.code_root)}{'/' if p.is_dir() else ''}"
             for p in sorted(target.iterdir())
         ]
 
-    async def read_lines(self, file_path: str, start: int = 1, end: Optional[int] = None) -> List[str]:
+    async def read_lines(
+        self, file_path: Path | str, start: int = 1, end: Optional[int] = None
+    ) -> List[str]:
         """Return selected lines from a file inside CODE_ROOT."""
-        path = (self.code_root / file_path).resolve()
-        if not path.is_file() or not str(path).startswith(str(self.code_root.resolve())):
+        path = (self.code_root / Path(file_path)).resolve()
+        if not path.is_file() or not str(path).startswith(
+            str(self.code_root.resolve())
+        ):
             return []
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -361,67 +410,88 @@ class CodeAnalyzer:
         end = len(lines) if end is None else min(end, len(lines))
         return [lines[i - 1].rstrip("\n") for i in range(start, end + 1)]
 
-    async def edit_line(self, file_path: str, line_no: int, new_content: str) -> bool:
+    async def edit_line(
+        self, file_path: Path | str, line_no: int, new_content: str
+    ) -> bool:
         """Edit a specific line of a file and reparse it."""
-        path = (self.code_root / file_path).resolve()
-        if not path.is_file() or not str(path).startswith(str(self.code_root.resolve())):
-            return False
+        path = (self.code_root / Path(file_path)).resolve()
+        if not path.is_file() or not str(path).startswith(
+            str(self.code_root.resolve())
+        ):
+            raise ValueError("⛔ Caminho de arquivo fora do projeto ou inválido.")
+        if line_no < 1:
+            raise ValueError("🚫 Linha não pode ser negativa ou zero.")
         with open(path, "r", encoding="utf-8") as f:
             lines = f.readlines()
-        if not 1 <= line_no <= len(lines):
-            return False
+        if line_no > len(lines):
+            raise ValueError("🚫 Linha além do final do arquivo.")
+        if not new_content.strip():
+            raise ValueError("⚠️ Conteúdo vazio – a alteração foi ignorada.")
         old = lines[line_no - 1].rstrip("\n")
         lines[line_no - 1] = new_content + "\n"
         with open(path, "w", encoding="utf-8") as f:
             f.writelines(lines)
         if self.history:
-            self.history.record(str(path.relative_to(self.code_root)), "edit", [old], [new_content])
+            self.history.record(
+                str(path.relative_to(self.code_root)), "edit", [old], [new_content]
+            )
         await self.parse_file(path)
         return True
 
-    async def create_file(self, file_path: str, content: str = "") -> bool:
-        path = (self.code_root / file_path).resolve()
+    async def create_file(self, file_path: Path | str, content: str = "") -> bool:
+        path = (self.code_root / Path(file_path)).resolve()
         if not str(path).startswith(str(self.code_root.resolve())):
-            return False
+            raise ValueError("⛔ Caminho de arquivo fora do projeto.")
         if path.exists():
-            return False
+            raise ValueError("Arquivo já existe.")
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
         if self.history:
-            self.history.record(str(path.relative_to(self.code_root)), "create", new=content.splitlines())
+            self.history.record(
+                str(path.relative_to(self.code_root)),
+                "create",
+                new=content.splitlines(),
+            )
         if path.suffix == ".py":
             await self.parse_file(path)
         return True
 
-    async def delete_file(self, file_path: str) -> bool:
-        path = (self.code_root / file_path).resolve()
-        if not path.is_file() or not str(path).startswith(str(self.code_root.resolve())):
-            return False
+    async def delete_file(self, file_path: Path | str) -> bool:
+        path = (self.code_root / Path(file_path)).resolve()
+        if not path.is_file() or not str(path).startswith(
+            str(self.code_root.resolve())
+        ):
+            raise ValueError("⛔ Caminho de arquivo fora do projeto ou inválido.")
         with open(path, "r", encoding="utf-8") as f:
             old = f.read().splitlines()
         path.unlink()
         if self.history:
-            self.history.record(str(path.relative_to(self.code_root)), "delete", old=old)
-        self.code_chunks = {k: v for k, v in self.code_chunks.items() if v.get("file") != str(path)}
+            self.history.record(
+                str(path.relative_to(self.code_root)), "delete", old=old
+            )
+        self.code_chunks = {
+            k: v for k, v in self.code_chunks.items() if v.get("file") != str(path)
+        }
         return True
 
-    async def create_directory(self, dir_path: str) -> bool:
-        path = (self.code_root / dir_path).resolve()
+    async def create_directory(self, dir_path: Path | str) -> bool:
+        path = (self.code_root / Path(dir_path)).resolve()
         if not str(path).startswith(str(self.code_root.resolve())):
-            return False
+            raise ValueError("⛔ Caminho de diretório fora do projeto.")
         if path.exists():
-            return False
+            raise ValueError("Diretório já existe.")
         path.mkdir(parents=True, exist_ok=False)
         if self.history:
             self.history.record(str(path.relative_to(self.code_root)), "mkdir")
         return True
 
-    async def delete_directory(self, dir_path: str) -> bool:
-        path = (self.code_root / dir_path).resolve()
+    async def delete_directory(self, dir_path: Path | str) -> bool:
+        path = (self.code_root / Path(dir_path)).resolve()
         if not path.is_dir() or not str(path).startswith(str(self.code_root.resolve())):
-            return False
+            raise ValueError("⛔ Caminho de diretório fora do projeto ou inválido.")
         import shutil
+
         shutil.rmtree(path)
         if self.history:
             self.history.record(str(path.relative_to(self.code_root)), "rmdir")
@@ -437,13 +507,17 @@ class CodeAnalyzer:
         summary: Dict[str, Dict[str, int | str]] = {}
         for chunk in self.code_chunks.values():
             rel_path = os.path.relpath(chunk["file"], self.code_root)
-            mod = summary.setdefault(rel_path, {"complex_functions": 0, "todos": 0, "score": ""})
+            mod = summary.setdefault(
+                rel_path, {"complex_functions": 0, "todos": 0, "score": ""}
+            )
             if chunk.get("complexity", 0) > 10:
                 mod["complex_functions"] += 1
         for file_path, data in summary.items():
             path = self.code_root / file_path
             try:
-                async with aiofiles.open(path, "r", encoding="utf-8", errors="ignore") as f:
+                async with aiofiles.open(
+                    path, "r", encoding="utf-8", errors="ignore"
+                ) as f:
                     content = await f.read()
                 data["todos"] = content.count("TODO")
             except Exception:

@@ -73,7 +73,11 @@ def log_simulation(
         f.write("### Avaliação IA\n")
         f.write(evaluation + "\n\n")
     logger.info(
-        "Simulação registrada", file=file_path, action=action, id=sim_id, tests=tests_passed
+        "Simulação registrada",
+        file=file_path,
+        action=action,
+        id=sim_id,
+        tests=tests_passed,
     )
 
 
@@ -90,15 +94,21 @@ def run_test_isolated(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
         )
         return proc.returncode == 0, proc.stdout.decode()
     except subprocess.TimeoutExpired:
-        return False, f"\U0001F6D1 Tempo excedido: os testes demoraram mais de {timeout}s e foram cancelados."
+        return (
+            False,
+            f"\U0001f6d1 Tempo excedido: os testes demoraram mais de {timeout}s e foram cancelados.",
+        )
     except Exception as e:  # pragma: no cover - unexpected errors
-        return False, f"\u26A0\uFE0F Erro ao executar testes: {e}"
+        return False, f"\u26a0\ufe0f Erro ao executar testes: {e}"
 
 
-def run_tests_in_temp(temp_dir: str, timeout: int = 30) -> Tuple[bool, str]:
+def run_tests_in_temp(temp_dir: str | Path, timeout: int = 30) -> Tuple[bool, str]:
     """Execute pytest in a temporary directory copy of the project using isolation."""
-    project_subdir = Path(temp_dir) / Path(config.CODE_ROOT).name
-    cwd = project_subdir if project_subdir.exists() else Path(temp_dir)
+    temp_path = Path(temp_dir)
+    if not temp_path.is_dir():
+        raise ValueError("Diretório temporário inválido para execução de testes.")
+    project_subdir = temp_path / Path(config.CODE_ROOT).name
+    cwd = project_subdir if project_subdir.exists() else temp_path
 
     result: Tuple[bool, str] | None = None
 
@@ -110,13 +120,13 @@ def run_tests_in_temp(temp_dir: str, timeout: int = 30) -> Tuple[bool, str]:
     t.start()
     t.join(timeout + 5)
     if result is None:
-        return False, f"\U0001F6D1 Tempo excedido: os testes demoraram mais de {timeout}s e foram cancelados."
+        return (
+            False,
+            f"\U0001f6d1 Tempo excedido: os testes demoraram mais de {timeout}s e foram cancelados.",
+        )
     return result
 
 
 def run_tests_async(path: str, timeout: int = 30) -> None:
     """Run tests asynchronously in a daemon thread."""
     Thread(target=lambda: run_test_isolated(path, timeout), daemon=True).start()
-
-
-
