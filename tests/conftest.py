@@ -5,18 +5,25 @@ if 'networkx' not in sys.modules:
     class DiGraph:
         def __init__(self):
             self._adj = {}
+
         def add_node(self, n):
             self._adj.setdefault(n, set())
+
         def add_edge(self, u, v):
             self.add_node(u)
             self.add_node(v)
             self._adj[u].add(v)
-        def nodes(self, data=False):
-            return list(self._adj.keys()) if not data else [(n, {}) for n in self._adj]
+
+        @property
+        def nodes(self):
+            return list(self._adj.keys())
+
         def edges(self):
             return [(u, v) for u, vs in self._adj.items() for v in vs]
+
         def successors(self, n):
             return list(self._adj.get(n, []))
+
         def number_of_edges(self):
             return sum(len(v) for v in self._adj.values())
     def descendants(graph, node):
@@ -77,9 +84,13 @@ if 'uvicorn' not in sys.modules:
         async def serve(self):
             pass
 
+    def run(app, *a, **k):
+        return True
+
     uvicorn_stub = types.ModuleType('uvicorn')
     uvicorn_stub.Config = Config
     uvicorn_stub.Server = Server
+    uvicorn_stub.run = run
     sys.modules['uvicorn'] = uvicorn_stub
 
 if 'aiohttp' not in sys.modules:
@@ -133,8 +144,12 @@ if 'aiofiles' not in sys.modules:
 
 if 'sklearn' not in sys.modules:
     class TF:
-        def fit_transform(self, *a, **k):
-            return []
+        def fit_transform(self, docs):
+            class Mat(list):
+                @property
+                def shape(self):
+                    return (len(docs), 0)
+            return Mat()
         def get_feature_names_out(self):
             return []
     sklearn_stub = types.ModuleType('sklearn')

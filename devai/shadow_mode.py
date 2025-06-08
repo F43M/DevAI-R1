@@ -11,6 +11,7 @@ from threading import Thread
 
 from .ai_model import AIModel
 from .config import config, logger
+from .test_runner import run_pytest
 
 
 SHADOW_BASE = Path("/tmp/devai_shadow")
@@ -82,24 +83,8 @@ def log_simulation(
 
 
 def run_test_isolated(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
-    """Run pytest in a subprocess with a timeout to avoid freezes."""
-    cwd = Path(path)
-    try:
-        proc = subprocess.run(
-            ["pytest", "-q"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            cwd=cwd,
-            timeout=timeout,
-        )
-        return proc.returncode == 0, proc.stdout.decode()
-    except subprocess.TimeoutExpired:
-        return (
-            False,
-            f"\U0001f6d1 Tempo excedido: os testes demoraram mais de {timeout}s e foram cancelados.",
-        )
-    except Exception as e:  # pragma: no cover - unexpected errors
-        return False, f"\u26a0\ufe0f Erro ao executar testes: {e}"
+    """Run pytest in an isolated process."""
+    return run_pytest(path, timeout)
 
 
 def run_tests_in_temp(temp_dir: str | Path, timeout: int = 30) -> Tuple[bool, str]:

@@ -57,6 +57,14 @@ pip install -r requirements.txt
 
 4. (Opcional) Descreva comandos de build e testes adicionais em `PROJECT_GUIDE.md`.
 
+Para executar a suíte de testes em ambiente isolado, configure no `config.yaml`:
+
+```yaml
+TESTS_USE_ISOLATION: true
+TEST_CPU_LIMIT: 1
+TEST_MEMORY_LIMIT_MB: 512
+```
+
 O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
 
 ## Executando

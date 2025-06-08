@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Callable, Iterable, List
 import asyncio
@@ -9,6 +8,7 @@ import asyncio
 from .ai_model import AIModel
 from .learning_engine import registrar_licao_negativa
 from .feedback import registrar_feedback_negativo
+from .test_runner import run_pytest
 
 from .config import logger
 
@@ -33,14 +33,11 @@ class UpdateManager:
 
     def run_tests(self, capture_output: bool = False):
         logger.info("Executando testes para validacao")
-        proc = subprocess.run(
-            self.tests_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        output = proc.stdout.decode()
-        logger.info("Testes finalizados", returncode=proc.returncode)
+        ok, output = run_pytest(Path.cwd())
+        logger.info("Testes finalizados", success=ok)
         if capture_output:
-            return proc.returncode == 0, output
-        return proc.returncode == 0
+            return ok, output
+        return ok
 
     def safe_apply(
         self,

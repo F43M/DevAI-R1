@@ -5,7 +5,6 @@ except Exception:  # pragma: no cover - fallback when PyYAML is missing
     from . import yaml_fallback as yaml
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Optional
-import subprocess
 import asyncio
 from pathlib import Path
 
@@ -18,6 +17,7 @@ from .memory import MemoryManager
 from .ai_model import AIModel
 from .plugin_manager import PluginManager
 from .notifier import Notifier
+from .test_runner import run_pytest
 
 
 class TaskManager:
@@ -276,23 +276,9 @@ class TaskManager:
         return findings if findings else ["✅ Nenhum TODO encontrado"]
 
     async def _perform_test_task(self, task: Dict, *args) -> List[str]:
-        cmd = ["pytest", "-q"]
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await proc.communicate()
-            output = out.decode().splitlines()
-            logger.info("Testes executados", returncode=proc.returncode)
-            return output
-        except FileNotFoundError:
-            logger.error("pytest não encontrado")
-            return ["pytest não disponível"]
-        except Exception as e:
-            logger.error("Erro ao executar testes", error=str(e))
-            return [f"Erro ao executar testes: {e}"]
+        ok, out = run_pytest(self.code_analyzer.code_root)
+        logger.info("Testes executados", success=ok)
+        return out.splitlines()
 
     async def _perform_static_analysis_task(self, task: Dict, *args) -> List[str]:
         cmd = ["flake8", str(self.code_analyzer.code_root)]
