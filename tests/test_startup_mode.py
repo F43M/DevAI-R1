@@ -47,7 +47,7 @@ def test_startup_fast(monkeypatch):
     class DummyTask:
         def add_done_callback(self, fn):
             pass
-    def fake_create_task(coro):
+    def fake_create_task(coro, *a, **k):
         tasks.append(coro)
         coro.close()
         return DummyTask()
@@ -58,7 +58,7 @@ def test_startup_fast(monkeypatch):
     ai.memory = DummyMemory()
     ai.analyzer = DummyAnalyzer()
     ai.log_monitor = DummyLogMonitor()
-    ai.background_tasks = set()
+    ai.background_tasks = {}
     ai._learning_loop = lambda: dummy_coroutine('learn')
 
     CodeMemoryAI._start_background_tasks(ai)
