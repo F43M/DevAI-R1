@@ -33,7 +33,7 @@ Assistente de desenvolvimento baseado em IA com suporte a contextos de até **16
 - **Integração contínua via GitHub Actions**
 - **Refatoração automática validada por testes**
 - **Prompts Chain-of-Thought** para melhor raciocínio
-- **Estrutura inicial para fine-tuning via RLHF e sandbox de execução**
+- **Suporte experimental a fine-tuning via RLHF**
 
 ## Configuração
 
@@ -111,6 +111,16 @@ python -m devai --cli
 /tarefa static_analysis
 ```
 
+## Treinamento RLHF
+
+Após registrar feedback positivo via API ou CLI, execute o módulo `devai.rlhf` para refinar o modelo base:
+
+```bash
+python -m devai.rlhf deepseek-r1 ./model_ft
+```
+
+O processo coleta exemplos da memória e salva o resultado na pasta indicada.
+
 ### Integração contínua
 
 O repositório inclui um workflow em `.github/workflows/ci.yml` que executa lint, análise de segurança e testes a cada *pull request*. Basta habilitar o GitHub Actions para que as tarefas sejam rodadas automaticamente.
@@ -147,7 +157,7 @@ Melhorias em andamento:
 - Cache de memória para acelerar consultas
 - Sistema de plugins para novas tarefas *(implementado)*
 - Prompts com raciocínio em etapas *(Chain-of-Thought)*
-- Estrutura para treinamento via RLHF
+- Estrutura para treinamento via RLHF (execute `python -m devai.rlhf <modelo> <pasta>`)
 - Sandbox de execução para testes isolados *(planejado)*
 - Relatórios de cobertura integrados
 - Monitoramento de complexidade ao longo do tempo
