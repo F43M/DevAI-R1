@@ -75,4 +75,5 @@ servidor, o painel exibirá:
 ```
 
 Isso evita erros confusos e orienta o usuário a editar o `.env` ou `config.yaml`
-com a chave correta.
+com a chave correta. O arquivo `.env` é carregado automaticamente caso o
+pacote `python-dotenv` esteja instalado.

@@ -12,3 +12,4 @@ transformers
 psutil
 PyYAML
 PyJWT
+python-dotenv
