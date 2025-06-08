@@ -55,7 +55,7 @@ class CodeMemoryAI:
         self.complexity_tracker = ComplexityTracker(config.COMPLEXITY_HISTORY)
         self.app = FastAPI(title="CodeMemoryAI API")
         self._setup_api_routes()
-        self.background_tasks = set()
+        self.background_tasks: Dict[str, asyncio.Task] = {}
         self.last_average_complexity = 0.0
         self.reason_stack = []
         self.response_cache: "OrderedDict[str, Dict]" = OrderedDict()
@@ -120,32 +120,34 @@ class CodeMemoryAI:
         from .metacognition import MetacognitionLoop
 
         meta = MetacognitionLoop(memory=self.memory)
-        tasks = [
-            self._learning_loop(),
-            self.log_monitor.monitor_logs(),
-            meta.run(),
+        task_coros = [
+            ("learning_loop", self._learning_loop()),
+            ("log_monitor", self.log_monitor.monitor_logs()),
+            ("metacognition", meta.run()),
         ]
         mode = getattr(config, "OPERATING_MODE", "standard")
         if mode == "continuous":
             from .monitor_engine import auto_monitor_cycle
-            tasks.append(auto_monitor_cycle(self.analyzer, self.memory, self.ai_model))
+            task_coros.append(
+                ("auto_monitor_cycle", auto_monitor_cycle(self.analyzer, self.memory, self.ai_model))
+            )
         elif mode == "sandbox":
             logger.info("Modo sandbox ativo: background tasks desativadas.")
-            tasks = []
+            task_coros = []
         if config.START_MODE == "full":
-            tasks.extend(
+            task_coros.extend(
                 [
-                    self.analyzer.deep_scan_app(),
-                    self.analyzer.watch_app_directory(),
+                    ("deep_scan_app", self.analyzer.deep_scan_app()),
+                    ("watch_app_directory", self.analyzer.watch_app_directory()),
                 ]
             )
         else:
             # FUTURE: permitir que o modo custom defina quais tarefas rodam
             logger.info("🔄 deep_scan_app() adiado para execução sob demanda.")
-        for coro in tasks:
-            task = asyncio.create_task(coro)
-            self.background_tasks.add(task)
-            task.add_done_callback(self.background_tasks.discard)
+        for name, coro in task_coros:
+            task = asyncio.create_task(coro, name=name)
+            self.background_tasks[name] = task
+            task.add_done_callback(lambda t, n=name: self.background_tasks.pop(n, None))
 
     def _setup_api_routes(self):
         try:
@@ -895,10 +897,16 @@ class CodeMemoryAI:
         """Finaliza recursos como AIModel, watchers e ciclos ativos."""
         if hasattr(self, "ai_model") and hasattr(self.ai_model, "shutdown"):
             await self.ai_model.shutdown()
-        for task in list(self.background_tasks):
+        tasks = list(self.background_tasks.items())
+        for name, task in tasks:
             task.cancel()
-        real_tasks = [t for t in self.background_tasks if isinstance(t, asyncio.Task)]
-        if real_tasks:
-            await asyncio.gather(*real_tasks, return_exceptions=True)
+        if tasks:
+            results = await asyncio.gather(
+                *(task for _, task in tasks), return_exceptions=True
+            )
+            for (name, _), result in zip(tasks, results):
+                if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                    logger.error("Erro ao finalizar task", task=name, error=str(result))
+                self.background_tasks.pop(name, None)
         # FUTURE: shutdown this resource when implemented
         logger.info("🛑 DevAI finalizado com limpeza simbólica de recursos.")

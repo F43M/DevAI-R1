@@ -53,7 +53,7 @@ def test_background_task_custom_mode(monkeypatch, caplog):
     ai.memory = types.SimpleNamespace()
     ai.analyzer = DummyAnalyzer()
     ai.log_monitor = DummyLogMonitor()
-    ai.background_tasks = set()
+    ai.background_tasks = {}
     ai._learning_loop = lambda: (lambda: None)()
     with caplog.at_level(logging.INFO):
         CodeMemoryAI._start_background_tasks(ai)
@@ -63,7 +63,21 @@ def test_background_task_custom_mode(monkeypatch, caplog):
 def test_shutdown_cleans_tasks():
     ai = object.__new__(CodeMemoryAI)
     ai.ai_model = CodeMemoryAI.__init__.__globals__["AIModel"]()
-    t1 = MockTask(); t2 = MockTask()
-    ai.background_tasks = {t1, t2}
-    asyncio.run(CodeMemoryAI.shutdown(ai))
-    assert t1.cancel_called and t2.cancel_called
+
+    async def idle(rec):
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            rec.append(True)
+            raise
+
+    record = []
+    async def run():
+        t1 = asyncio.create_task(idle(record))
+        t2 = asyncio.create_task(idle(record))
+        ai.background_tasks = {"t1": t1, "t2": t2}
+        await asyncio.sleep(0)
+        await CodeMemoryAI.shutdown(ai)
+    asyncio.run(run())
+    assert len(record) == 2
