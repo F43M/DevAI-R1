@@ -13,3 +13,4 @@ psutil
 PyYAML
 PyJWT
 python-dotenv
+trl
