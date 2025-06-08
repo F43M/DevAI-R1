@@ -37,6 +37,27 @@ function toggleReasoning(){
   el.style.display=el.style.display==='none'?'block':'none';
 }
 
+async function toggleContext(){
+  const panel=document.getElementById('contextPanel');
+  if(!panel) return;
+  if(panel.style.display==='none'){
+    panel.textContent='⌛ carregando...';
+    panel.style.display='block';
+    try{
+      const r=await fetch('/session/context');
+      const data=await r.json();
+      if(data.error){panel.textContent=data.error;return;}
+      const list=p=>p.map(i=>'<li>'+i+'</li>').join('');
+      panel.innerHTML='<h4>🗣️ Últimas mensagens</h4><ul>'+list(data.history_preview)+'</ul>'+
+        '<h4>📌 Memórias Simbólicas Ativadas</h4><ul>'+list(data.symbolic_memories)+'</ul>'+
+        '<h4>🔍 Blocos técnicos usados</h4><ul>'+list(data.logs_or_code)+'</ul>'+
+        (data.warnings.length?'<h4>⚠️ Avisos</h4><p>'+data.warnings.join('<br>')+'</p>':'');
+    }catch(e){panel.textContent='Erro ao carregar contexto';}
+  }else{
+    panel.style.display='none';
+  }
+}
+
 function renderStructuredResponse(data){
   const container=document.createElement('div');
   const addSection=(title,list,cls)=>{
@@ -96,6 +117,7 @@ function displayAIResponseFormatted(data){
 const SESSION_KEY='devai_history';
 const CHAT_KEY='chatHistory';
 let showReasoningByDefault=false;
+let showContextButton=false;
 
 window.chatHistory=[];
 let storageOK=true;
@@ -200,9 +222,12 @@ window.addEventListener('load',async()=>{
       document.getElementById('aiOutput').textContent='🚫 Nenhuma chave de API foi detectada. Configure OPENROUTER_API_KEY para habilitar a IA.';
     }
     if('show_reasoning_default' in info) showReasoningByDefault=info.show_reasoning_default;
+    if('show_context_button' in info) showContextButton=info.show_context_button;
   }catch(e){}
   // syncChatFromBackend(); // habilitar quando endpoint /history estiver disponível
   const btn=document.getElementById('clearHistoryBtn');
   if(btn) btn.onclick=clearChat;
+  const ctx=document.getElementById('showContextBtn');
+  if(ctx) ctx.style.display=showContextButton?'block':'none';
   if(!storageOK) showHistoryWarning();
 });

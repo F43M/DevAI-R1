@@ -25,3 +25,4 @@ As memórias ficam disponíveis para novas rodadas de sugestão de código, refo
 ## pending_features
 - memory_extraction_fallback
 - Sincronização automática entre backend e chatHistory local para sessões multi-turn.
+- Em sessões curtas, o botão “🧠 Contexto Atual” pode não retornar memórias ainda.

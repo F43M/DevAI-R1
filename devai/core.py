@@ -3,7 +3,7 @@ import os
 import json
 from collections import defaultdict, OrderedDict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pathlib import Path
 import ast
 
@@ -207,6 +207,7 @@ class CodeMemoryAI:
                 "last_activity": self.analyzer.last_analysis_time.isoformat(),
                 "api_key_missing": api_key_missing,
                 "show_reasoning_default": config.SHOW_REASONING_BY_DEFAULT,
+                "show_context_button": config.SHOW_CONTEXT_BUTTON,
             }
 
         @self.app.get("/metrics")
@@ -305,6 +306,10 @@ class CodeMemoryAI:
                     from . import yaml_fallback as yaml
                 return yaml.safe_load(path.read_text())
             return []
+
+        @self.app.get("/session/context")
+        async def session_context(session_id: str = "default"):
+            return self.get_session_context(session_id)
 
         @self.app.get("/diff")
         async def get_diff(file: str):
@@ -558,6 +563,10 @@ class CodeMemoryAI:
                 "actions": actions,
                 "logs": logs,
             }
+            self.last_context = {
+                "history": self._build_history_messages(session_id) if session_id else [],
+                "context_blocks": context_blocks,
+            }
             prompt = build_dynamic_prompt(
                 query,
                 context_blocks,
@@ -646,6 +655,10 @@ class CodeMemoryAI:
                 "graph": graph_summary,
                 "actions": actions,
                 "logs": logs,
+            }
+            self.last_context = {
+                "history": self._build_history_messages(session_id) if session_id else [],
+                "context_blocks": context_blocks,
             }
             prompt = build_dynamic_prompt(query, context_blocks, "deep")
             if suggestions:
@@ -805,6 +818,48 @@ class CodeMemoryAI:
         except Exception as e:
             logger.error("Erro ao inferir tipo de retorno", error=str(e))
         return None
+
+    def get_session_context(self, session_id: str = "default", n: int = 3) -> Dict[str, Any]:
+        """Return preview of conversation and activated memories."""
+        try:
+            history = self.conv_handler.last(session_id, n * 2)
+            preview = [f"{m['role']}: {m['content']}" for m in history]
+            last_user = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
+            symbolic = []
+            warnings: List[str] = []
+            try:
+                symbolic = [
+                    f"{m.get('metadata', {}).get('tag', '')}: {m['content']}"
+                    for m in self.memory.search(last_user, memory_type="dialog_summary", top_k=n)
+                ]
+            except Exception:
+                warnings.append("⚠️ Memória vetorial temporariamente indisponível.")
+            blocks = getattr(self, "last_context", {}).get("context_blocks", {})
+            logs_or_code = []
+            if blocks.get("logs"):
+                logs_or_code.append(blocks["logs"])
+            if blocks.get("graph"):
+                logs_or_code.append("grafo_de_dependencias.yaml")
+            if not preview:
+                return {
+                    "error": "⚠️ Nenhum dado de contexto disponível nesta sessão.",
+                    "symbolic_memories": [],
+                    "history_preview": [],
+                }
+            if not symbolic:
+                warnings.append("Memória simbólica ainda não ativada")
+            return {
+                "history_preview": preview,
+                "symbolic_memories": symbolic,
+                "logs_or_code": logs_or_code,
+                "warnings": warnings,
+            }
+        except Exception:
+            return {
+                "error": "⚠️ Nenhum dado de contexto disponível nesta sessão.",
+                "symbolic_memories": [],
+                "history_preview": [],
+            }
 
     async def run(self):
         cfg = uvicorn.Config(
