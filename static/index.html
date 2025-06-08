@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <title>DevAI Painel</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs/editor/editor.main.min.css" />
+<link rel="stylesheet" href="style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs/loader.min.js"></script>
 <style>
   body { margin:0; display:flex; height:100vh; font-family:Arial, sans-serif; }
@@ -29,13 +30,13 @@
   <div id="console"></div>
   <div id="inputArea">
     <textarea id="query" rows="2"></textarea>
-    <button id="send">Enviar</button>
-    <button id="deep" title="Executa análise profunda com plano passo a passo antes da resposta.">🔎 Análise Explicada</button>
-    <button id="investigate">🧠 Analisar Projeto</button>
-    <button id="trainSymbolic">🧠 Treinar com base em erros passados</button>
-    <button id="autoMonitor">🧭 Autoavaliação Inteligente</button>
-    <button id="shadowRefactor">🕶️ Simular Refatoração</button>
-    <button id="applyRefactor">✅ Aplicar Refatoração</button>
+    <button id="send" title="Faz uma análise simples da dúvida ou trecho enviado">🔎 Analisar</button>
+    <button id="deep" title="Gera explicação com plano de raciocínio antes da resposta">🧠 Análise Profunda</button>
+    <button id="investigate" title="Escaneia o projeto em busca de melhorias e complexidades">📊 Deep Analysis</button>
+    <button id="trainSymbolic" title="Faz a IA aprender com erros passados e melhorar suas regras internas">🧠 Treinar</button>
+    <button id="autoMonitor" title="Executa um diagnóstico geral do sistema e aplica aprendizado automático, se necessário">🧭 Auto Monitor</button>
+    <button id="shadowRefactor" title="Aplica uma mudança sugerida pela IA em modo simulado, sem afetar o código real">🕶️ Simular Refatoração</button>
+    <button id="applyRefactor" title="Aplica a mudança sugerida diretamente no código (usa backup interno)">💾 Aplicar Refatoração</button>
   </div>
 </div>
 <div id="aiPanel">
@@ -43,7 +44,22 @@
   <pre id="aiOutput"></pre>
   <pre id="diffOutput" class="diff"></pre>
 </div>
+<button onclick="showHelpOverlay()" class="help-button">❔ Ajuda</button>
+<div id="help-overlay" class="hidden">
+  <h3>🧭 Guia Rápido do DevAI</h3>
+  <ul>
+    <li><strong>🔎 Analisar</strong>: analisa um código ou pergunta e responde objetivamente.</li>
+    <li><strong>🧠 Análise Profunda</strong>: mostra como a IA pensou antes de responder.</li>
+    <li><strong>🕶️ Simular Refatoração</strong>: aplica melhorias sem alterar o arquivo real.</li>
+    <li><strong>✅ Aplicar Refatoração</strong>: altera o arquivo com a sugestão aprovada.</li>
+    <li><strong>🧠 Treinar</strong>: faz o DevAI aprender com falhas anteriores.</li>
+    <li><strong>📊 Deep Analysis</strong>: escaneia todo o projeto por complexidades.</li>
+    <li><strong>🧭 Auto Monitor</strong>: verifica se há algo a corrigir e toma ações autônomas se necessário.</li>
+  </ul>
+  <button onclick="hideHelpOverlay()">Fechar</button>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+<script src="script.js"></script>
 <script>
 var editor;
 require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs' }});
