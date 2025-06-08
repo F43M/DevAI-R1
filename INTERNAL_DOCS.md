@@ -27,3 +27,11 @@ As memórias ficam disponíveis para novas rodadas de sugestão de código, refo
 - Sincronização automática entre backend e chatHistory local para sessões multi-turn.
 - Em sessões curtas, o botão “🧠 Contexto Atual” pode não retornar memórias ainda.
 - Reset parcial de sessões (limpar conversa, mas manter memórias preferenciais)
+
+## pending_fixes
+- stub_fallback:fastapi
+- stub_fallback:uvicorn
+- stub_fallback:aiohttp
+- stub_fallback:aiofiles
+- stub_fallback:networkx
+- stub_fallback:scikit-learn
