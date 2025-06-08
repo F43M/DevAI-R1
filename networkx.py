@@ -1,3 +1,5 @@
+print("\u26A0\uFE0F Dependência ausente: networkx. Reverter para stub temporário.")
+
 class DiGraph:
     def __init__(self):
         self._adj = {}
@@ -19,6 +21,12 @@ class DiGraph:
         return [(u, v) for u, targets in self._adj.items() for v in targets]
     def number_of_edges(self):
         return sum(len(t) for t in self._adj.values())
+
+    def __contains__(self, node):
+        return node in self._adj
+
+    def out_degree(self, node):
+        return len(self._adj.get(node, {}))
 
 def descendants(graph, source):
     seen = set()
