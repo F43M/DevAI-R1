@@ -10,12 +10,21 @@ class ConversationHandler:
         self.conversation_context: Dict[str, List[Dict[str, str]]] = {}
         self.max_history = max_history
 
+    @staticmethod
+    def _estimate_tokens(text: str) -> int:
+        return len(text.split())
+
     def history(self, session_id: str) -> List[Dict[str, str]]:
         return self.conversation_context.setdefault(session_id, [])
 
     def append(self, session_id: str, role: str, content: str) -> None:
         hist = self.history(session_id)
         hist.append({"role": role, "content": content})
+        self.prune(session_id)
+
+    def prune(self, session_id: str) -> None:
+        """Mantém apenas as últimas mensagens definidas por max_history."""
+        hist = self.history(session_id)
         if len(hist) > self.max_history:
             self.conversation_context[session_id] = hist[-self.max_history:]
 
