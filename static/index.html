@@ -116,9 +116,9 @@ async function loadFile(f){
 async function send(cot){
   const q=document.getElementById('query').value.trim();
   if(!q) return;
-  const url=cot?'/analyze_deep':'/analyze';
-  const r=await fetch(url+'?'+new URLSearchParams({query:q}),{method:'POST'});
+  const url=cot?'/analyze_deep':'/analyze_stream';
   if(cot){
+    const r=await fetch(url+'?'+new URLSearchParams({query:q}),{method:'POST'});
     let data;
     try{ data=await r.json(); }catch(e){ data={}; }
     if(data.plan) appendConsole('🧠 Plano de Raciocínio:\n'+data.plan);
@@ -133,8 +133,11 @@ async function send(cot){
     }
     appendConsole('> '+q);
   }else{
-    const text=await r.text();
-    appendConsole('> '+q+'\n'+text);
+    appendConsole('> '+q);
+    const out=document.getElementById('console');
+    const es=new EventSource(url+'?'+new URLSearchParams({query:q}));
+    es.onmessage=e=>{out.textContent+=e.data+' ';out.scrollTop=out.scrollHeight;};
+    es.onerror=()=>es.close();
   }
   document.getElementById('query').value='';
   persistUI();

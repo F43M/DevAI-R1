@@ -176,6 +176,7 @@ class MemoryManager:
             return [0.0]
         if text in self.embedding_cache:
             self.embedding_cache.move_to_end(text)
+            logger.info("embedding_cache_hit", text=text[:30])
             return self.embedding_cache[text]
         vec = self.embedding_model.encode(text)
         self.embedding_cache[text] = vec

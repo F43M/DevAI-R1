@@ -7,3 +7,4 @@
 - # FUTURE: limitar ciclos por etapa no auto_monitor_cycle
   Garantir que a autoavaliação não cause travamentos.
 - Execução sob demanda do `deep_scan_app` configurada via `START_MODE`.
+- **Pendente**: persistência completa dos vetores de embeddings em disco para evitar recomputações em reinícios.
