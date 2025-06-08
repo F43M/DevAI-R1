@@ -45,7 +45,9 @@ API_PORT: 8000
 API_SECRET: "sua-chave"
 ```
 
-2. Defina a variável de ambiente `OPENROUTER_API_KEY` com sua chave de acesso.
+2. Crie um arquivo `.env` com `OPENROUTER_API_KEY=<sua chave>` ou defina essa
+   variável diretamente no ambiente. O DevAI carrega esse arquivo
+   automaticamente se o pacote `python-dotenv` estiver instalado.
 
 3. Instale as dependências do projeto para habilitar a comunicação real com o OpenRouter:
 

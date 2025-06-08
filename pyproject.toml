@@ -12,6 +12,7 @@ uvicorn = "*"
 aiofiles = "*"
 aiohttp = "*"
 structlog = "*"
+python-dotenv = "*"
 
 [tool.pytest.ini_options]
 addopts = "-q"

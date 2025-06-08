@@ -3,6 +3,12 @@ import logging
 import logging.handlers
 from dataclasses import dataclass, field, fields, MISSING
 from typing import Dict, Any
+
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
 try:
     import psutil  # type: ignore
 except Exception:  # pragma: no cover - optional dependency

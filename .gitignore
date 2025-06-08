@@ -4,3 +4,4 @@ logs/
 *.pyo
 **/__pycache__/
 prompt_log.jsonl
+.env
