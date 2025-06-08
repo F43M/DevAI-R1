@@ -171,14 +171,18 @@ document.getElementById('investigate').onclick=async()=>{
   }
 };
 document.getElementById('trainSymbolic').onclick=async()=>{
-  appendConsole('Aprendendo com erros passados...');
+  appendConsole('Aprendizado simbólico iniciado...');
   const out=document.getElementById('aiOutput');
   showLoading();
-  out.textContent='🔄 Treinando...';
+  out.textContent='🔄 Treinamento em segundo plano...';
   try{
     const r=await fetch('/symbolic_training',{method:'POST'});
     const data=await r.json();
-    displayAIResponseFormatted(data);
+    if(data.status){
+      appendConsole('Treinamento agendado');
+    }else{
+      displayAIResponseFormatted(data);
+    }
     persistUI();
   }catch(e){
     out.textContent='Erro durante o treinamento simbólico.';
