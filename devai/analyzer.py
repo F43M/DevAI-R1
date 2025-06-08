@@ -40,13 +40,18 @@ class CodeAnalyzer:
         self.external_dependencies = set()
         self.learned_rules: Dict[str, str] = {}
         self.last_analysis_time = datetime.now()
+        self.scan_progress = 0.0
 
     async def deep_scan_app(self):
         logger.info("Iniciando varredura profunda do aplicativo")
+        self.scan_progress = 0.0
         await self.scan_app()
+        self.scan_progress = 0.6
         self.last_scan_time = datetime.now()
         await self._build_semantic_relations()
+        self.scan_progress = 0.8
         await self._analyze_patterns()
+        self.scan_progress = 1.0
         logger.info(
             "Varredura profunda concluída",
             functions=len(self.code_chunks),
@@ -54,7 +59,6 @@ class CodeAnalyzer:
         )
 
     async def scan_app(self):
-        tasks = []
         patterns = [
             "*.py",
             "*.js",
@@ -67,12 +71,15 @@ class CodeAnalyzer:
             "*.rb",
             "*.php",
         ]
+        files: List[Path] = []
         for pat in patterns:
-            for file_path in self.code_root.rglob(pat):
-                if file_path.is_file():
-                    tasks.append(self.parse_file(file_path))
-        await asyncio.gather(*tasks)
-        logger.info("Aplicativo escaneado", files_processed=len(tasks))
+            files.extend([p for p in self.code_root.rglob(pat) if p.is_file()])
+        total = len(files)
+        for i, file_path in enumerate(files, 1):
+            await self.parse_file(file_path)
+            if total:
+                self.scan_progress = i / total * 0.5
+        logger.info("Aplicativo escaneado", files_processed=total)
 
     async def parse_file(self, file_path: Path):
         try:

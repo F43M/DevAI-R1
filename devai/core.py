@@ -116,6 +116,39 @@ class CodeMemoryAI:
             selected.append(msg)
         return list(reversed(selected))
 
+    def start_deep_scan(self) -> bool:
+        """Queue deep_scan_app as background task if not running."""
+        if not hasattr(self, "background_tasks"):
+            self.background_tasks = {}
+        if "deep_scan_app" in self.background_tasks:
+            return False
+        task = asyncio.create_task(self.analyzer.deep_scan_app(), name="deep_scan_app")
+        self.background_tasks["deep_scan_app"] = task
+        task.add_done_callback(lambda t: self.background_tasks.pop("deep_scan_app", None))
+        return True
+
+    def queue_symbolic_training(self) -> bool:
+        """Run symbolic training in background and notify when done."""
+        if not hasattr(self, "background_tasks"):
+            self.background_tasks = {}
+        if "symbolic_training" in self.background_tasks:
+            return False
+
+        async def _run():
+            from .symbolic_training import run_symbolic_training
+            result = await run_symbolic_training(self.analyzer, self.memory, self.ai_model)
+            try:
+                from .notifier import Notifier
+                Notifier().send("Treinamento simbólico concluído", result.get("report", "")[:200])
+            except Exception:
+                pass
+            return result
+
+        task = asyncio.create_task(_run(), name="symbolic_training")
+        self.background_tasks["symbolic_training"] = task
+        task.add_done_callback(lambda t: self.background_tasks.pop("symbolic_training", None))
+        return True
+
     def _start_background_tasks(self):
         from .metacognition import MetacognitionLoop
 
@@ -135,11 +168,9 @@ class CodeMemoryAI:
             logger.info("Modo sandbox ativo: background tasks desativadas.")
             task_coros = []
         if config.START_MODE == "full":
-            task_coros.extend(
-                [
-                    ("deep_scan_app", self.analyzer.deep_scan_app()),
-                    ("watch_app_directory", self.analyzer.watch_app_directory()),
-                ]
+            self.start_deep_scan()
+            task_coros.append(
+                ("watch_app_directory", self.analyzer.watch_app_directory())
             )
         else:
             # FUTURE: permitir que o modo custom defina quais tarefas rodam
@@ -225,6 +256,8 @@ class CodeMemoryAI:
                 "api_key_missing": api_key_missing,
                 "show_reasoning_default": config.SHOW_REASONING_BY_DEFAULT,
                 "show_context_button": config.SHOW_CONTEXT_BUTTON,
+                "scan_progress": round(self.analyzer.scan_progress, 2),
+                "background_tasks": list(self.background_tasks.keys()),
             }
 
         @self.app.get("/metrics")
@@ -391,7 +424,16 @@ class CodeMemoryAI:
             """Run a project wide analysis and return a summary."""
             if not _auth(token):
                 return {"error": "unauthorized"}
-            await self.analyzer.deep_scan_app()
+            if self.start_deep_scan():
+                task = self.background_tasks.get("deep_scan_app")
+                if hasattr(task, "__await__"):
+                    await task
+                else:
+                    await self.analyzer.deep_scan_app()
+            elif "deep_scan_app" in self.background_tasks:
+                task = self.background_tasks["deep_scan_app"]
+                if hasattr(task, "__await__"):
+                    await task
             modules = await self.analyzer.summary_by_module()
             from .auto_review import run_autoreview
 
@@ -421,11 +463,10 @@ class CodeMemoryAI:
         async def symbolic_training(token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
-            from .symbolic_training import run_symbolic_training
-
-            return await run_symbolic_training(
-                self.analyzer, self.memory, self.ai_model
-            )
+            if "symbolic_training" in self.background_tasks:
+                return {"status": "running"}
+            self.queue_symbolic_training()
+            return {"status": "queued"}
 
         @self.app.get("/auto_monitor")
         async def auto_monitor():
@@ -908,5 +949,7 @@ class CodeMemoryAI:
                 if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
                     logger.error("Erro ao finalizar task", task=name, error=str(result))
                 self.background_tasks.pop(name, None)
+        if hasattr(self, "memory") and hasattr(self.memory, "close"):
+            self.memory.close()
         # FUTURE: shutdown this resource when implemented
         logger.info("🛑 DevAI finalizado com limpeza simbólica de recursos.")

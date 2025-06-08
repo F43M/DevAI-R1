@@ -537,3 +537,13 @@ class MemoryManager:
         self.conn.commit()
         logger.info("Memorias antigas arquivadas", count=len(rows))
         return len(rows)
+
+    def close(self) -> None:
+        """Persist index and close database connection."""
+        try:
+            if self.index is not None:
+                self._persist_index()
+            self.conn.commit()
+            self.conn.close()
+        except Exception:
+            pass
