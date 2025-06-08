@@ -195,13 +195,24 @@ function persistUI(){
   });
 }
 
-function clearSession(){
+function clearUIConversation(){
   localStorage.removeItem(SESSION_KEY);
+  clearChat();
   document.getElementById('console').textContent='';
   document.getElementById('aiOutput').innerHTML='';
   document.getElementById('reasoningOutput').innerHTML='';
   document.getElementById('diffOutput').innerHTML='';
-  appendConsole('🧹 Sessão apagada com sucesso.');
+}
+
+function addSystemMessage(msg){
+  addChat('system', msg);
+}
+
+async function resetSession(){
+  await fetch('/session/reset', {method:'POST'});
+  clearUIConversation();
+  try{localStorage.removeItem(CHAT_KEY);}catch(e){}
+  addSystemMessage('✅ Sessão reiniciada com sucesso.');
 }
 
 window.addEventListener('load',async()=>{
@@ -227,6 +238,8 @@ window.addEventListener('load',async()=>{
   // syncChatFromBackend(); // habilitar quando endpoint /history estiver disponível
   const btn=document.getElementById('clearHistoryBtn');
   if(btn) btn.onclick=clearChat;
+  const reset=document.getElementById('reset-session-btn');
+  if(reset) reset.onclick=resetSession;
   const ctx=document.getElementById('showContextBtn');
   if(ctx) ctx.style.display=showContextButton?'block':'none';
   if(!storageOK) showHistoryWarning();
