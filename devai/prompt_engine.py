@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Sequence
+import asyncio
 
 from .config import config, logger
 from .feedback import listar_preferencias
@@ -55,6 +56,18 @@ def collect_recent_logs(lines: int = 50) -> str:
     if not log_file.exists():
         return ""
     data = log_file.read_text().splitlines()[-lines:]
+    return "\n".join(data)
+
+
+async def collect_recent_logs_async(lines: int = 50) -> str:
+    """Async version of log collection."""
+    from aiofiles import open as aio_open  # type: ignore
+
+    log_file = Path(config.LOG_DIR) / "ai_core.log"
+    if not log_file.exists():
+        return ""
+    async with aio_open(log_file, "r") as f:
+        data = (await f.read()).splitlines()[-lines:]
     return "\n".join(data)
 
 
@@ -113,7 +126,12 @@ def build_task_prompt(task_yaml: Dict[str, Any], status: str) -> str:
     )
 
 
-def build_dynamic_prompt(query: str, context_blocks: Dict[str, Any], mode: str) -> str:
+def build_dynamic_prompt(
+    query: str,
+    context_blocks: Dict[str, Any],
+    mode: str,
+    intent: str | None = None,
+) -> str:
     """Return a prompt using only context relevant to the query."""
     q = query.lower()
     included = []
@@ -149,13 +167,15 @@ def build_dynamic_prompt(query: str, context_blocks: Dict[str, Any], mode: str) 
         parts.append(sym_text)
         included.append("memorias_simbolicas")
 
-    if any(k in q for k in ["arquitetura", "módulo", "modulo", "depend", "grafo"]):
+    if intent == "architecture" or any(
+        k in q for k in ["arquitetura", "módulo", "modulo", "depend", "grafo"]
+    ):
         graph = context_blocks.get("graph")
         if graph:
             parts.append(graph)
             included.append("grafo_simbólico")
 
-    if any(k in q for k in ["erro", "falha", "log", "stack", "execu"]):
+    if intent == "debug" or any(k in q for k in ["erro", "falha", "log", "stack", "execu"]):
         logs = context_blocks.get("logs")
         if logs:
             parts.append(f"Logs recentes:\n{logs}")
@@ -167,7 +187,10 @@ def build_dynamic_prompt(query: str, context_blocks: Dict[str, Any], mode: str) 
             included.append("ultima_acao")
 
     code = context_blocks.get("code")
-    if code and any(k in q for k in ["melhor", "refator", "código", "codigo"]):
+    if code and (
+        intent in {"edit", "create"}
+        or any(k in q for k in ["melhor", "refator", "código", "codigo"])
+    ):
         parts.append(code)
         included.append("trecho_codigo")
 
@@ -197,4 +220,14 @@ def build_dynamic_prompt(query: str, context_blocks: Dict[str, Any], mode: str) 
 
     logger.info("Prompt dinâmico", included_blocks=included, mode=mode)
     return prompt
+
+
+async def build_dynamic_prompt_async(
+    query: str,
+    context_blocks: Dict[str, Any],
+    mode: str,
+    intent: str | None = None,
+) -> str:
+    """Async wrapper for build_dynamic_prompt."""
+    return await asyncio.to_thread(build_dynamic_prompt, query, context_blocks, mode, intent)
 

@@ -3,7 +3,7 @@ import os
 import json
 from collections import defaultdict, OrderedDict
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, AsyncGenerator
 from pathlib import Path
 import ast
 
@@ -29,6 +29,7 @@ from .log_monitor import LogMonitor
 from .ai_model import AIModel
 from .learning_engine import LearningEngine
 from .conversation_handler import ConversationHandler
+from .intent_router import detect_intent
 
 
 def estimate_token_count(text: str) -> int:
@@ -208,10 +209,7 @@ class CodeMemoryAI:
             from fastapi.responses import StreamingResponse
 
             async def event_gen():
-                text = await self.generate_response(
-                    query, session_id=session_id
-                )
-                for token in text.split():
+                async for token in self.generate_response_stream(query, session_id=session_id):
                     yield f"data: {token}\n\n"
             return StreamingResponse(event_gen(), media_type="text/event-stream")
 
@@ -600,17 +598,21 @@ class CodeMemoryAI:
             if len(query.split()) < 3:
                 return "Por favor, forneça mais detalhes sobre sua solicitação."
 
-            contextual_memories = self.memory.search(query, level="short")
-            suggestions = self.memory.search(query, top_k=1)
-            actions = self.tasks.last_actions()
-            graph_summary = self.analyzer.graph_summary()
+            intent = detect_intent(query)
             from .prompt_engine import (
                 build_dynamic_prompt,
-                collect_recent_logs,
+                collect_recent_logs_async,
                 SYSTEM_PROMPT_CONTEXT,
             )
 
-            logs = collect_recent_logs()
+            mem_task = asyncio.to_thread(self.memory.search, query, level="short")
+            sugg_task = asyncio.to_thread(self.memory.search, query, top_k=1)
+            graph_task = self.analyzer.graph_summary_async()
+            logs_task = collect_recent_logs_async()
+            actions = self.tasks.last_actions()
+            contextual_memories, suggestions, graph_summary, logs = await asyncio.gather(
+                mem_task, sugg_task, graph_task, logs_task
+            )
             self.reason_stack = []
             self.reason_stack.append("Memórias coletadas")
             mode = getattr(config, "MODE", "")
@@ -632,6 +634,7 @@ class CodeMemoryAI:
                 query,
                 context_blocks,
                 "deep" if double_check else "normal",
+                intent=intent,
             )
             if double_check:
                 plan = await self.ai_model.safe_api_call(
@@ -681,6 +684,45 @@ class CodeMemoryAI:
             logger.error("Erro ao gerar resposta", error=str(e))
             return f"Erro ao gerar resposta: {str(e)}"
 
+    async def generate_response_stream(
+        self, query: str, session_id: str = "default"
+    ) -> AsyncGenerator[str, None]:
+        intent = detect_intent(query)
+        from .prompt_engine import build_dynamic_prompt_async, collect_recent_logs_async, SYSTEM_PROMPT_CONTEXT
+
+        mem_task = asyncio.to_thread(self.memory.search, query, level="short")
+        graph_task = self.analyzer.graph_summary_async()
+        logs_task = collect_recent_logs_async()
+        history = self._build_history_messages(session_id) if session_id else []
+        suggestions_task = asyncio.to_thread(self.memory.search, query, top_k=1)
+        actions = self.tasks.last_actions()
+        mems, suggestions, graph_summary, logs = await asyncio.gather(
+            mem_task, suggestions_task, graph_task, logs_task
+        )
+        context_blocks = {
+            "memories": mems,
+            "graph": graph_summary,
+            "actions": actions,
+            "logs": logs,
+        }
+        prompt = await build_dynamic_prompt_async(query, context_blocks, "normal", intent=intent)
+        if suggestions:
+            prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT_CONTEXT},
+            *history,
+            {"role": "user", "content": prompt},
+        ]
+        collected = []
+        async for token in self.ai_model.safe_api_stream(
+            messages, config.MAX_CONTEXT_LENGTH
+        ):
+            collected.append(token)
+            yield token
+        if session_id:
+            self.conv_handler.append(session_id, "user", query)
+            self.conv_handler.append(session_id, "assistant", "".join(collected))
+
     @staticmethod
     def _split_plan_response(text: str) -> tuple[str, str]:
         if "===RESPOSTA===" in text:
@@ -709,13 +751,18 @@ class CodeMemoryAI:
                     "response": "Por favor, forneça mais detalhes sobre sua solicitação.",
                 }
 
-            contextual_memories = self.memory.search(query, level="short")
-            suggestions = self.memory.search(query, top_k=1)
-            actions = self.tasks.last_actions()
-            graph_summary = self.analyzer.graph_summary()
-            from .prompt_engine import build_dynamic_prompt, collect_recent_logs
+            intent = detect_intent(query)
+            from .prompt_engine import build_dynamic_prompt, collect_recent_logs_async
 
-            logs = collect_recent_logs()
+            mem_task = asyncio.to_thread(self.memory.search, query, level="short")
+            sugg_task = asyncio.to_thread(self.memory.search, query, top_k=1)
+            graph_task = self.analyzer.graph_summary_async()
+            logs_task = collect_recent_logs_async()
+            actions = self.tasks.last_actions()
+            contextual_memories, suggestions, graph_summary, logs = await asyncio.gather(
+                mem_task, sugg_task, graph_task, logs_task
+            )
+
             context_blocks = {
                 "memories": contextual_memories,
                 "graph": graph_summary,
@@ -726,7 +773,7 @@ class CodeMemoryAI:
                 "history": self._build_history_messages(session_id) if session_id else [],
                 "context_blocks": context_blocks,
             }
-            prompt = build_dynamic_prompt(query, context_blocks, "deep")
+            prompt = build_dynamic_prompt(query, context_blocks, "deep", intent=intent)
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
 
