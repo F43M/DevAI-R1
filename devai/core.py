@@ -105,6 +105,8 @@ class CodeMemoryAI:
     def _build_history_messages(self, session_id: str, buffer: int = 1000) -> List[Dict[str, str]]:
         """Recupera o histórico recente sem ultrapassar o limite de tokens."""
         hist = self.conv_handler.history(session_id)
+        # prune early to evitar acumulo de mensagens irrelevantes
+        self.conv_handler.prune(session_id)
         selected: List[Dict[str, str]] = []
         total = 0
         for msg in reversed(hist):
@@ -596,6 +598,11 @@ class CodeMemoryAI:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
             self.reason_stack.append("Prompt preparado")
             history = self._build_history_messages(session_id) if session_id else []
+            if session_id and not history and self.conv_handler.history(session_id):
+                logger.warning(
+                    "\u26a0\ufe0f Possível quebra de contexto entre turnos – revisar prompt ou histórico.",
+                    session=session_id,
+                )
             messages = [
                 {"role": "system", "content": SYSTEM_PROMPT_CONTEXT},
                 *history,
