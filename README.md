@@ -113,13 +113,13 @@ python -m devai --cli
 
 ## Treinamento RLHF
 
-Após registrar feedback positivo via API ou CLI, execute o módulo `devai.rlhf` para refinar o modelo base:
+Depois de registrar feedback positivo via API ou CLI, é possível refinar o modelo base utilizando a biblioteca [`trl`](https://github.com/huggingface/trl). Instale as dependências do projeto e execute:
 
 ```bash
-python -m devai.rlhf deepseek-r1 ./model_ft
+python -m devai.rlhf <modelo_base> ./model_ft
 ```
 
-O processo coleta exemplos da memória e salva o resultado na pasta indicada.
+O comando coleta os exemplos do banco de memória, monta um pequeno dataset supervisionado e chama o `SFTTrainer` da `trl`. Os checkpoints do modelo e o arquivo `metrics.json` são gravados em `./model_ft`.
 
 ### Integração contínua
 
