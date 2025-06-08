@@ -106,9 +106,9 @@ class CodeMemoryAI:
 
     def _build_history_messages(self, session_id: str, buffer: int = 1000) -> List[Dict[str, str]]:
         """Recupera o histórico recente sem ultrapassar o limite de tokens."""
-        hist = self.conv_handler.history(session_id)
-        # prune early to evitar acumulo de mensagens irrelevantes
+        # always sync with disk and prune to max_history
         self.conv_handler.prune(session_id)
+        hist = self.conv_handler.last(session_id, self.conv_handler.max_history)
         selected: List[Dict[str, str]] = []
         total = 0
         for msg in reversed(hist):
@@ -619,7 +619,8 @@ class CodeMemoryAI:
 
             mem_task = asyncio.to_thread(self.memory.search, query, level="short")
             sugg_task = asyncio.to_thread(self.memory.search, query, top_k=1)
-            graph_task = self.analyzer.graph_summary_async()
+            graph_fn = getattr(self.analyzer, "graph_summary_async", None)
+            graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
             logs_task = collect_recent_logs_async()
             actions = self.tasks.last_actions()
             contextual_memories, suggestions, graph_summary, logs = await asyncio.gather(
@@ -703,7 +704,8 @@ class CodeMemoryAI:
         from .prompt_engine import build_dynamic_prompt_async, collect_recent_logs_async, SYSTEM_PROMPT_CONTEXT
 
         mem_task = asyncio.to_thread(self.memory.search, query, level="short")
-        graph_task = self.analyzer.graph_summary_async()
+        graph_fn = getattr(self.analyzer, "graph_summary_async", None)
+        graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
         logs_task = collect_recent_logs_async()
         history = self._build_history_messages(session_id) if session_id else []
         suggestions_task = asyncio.to_thread(self.memory.search, query, top_k=1)
@@ -774,7 +776,8 @@ class CodeMemoryAI:
 
             mem_task = asyncio.to_thread(self.memory.search, query, level="short")
             sugg_task = asyncio.to_thread(self.memory.search, query, top_k=1)
-            graph_task = self.analyzer.graph_summary_async()
+            graph_fn = getattr(self.analyzer, "graph_summary_async", None)
+            graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
             logs_task = collect_recent_logs_async()
             actions = self.tasks.last_actions()
             contextual_memories, suggestions, graph_summary, logs = await asyncio.gather(
