@@ -156,9 +156,12 @@ class CodeMemoryAI:
         meta = MetacognitionLoop(memory=self.memory)
         task_coros = [
             ("learning_loop", self._learning_loop()),
-            ("log_monitor", self.log_monitor.monitor_logs()),
             ("metacognition", meta.run()),
         ]
+        if config.START_MODE != "custom" or "monitor" in config.START_TASKS:
+            task_coros.insert(1, ("log_monitor", self.log_monitor.monitor_logs()))
+        else:
+            logger.info("Monitor de logs desativado.")
         mode = getattr(config, "OPERATING_MODE", "standard")
         if mode == "continuous":
             from .monitor_engine import auto_monitor_cycle
@@ -168,14 +171,22 @@ class CodeMemoryAI:
         elif mode == "sandbox":
             logger.info("Modo sandbox ativo: background tasks desativadas.")
             task_coros = []
+        run_scan = False
+        run_watch = False
         if config.START_MODE == "full":
+            run_scan = True
+            run_watch = True
+        elif config.START_MODE == "custom":
+            run_scan = "scan" in config.START_TASKS
+            run_watch = "watch" in config.START_TASKS
+        if run_scan:
             self.start_deep_scan()
+        else:
+            logger.info("🔄 deep_scan_app() adiado para execução sob demanda.")
+        if run_watch:
             task_coros.append(
                 ("watch_app_directory", self.analyzer.watch_app_directory())
             )
-        else:
-            # FUTURE: permitir que o modo custom defina quais tarefas rodam
-            logger.info("🔄 deep_scan_app() adiado para execução sob demanda.")
         for name, coro in task_coros:
             task = asyncio.create_task(coro, name=name)
             self.background_tasks[name] = task

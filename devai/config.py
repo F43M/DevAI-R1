@@ -48,6 +48,7 @@ class Config:
     SHOW_REASONING_BY_DEFAULT: bool = False
     SHOW_CONTEXT_BUTTON: bool = False
     START_MODE: str = "fast"  # options: fast, full, custom
+    START_TASKS: list[str] = field(default_factory=list)
     RESCAN_INTERVAL_MINUTES: int = 15  # intervalo mínimo para novas varreduras
     TESTS_USE_ISOLATION: bool = True
     TEST_CPU_LIMIT: int = 1  # limite de segundos de CPU por processo de teste
@@ -81,6 +82,12 @@ class Config:
             raise ValueError("LEARNING_LOOP_INTERVAL must be integer")
         if self.START_MODE not in {"fast", "full", "custom"}:
             raise ValueError("START_MODE must be 'fast', 'full' or 'custom'")
+        if not isinstance(self.START_TASKS, list):
+            raise ValueError("START_TASKS must be a list")
+        allowed = {"scan", "watch", "monitor"}
+        for t in self.START_TASKS:
+            if t not in allowed:
+                raise ValueError("Invalid task in START_TASKS")
         if not isinstance(self.RESCAN_INTERVAL_MINUTES, int):
             raise ValueError("RESCAN_INTERVAL_MINUTES must be integer")
         if not isinstance(self.TEST_CPU_LIMIT, int):
