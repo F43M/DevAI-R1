@@ -21,3 +21,6 @@ As memórias ficam disponíveis para novas rodadas de sugestão de código, refo
 2. Esse resumo gera memórias simbólicas classificadas com tags de preferência do usuário ou lições aprendidas.
 3. As memórias são armazenadas via `MemoryManager` com `memory_type` `dialog_summary`.
 4. Em prompts futuros, blocos relevantes de memória são incluídos automaticamente.
+
+## pending_features
+- memory_extraction_fallback
