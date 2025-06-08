@@ -11,3 +11,14 @@ As ações mais complexas ficam agrupadas no menu **⚙️ Funções Avançadas*
 Um painel inicial de boas-vindas explica os três passos básicos: abrir um arquivo, fazer uma pergunta e conferir a resposta. Ele some automaticamente assim que um arquivo é carregado. O mesmo passo a passo aparece na primeira execução via CLI, com sugestão para usar `--guided` se desejar mais explicações.
 
 As dicas estão disponíveis apenas na interface web. Em execução headless, consulte `ui_fallbacks.md`.
+
+## Nomenclatura simbólica
+
+Os botões do painel utilizam termos curtos e fáceis de entender.
+Exemplos:
+
+- 📊 **Analisar Projeto** – substitui o antigo "Deep Analysis".
+- 🧠 **Aprendizado com Erros** – substitui "Treinar com base em erros".
+- 🧭 **Monitoramento Automático** – substitui "Auto Monitor".
+
+Todas essas strings ficam definidas em `static/lang.js` para permitir traduções futuras e consistência entre o código e a interface.
