@@ -58,6 +58,8 @@ class CodeMemoryAI:
         self.app = FastAPI(title="CodeMemoryAI API")
         self._setup_api_routes()
         self.background_tasks: Dict[str, asyncio.Task] = {}
+        # Rastreamento de loops e watchers em execução
+        self.watchers: Dict[str, asyncio.Task] = {}
         self.last_average_complexity = 0.0
         self.reason_stack = []
         self.response_cache: "OrderedDict[str, Dict]" = OrderedDict()
@@ -153,12 +155,21 @@ class CodeMemoryAI:
 
     def _start_background_tasks(self):
         from .metacognition import MetacognitionLoop
+        if not hasattr(self, "watchers"):
+            self.watchers = {}
 
         meta = MetacognitionLoop(memory=self.memory)
         task_coros = [
             ("learning_loop", self._learning_loop()),
             ("metacognition", meta.run()),
         ]
+        watcher_names = {
+            "learning_loop",
+            "metacognition",
+            "log_monitor",
+            "auto_monitor_cycle",
+            "watch_app_directory",
+        }
         if config.START_MODE != "custom" or "monitor" in config.START_TASKS:
             task_coros.insert(1, ("log_monitor", self.log_monitor.monitor_logs()))
         else:
@@ -191,7 +202,11 @@ class CodeMemoryAI:
         for name, coro in task_coros:
             task = asyncio.create_task(coro, name=name)
             self.background_tasks[name] = task
-            task.add_done_callback(lambda t, n=name: self.background_tasks.pop(n, None))
+            if name in watcher_names:
+                self.watchers[name] = task
+            task.add_done_callback(
+                lambda t, n=name: (self.background_tasks.pop(n, None), self.watchers.pop(n, None))
+            )
 
     def _setup_api_routes(self):
         try:
@@ -1020,18 +1035,29 @@ class CodeMemoryAI:
         """Finaliza recursos como AIModel, watchers e ciclos ativos."""
         if hasattr(self, "ai_model") and hasattr(self.ai_model, "shutdown"):
             await self.ai_model.shutdown()
-        tasks = list(self.background_tasks.items())
+        tasks = list(getattr(self, "background_tasks", {}).items())
         for name, task in tasks:
             task.cancel()
         if tasks:
-            results = await asyncio.gather(
-                *(task for _, task in tasks), return_exceptions=True
-            )
+            results = []
+            for name, task in tasks:
+                try:
+                    await asyncio.wait_for(task, timeout=5)
+                    results.append(None)
+                except asyncio.CancelledError:
+                    results.append(None)
+                except asyncio.TimeoutError:
+                    logger.warning("Timeout ao encerrar task", task=name)
+                    results.append(None)
+                except Exception as e:
+                    results.append(e)
             for (name, _), result in zip(tasks, results):
                 if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
                     logger.error("Erro ao finalizar task", task=name, error=str(result))
-                self.background_tasks.pop(name, None)
+                if hasattr(self, "background_tasks"):
+                    self.background_tasks.pop(name, None)
+                if hasattr(self, "watchers"):
+                    self.watchers.pop(name, None)
         if hasattr(self, "memory") and hasattr(self.memory, "close"):
             self.memory.close()
-        # FUTURE: shutdown this resource when implemented
         logger.info("🛑 DevAI finalizado com limpeza simbólica de recursos.")
