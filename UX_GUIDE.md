@@ -43,6 +43,10 @@ Ao recarregar a página, o DevAI restaura o conteúdo do painel e do console,
 mostrando a mensagem:
 "🔄 Sessão recuperada – continue de onde parou.". Há também um botão
 **🧹 Limpar Sessão** que apaga os dados salvos e confirma a ação no console.
+Caso o `localStorage` esteja indisponível, exibimos o aviso
+"⚠️ Histórico de conversa será perdido ao recarregar." para informar
+que as mensagens não serão preservadas. Um botão extra **🧹 Limpar histórico**
+permite apagar apenas as mensagens exibidas.
 
 ## Contexto de Conversa
 

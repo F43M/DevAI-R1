@@ -91,3 +91,24 @@
 .result-danger  { color: red; font-weight: bold; }
 .result-section { margin: 8px 0; padding: 6px; border-left: 4px solid #ccc; }
 .result-section h4 { margin: 4px 0; font-size: 14px; }
+
+/* Mensagens de chat */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.user-msg {
+  align-self: flex-end;
+  background: #dfe6ff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  max-width: 90%;
+}
+.ai-msg {
+  align-self: flex-start;
+  background: #f5f5f5;
+  padding: 6px 8px;
+  border-radius: 6px;
+  max-width: 90%;
+}
