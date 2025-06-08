@@ -20,7 +20,7 @@ def test_session_context_endpoint(monkeypatch):
     )
     ai.tasks = types.SimpleNamespace(last_actions=lambda: [])
     ai.ai_model = DummyModel()
-    ai.conv_handler = ConversationHandler()
+    ai.conv_handler = ConversationHandler(memory=ai.memory)
     ai.reason_stack = []
     ai.double_check = False
     ai.last_context = {"context_blocks": {"logs": "log"}}
@@ -59,7 +59,7 @@ def test_session_context_empty(monkeypatch):
     )
     ai.tasks = types.SimpleNamespace(last_actions=lambda: [])
     ai.ai_model = DummyModel()
-    ai.conv_handler = ConversationHandler()
+    ai.conv_handler = ConversationHandler(memory=ai.memory)
     ai.reason_stack = []
     ai.double_check = False
     ai.last_context = {}

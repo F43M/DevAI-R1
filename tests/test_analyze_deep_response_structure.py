@@ -17,7 +17,7 @@ ai.tasks = type(
     (),
     {"run_task": lambda self, n: ["ok"], "last_actions": lambda self: []},
 )()
-ai.conv_handler = ConversationHandler()
+ai.conv_handler = ConversationHandler(memory=ai.memory)
 ai.conversation_history = []
 
 

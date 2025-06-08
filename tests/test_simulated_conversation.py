@@ -20,7 +20,7 @@ def test_simulated_conversation(monkeypatch):
     )
     ai.tasks = types.SimpleNamespace(last_actions=lambda: [])
     ai.ai_model = DummyModel()
-    ai.conv_handler = ConversationHandler()
+    ai.conv_handler = ConversationHandler(memory=ai.memory)
     ai.conversation_history = []
     ai.reason_stack = []
 

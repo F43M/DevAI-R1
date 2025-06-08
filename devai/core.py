@@ -61,7 +61,7 @@ class CodeMemoryAI:
         self.response_cache: "OrderedDict[str, Dict]" = OrderedDict()
         self.response_cache_size = 32
         # Gerencia o histórico de cada sessão de conversa
-        self.conv_handler = ConversationHandler()
+        self.conv_handler = ConversationHandler(memory=self.memory)
         self.conversation: List[Dict[str, str]] = self.conv_handler.history(
             "default"
         )
