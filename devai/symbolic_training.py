@@ -144,6 +144,14 @@ async def run_symbolic_training(
     if sugg_lines:
         report.append("## Sugestões geradas")
         report.extend(sugg_lines)
+    if unique_rules:
+        report.append("")
+        report.append("## Origem das regras")
+        for idx, (rule, info) in enumerate(unique_rules.items(), 1):
+            files = ", ".join(sorted(info["files"]))
+            logs_ref = ", ".join(sorted(info["logs"]))
+            log_part = f" | Logs: {logs_ref}" if logs_ref else ""
+            report.append(f"- Regra {idx}: {files}{log_part}")
 
     Path(config.LOG_DIR).mkdir(exist_ok=True)
     Path(config.LOG_DIR, "symbolic_training_report.md").write_text("\n".join(report))
@@ -168,6 +176,10 @@ async def run_symbolic_training(
         )
         for i, (r, info) in enumerate(rules, 1):
             lines.append(f"📌 [{i}] {r}")
+            arquivos = ", ".join(sorted(info["files"]))
+            logs_ref = ", ".join(sorted(info["logs"]))
+            log_part = f" (logs: {logs_ref})" if logs_ref else ""
+            lines.append(f"🔗 Origem: {arquivos}{log_part}")
             rule_id = f"rule_{len(analyzer.learned_rules) + i}"
             analyzer.learned_rules[rule_id] = {
                 "rule": r,

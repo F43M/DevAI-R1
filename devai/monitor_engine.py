@@ -114,8 +114,12 @@ async def auto_monitor_cycle(
             lines.append(f"📌 {rules} nova{plural} regra{plural} aprendida.")
             sources = result_data.get("rule_sources", {})
             for idx, (rule, info) in enumerate(sources.items(), 1):
-                origin = info.get("files", ["?"])[0]
-                lines.append(f"🔗 Regra {idx} originada de {origin}")
+                arquivos = ", ".join(info.get("files", [])) or "?"
+                log_info = ", ".join(info.get("logs", []))
+                if log_info:
+                    lines.append(f"🔗 Regra {idx} em {arquivos} (logs: {log_info})")
+                else:
+                    lines.append(f"🔗 Regra {idx} em {arquivos}")
         else:
             lines.append("🧠 Regras simbólicas atualizadas com base em novos erros.")
         logs_proc = result_data.get("errors_processed", 0)
