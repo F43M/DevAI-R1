@@ -115,7 +115,7 @@ function clearSession(){
   appendConsole('🧹 Sessão apagada com sucesso.');
 }
 
-window.addEventListener('load',()=>{
+window.addEventListener('load',async()=>{
   const data=loadSession();
   if(data){
     document.getElementById('console').textContent=data.console||'';
@@ -123,4 +123,11 @@ window.addEventListener('load',()=>{
     document.getElementById('diffOutput').innerHTML=data.diffOutput||'';
     appendConsole('🔄 Sessão recuperada – continue de onde parou.');
   }
+  try{
+    const r=await fetch('/status');
+    const info=await r.json();
+    if(info.api_key_missing){
+      document.getElementById('aiOutput').textContent='🚫 Nenhuma chave de API foi detectada. Configure OPENROUTER_API_KEY para habilitar a IA.';
+    }
+  }catch(e){}
 });

@@ -22,6 +22,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **reason_stack** registrando decisões em tarefas longas.
 - **Proteção de código** via blocos `# <protect>` ... `# </protect>`.
 - **decision_log.yaml** para auditoria de cada ação da IA.
+- **Validação simbólica e notificação de API key**
 - **Modo observador** ativado com `--observer` para apenas registrar insights.
 - **Prompt de metacognição** sugerindo próximos passos a partir do histórico.
 - **Versionamento de respostas** em `history/prompts/` com hash e diff.

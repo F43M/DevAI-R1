@@ -42,3 +42,15 @@ Ao recarregar a página, o DevAI restaura o conteúdo do painel e do console,
 mostrando a mensagem:
 "🔄 Sessão recuperada – continue de onde parou.". Há também um botão
 **🧹 Limpar Sessão** que apaga os dados salvos e confirma a ação no console.
+
+## Chave de API ausente ou inválida
+
+Se a variável `OPENROUTER_API_KEY` não estiver configurada ou for rejeitada pelo
+servidor, o painel exibirá:
+
+```
+🚫 Nenhuma chave de API foi detectada. Configure OPENROUTER_API_KEY para habilitar a IA.
+```
+
+Isso evita erros confusos e orienta o usuário a editar o `.env` ou `config.yaml`
+com a chave correta.

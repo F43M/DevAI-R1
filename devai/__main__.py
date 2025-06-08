@@ -19,8 +19,9 @@ def main():
     args = parser.parse_args()
     check_dependencies()
     if not config.OPENROUTER_API_KEY:
-        print("Erro: A variável de ambiente OPENROUTER_API_KEY não está definida")
-        return
+        print(
+            "\u26d4\ufe0f Nenhuma chave OPENROUTER_API_KEY encontrada. Algumas funcionalidades podem não funcionar."
+        )
     if args.api:
         ai = CodeMemoryAI()
         asyncio.run(ai.run())

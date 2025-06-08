@@ -163,6 +163,8 @@ def configure_logging(log_dir: str, aggregator: str = ""):
                 self._l.warning(msg + (" " + " ".join(f"{k}={v}" for k,v in kw.items()) if kw else ""))
             def error(self, msg, **kw):
                 self._l.error(msg + (" " + " ".join(f"{k}={v}" for k,v in kw.items()) if kw else ""))
+            def critical(self, msg, **kw):
+                self._l.critical(msg + (" " + " ".join(f"{k}={v}" for k,v in kw.items()) if kw else ""))
         logger_obj = SimpleLogger(base_logger)
 
     file_handler = logging.handlers.RotatingFileHandler(
@@ -180,5 +182,10 @@ def configure_logging(log_dir: str, aggregator: str = ""):
 
 
 config = Config()
+api_key_missing = not bool(config.OPENROUTER_API_KEY)
 logger = configure_logging(config.LOG_DIR, config.LOG_AGGREGATOR_URL)
+if api_key_missing:
+    logger.critical(
+        "❌ OPENROUTER_API_KEY não configurada. A IA não funcionará corretamente."
+    )
 metrics = Metrics()
