@@ -102,3 +102,14 @@ Defina `APPROVAL_MODE` em `config.yaml` ou via `--approval-mode`:
 - `auto_edit` confirma apenas comandos de shell;
 - `suggest` confirma alterações de código e comandos externos.
 Também é possível alternar dinâmicamente usando `/modo`.
+
+Para exceções específicas utilize `AUTO_APPROVAL_RULES` no `config.yaml`:
+
+```yaml
+AUTO_APPROVAL_RULES:
+  - action: edit
+    path: "docs/**"
+    approve: true
+```
+
+O campo `path` aceita padrões glob.

@@ -72,6 +72,7 @@ class Config:
     RLHF_OUTPUT_DIR: str = "./logs/rlhf_results"
     APPROVAL_MODE: str = "suggest"
     DIFF_STYLE: str = "inline"
+    AUTO_APPROVAL_RULES: list[dict] = field(default_factory=list)
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -147,6 +148,23 @@ class Config:
             )
         if self.DIFF_STYLE not in {"inline", "side_by_side"}:
             raise ValueError("DIFF_STYLE must be 'inline' or 'side_by_side'")
+        if not isinstance(self.AUTO_APPROVAL_RULES, list):
+            raise ValueError("AUTO_APPROVAL_RULES must be a list")
+        for rule in self.AUTO_APPROVAL_RULES:
+            if not isinstance(rule, dict):
+                raise ValueError("AUTO_APPROVAL_RULES entries must be dicts")
+            if {
+                "action",
+                "path",
+                "approve",
+            } - set(rule):
+                raise ValueError(
+                    "AUTO_APPROVAL_RULES entries require 'action', 'path', 'approve'"
+                )
+            if not isinstance(rule["action"], str) or not isinstance(
+                rule["path"], str
+            ) or not isinstance(rule["approve"], bool):
+                raise ValueError("Invalid AUTO_APPROVAL_RULES entry")
 
     @property
     def model_name(self) -> str:

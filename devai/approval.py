@@ -1,6 +1,7 @@
 from .config import config
 from .decision_log import is_remembered
 import asyncio
+from pathlib import Path
 
 _approval_event = asyncio.Event()
 _approval_future: asyncio.Future | None = None
@@ -9,10 +10,27 @@ _approval_message = ""
 WRITE_ACTIONS = {"patch", "edit", "create", "delete"}
 
 
+def match_glob(pattern: str, target: str) -> bool:
+    """Return True if ``target`` matches the glob ``pattern``."""
+    try:
+        return Path(target).match(pattern)
+    except Exception:
+        return False
+
+
 def requires_approval(action: str, path: str | None = None) -> bool:
     """Return True if the given action requires confirmation."""
     if path and is_remembered(action, path):
         return False
+
+    for rule in getattr(config, "AUTO_APPROVAL_RULES", []):
+        try:
+            if rule.get("action") == action and path and match_glob(
+                rule.get("path", ""), path
+            ):
+                return not rule.get("approve", False)
+        except Exception:
+            continue
 
     mode = getattr(config, "APPROVAL_MODE", "suggest").lower()
     if mode == "full_auto":
