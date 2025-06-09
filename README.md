@@ -141,10 +141,13 @@ Além das tarefas padrão, a CLI permite explorar e modificar o diretório defin
 - `/tarefa auto_refactor <arquivo>` refatora o arquivo informado e executa os testes.
 - `/historia [sessao]` exibe o histórico de conversa da sessão indicada.
 - `/historico_cli [N]` mostra N últimas linhas do log da CLI (ou todo o arquivo). 
+- `/decisoes` lista as entradas do `decision_log.yaml`, indicando validade das
+  decisões lembradas. Use `/decisoes purge` para remover registros expirados.
 - `/modo <suggest|auto_edit|full_auto>` altera o nível de aprovação em tempo real.
 - `/ajuda` exibe a documentação completa de comandos.
 
 Ao usar `/deletar`, a CLI exibe um diálogo de confirmação para evitar remoções acidentais.
+Caso escolha lembrar uma decisão, será solicitado por quantos dias ela deve permanecer válida.
 
 ### Histórico de complexidade
 

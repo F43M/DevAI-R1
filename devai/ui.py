@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable, List
 
@@ -40,6 +41,7 @@ class CLIUI:
         self.diff_panel = None
         self.progress_handler = None
         self.remember_choice: bool = False
+        self.remember_expires: str | None = None
         if not plain and PromptSession is not None:
             history_file = Path.home() / ".devai_history"
             cmd_completer = WordCompleter(list(commands or []), ignore_case=True)
@@ -307,9 +309,21 @@ class CLIUI:
             resp = await self.read_command(f"{message} [s/N] ")
             result = resp.strip().lower() in {"s", "sim", "y", "yes"}
 
+        self.remember_expires = None
         if result:
             r = await self.read_command("Lembrar esta decisão? [s/N] ")
             self.remember_choice = r.strip().lower() in {"s", "sim", "y", "yes"}
+            if self.remember_choice:
+                d = await self.read_command("Lembrar por quantos dias? ")
+                try:
+                    days = int(d)
+                    if days > 0:
+                        self.remember_expires = (
+                            datetime.now() + timedelta(days=days)
+                        ).isoformat()
+                except Exception:
+                    self.remember_expires = None
         else:
             self.remember_choice = False
+            self.remember_expires = None
         return result
