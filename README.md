@@ -49,7 +49,7 @@ API_SECRET: "sua-chave"
    variável diretamente no ambiente. O DevAI carrega esse arquivo
    automaticamente se o pacote `python-dotenv` estiver instalado.
 
-3. Instale as dependências do projeto para habilitar a comunicação real com o OpenRouter:
+3. Instale as dependências do projeto para habilitar a comunicação real com o OpenRouter. A nova interface interativa usa `rich` e `prompt_toolkit`:
 
 ```bash
 pip install -r requirements.txt
@@ -81,6 +81,21 @@ Com o servidor ativo, acesse `http://localhost:8000/static/index.html` para util
 
 ```bash
 python -m devai --cli
+```
+
+Por padrão a CLI utiliza a interface colorida do [Rich](https://github.com/Textualize/rich). Para um terminal mais simples use a flag `--plain`.
+
+Atalhos comuns:
+- setas **↑/↓** percorrem o histórico de comandos;
+- **Tab** autocompleta nomes e caminhos.
+
+Exemplo de tela:
+
+```
+┌─ DevAI ───────────────────────┐
+│ >>> /memoria                 │
+│ Resultado destacado em cores  │
+└───────────────────────────────┘
 ```
 
 Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`. Para refatorar um arquivo automaticamente utilize:
