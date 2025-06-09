@@ -32,7 +32,7 @@ Quando `TESTS_USE_ISOLATION` for `true`, o DevAI executará `pytest` em um conta
 
 O parâmetro `MAX_SESSION_TOKENS` controla a quantidade máxima de tokens mantidos no arquivo de histórico de cada sessão. Ao exceder esse limite, as mensagens mais antigas são removidas (pruning). Defina `0` para desabilitar a limpeza automática.
 
-A classe `ConversationHandler` oferece o método `search_history(session_id, query)` que utiliza embeddings gravados em `memory.db` para localizar mensagens similares ao texto ou tag informados.
+A classe `ConversationHandler` oferece o método `search_history(session_id, query)` que utiliza embeddings gravados em `memory.db` para localizar mensagens similares ao texto ou tag informados. Os embeddings de mensagens descartadas também são removidos do banco, evitando acúmulo de vetores antigos.
 
 ## Classificador de intenções
 
