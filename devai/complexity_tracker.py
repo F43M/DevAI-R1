@@ -35,3 +35,16 @@ class ComplexityTracker:
 
     def get_history(self) -> List[Dict[str, float]]:
         return list(self.history)
+
+    def summarize_trend(self, window: int = 5) -> float:
+        """Return the average change between the last ``window`` records."""
+        if window < 2:
+            window = 2
+        records = self.history[-window:]
+        if len(records) < 2:
+            return 0.0
+        diffs = [
+            b["average_complexity"] - a["average_complexity"]
+            for a, b in zip(records, records[1:])
+        ]
+        return sum(diffs) / len(diffs)

@@ -95,6 +95,21 @@ Além das tarefas padrão, a CLI permite explorar e modificar o diretório defin
 - `/editar <arquivo> <linha> <novo>` altera uma linha individual.
 - `/tarefa auto_refactor <arquivo>` refatora o arquivo informado e executa os testes.
 
+### Histórico de complexidade
+
+Com o servidor API rodando é possível consultar `/complexity/history` para obter
+o histórico de variações de complexidade salvas em `complexity_history.json`.
+O endpoint retorna uma lista de registros e a tendência média recente:
+
+```json
+{
+  "history": [{"timestamp": "2024-01-01T12:00:00", "average_complexity": 3.2}],
+  "trend": -0.1
+}
+```
+
+Valores negativos de `trend` indicam redução da complexidade média do projeto.
+
 ## Testes
 
 Instale as dependências de desenvolvimento e execute:
