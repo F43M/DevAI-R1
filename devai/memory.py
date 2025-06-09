@@ -71,20 +71,21 @@ class MemoryManager:
             else 0
         )
 
-        if index is None:
+        self.index = index
+        self.indexed_ids: List[int] = []
+        self.embedding_cache: "OrderedDict[str, Any]" = OrderedDict()
+        self.embedding_cache_size = cache_size
+
+        # Attempt to load an existing index from disk before creating a new one
+        self.load_index()
+
+        if self.index is None:
             if self.embedding_model is not None and faiss is not None:
                 self.index = faiss.IndexFlatL2(self.dimension)
             else:
                 if self.embedding_model is not None and faiss is None:
                     logger.warning("faiss não instalado; indexação desabilitada")
                 self.index = None
-        else:
-            self.index = index
-        self.indexed_ids: List[int] = []
-        self.embedding_cache: "OrderedDict[str, Any]" = OrderedDict()
-        self.embedding_cache_size = cache_size
-        if self.index is not None:
-            self.load_index()
 
     def _init_db(self):
         cursor = self.conn.cursor()
@@ -152,14 +153,26 @@ class MemoryManager:
             self.indexed_ids = json.load(f)
         logger.info("Índice de memória carregado do disco", items=len(self.indexed_ids))
 
+    def _write_index_file(self, index_file: str) -> None:
+        """Write the FAISS index to ``index_file`` if possible."""
+        if not faiss or self.index is None:
+            return
+        faiss.write_index(self.index, index_file)
+
+    def _write_ids_file(self, ids_file: str) -> None:
+        """Persist the list of indexed IDs to ``ids_file``."""
+        if self.index is None:
+            return
+        with open(ids_file, "w") as f:
+            json.dump(self.indexed_ids, f)
+
     def _persist_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
         if not faiss or self.index is None:
             return
         index_file = index_file or config.INDEX_FILE
         ids_file = ids_file or config.INDEX_IDS_FILE
-        faiss.write_index(self.index, index_file)
-        with open(ids_file, "w") as f:
-            json.dump(self.indexed_ids, f)
+        self._write_index_file(index_file)
+        self._write_ids_file(ids_file)
 
     def persist_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
         """Public wrapper to persist the current index to disk."""
@@ -423,6 +436,7 @@ class MemoryManager:
         )
         self.conn.commit()
         self._rebuild_index()
+        self.persist_index()
         logger.info("Limpeza de memória executada", removed=len(ids))
 
     def deactivate_memories(self, term: str) -> int:
