@@ -101,6 +101,17 @@ Exemplo de tela:
 Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`. Para refatorar um arquivo automaticamente utilize:
 `/tarefa auto_refactor caminho/para/arquivo.py`.
 
+- **Interface TUI (Textual)**:
+
+```bash
+python -m devai --cli --tui
+```
+
+A TUI exibe janelas de histórico e diff. Os mesmos atalhos funcionam:
+
+- setas **↑/↓** percorrem o histórico de comandos;
+- **Tab** autocompleta nomes e caminhos.
+
 ### Gerenciamento de arquivos
 
 Além das tarefas padrão, a CLI permite explorar e modificar o diretório definido em `CODE_ROOT` (por padrão `./app`):
