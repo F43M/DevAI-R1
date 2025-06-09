@@ -79,6 +79,10 @@ duas colunas.
 Você pode ajustar no `config.yaml`, via `--approval-mode` ao iniciar
 ou dinamicamente com o comando `/modo`.
 
+Para manipular regras específicas de autoaprovação utilize `/regras`. O comando
+permite listar, adicionar e remover entradas em `AUTO_APPROVAL_RULES` sem editar
+o arquivo manualmente.
+
 O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
 
 ## Executando

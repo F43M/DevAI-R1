@@ -541,6 +541,7 @@ async def handle_tests_local(ai, ui, args, *, plain, feedback_db):
     data["TESTS_USE_ISOLATION"] = new_val
     cfg_path.write_text(yaml.safe_dump(data, allow_unicode=True))
     config.TESTS_USE_ISOLATION = new_val
+    config.reload(str(cfg_path))
     status = "ativada" if new_val else "desativada"
     print(f"Execução isolada {status}")
 
@@ -568,6 +569,60 @@ async def handle_modo(ai, ui, args, *, plain, feedback_db):
     config.APPROVAL_MODE = mode
     logger.info("Modo de aprovação alterado", antigo=old, novo=mode)
     log_decision("config", "APPROVAL_MODE", f"{old}->{mode}", "cli", "ok")
+
+
+async def handle_regras(ai, ui, args, *, plain, feedback_db):
+    """Gerenciar AUTO_APPROVAL_RULES via CLI."""
+    parts = args.split()
+    cfg_path = Path("config.yaml")
+    try:
+        import yaml  # type: ignore
+    except Exception:  # pragma: no cover - fallback when PyYAML is missing
+        from . import yaml_fallback as yaml
+    data = {}
+    if cfg_path.exists():
+        data = yaml.safe_load(cfg_path.read_text()) or {}
+    rules = data.get("AUTO_APPROVAL_RULES", [])
+
+    if not parts:
+        for i, r in enumerate(rules, start=1):
+            status = "sim" if r.get("approve") else "nao"
+            print(f"[{i}] {r.get('action')} {r.get('path')} -> {status}")
+        if not rules:
+            print("Nenhuma regra definida")
+        return
+
+    if parts[0] == "add" and len(parts) == 4:
+        approve = parts[3].lower()
+        if approve not in {"sim", "nao"}:
+            print("Uso: /regras add <acao> <caminho> <sim|nao>")
+            return
+        rule = {
+            "action": parts[1],
+            "path": parts[2],
+            "approve": approve == "sim",
+        }
+        rules.append(rule)
+        data["AUTO_APPROVAL_RULES"] = rules
+        cfg_path.write_text(yaml.safe_dump(data, allow_unicode=True))
+        config.reload(str(cfg_path))
+        print("✅ Regra adicionada")
+        return
+
+    if parts[0] == "del" and len(parts) == 2:
+        try:
+            idx = int(parts[1]) - 1
+            rules.pop(idx)
+        except Exception:
+            print("ID inválido")
+            return
+        data["AUTO_APPROVAL_RULES"] = rules
+        cfg_path.write_text(yaml.safe_dump(data, allow_unicode=True))
+        config.reload(str(cfg_path))
+        print("✅ Regra removida")
+        return
+
+    print("Uso: /regras [add <acao> <caminho> <sim|nao>|del <id>]")
 
 
 def _split_diff_by_file(diff: str) -> Dict[str, str]:
@@ -743,6 +798,7 @@ COMMANDS = {
     "rever": handle_rever,
     "aprovar_proxima": handle_aprovar_proxima,
     "modo": handle_modo,
+    "regras": handle_regras,
     "resetar": handle_resetar,
     "tests_local": handle_tests_local,
 }
