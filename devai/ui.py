@@ -32,6 +32,8 @@ class CLIUI:
         self.history: List[str] = []
         self.log = log
         self.log_path = Path.home() / ".devai_chat.log"
+        self.diff_panel = None
+        self.progress_handler = None
         if not plain and PromptSession is not None:
             history_file = Path.home() / ".devai_history"
             completer = WordCompleter(list(commands or []), ignore_case=True)
@@ -77,8 +79,39 @@ class CLIUI:
     def render_diff(self, diff: str) -> None:
         if self.plain:
             print(diff)
+            return
+
+        def _collapse(text: str, context: int = 3) -> str:
+            lines = text.splitlines()
+            important = [
+                i
+                for i, l in enumerate(lines)
+                if l.startswith("+") or l.startswith("-") or l.startswith("@@")
+            ]
+            if not important:
+                return text
+            result: list[str] = []
+            last = 0
+            for idx in important:
+                start = max(idx - context, last)
+                if start > last:
+                    result.append("...")
+                result.extend(lines[start : idx + context + 1])
+                last = idx + context + 1
+            if last < len(lines):
+                result.append("...")
+            return "\n".join(result)
+
+        collapsed = _collapse(diff)
+        if self.diff_panel is not None:
+            try:
+                self.diff_panel.clear()
+                self.diff_panel.write(collapsed)
+            except Exception:
+                pass
         else:
-            self.console.print(Syntax(diff, "diff"))
+            panel = Panel(Syntax(collapsed, "diff"), height=20, title="Diff")
+            self.console.print(panel)
 
     @asynccontextmanager
     async def loading(self, message: str = "Gerando..."):
@@ -86,8 +119,18 @@ class CLIUI:
             print(message)
             yield
         else:
+            if self.progress_handler:
+                try:
+                    self.progress_handler(message)
+                except Exception:
+                    pass
             with self.console.status(message):
                 yield
+            if self.progress_handler:
+                try:
+                    self.progress_handler("done")
+                except Exception:
+                    pass
 
     @asynccontextmanager
     async def progress(self, message: str = "Processando..."):
@@ -98,6 +141,11 @@ class CLIUI:
             def _update(_pct: float | None = None, stage: str | None = None) -> None:
                 if stage:
                     print(stage)
+                if self.progress_handler and stage:
+                    try:
+                        self.progress_handler(stage)
+                    except Exception:
+                        pass
 
             yield _update
         else:
@@ -127,6 +175,11 @@ class CLIUI:
                     if stage:
                         kwargs["description"] = stage
                     progress.update(task_id, **kwargs)
+                    if self.progress_handler and stage:
+                        try:
+                            self.progress_handler(stage)
+                        except Exception:
+                            pass
 
                 yield _update
 
@@ -163,7 +216,10 @@ class CLIUI:
             except Exception:
                 try:
                     from rich.prompt import Confirm
-                    return Confirm.ask(Text(message), default=False, console=self.console)
+
+                    return Confirm.ask(
+                        Text(message), default=False, console=self.console
+                    )
                 except Exception:
                     pass
 
