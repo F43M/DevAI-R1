@@ -356,6 +356,10 @@ class CodeMemoryAI:
         async def get_metrics():
             return metrics.summary()
 
+        @self.app.get("/logs/recent")
+        async def recent_logs(limit: int = 20):
+            return self.memory.recent_entries("log_analysis", limit)
+
         @self.app.get("/admin")
         async def admin_panel():
             return {

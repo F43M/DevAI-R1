@@ -7,7 +7,7 @@ from pathlib import Path
 import aiofiles
 import aiofiles.os
 
-from .config import logger
+from .config import logger, config
 from .memory import MemoryManager
 
 
@@ -22,8 +22,27 @@ class LogMonitor:
             "test_failure": r"FAILURES|AssertionError",
         }
         self.last_checked = datetime.now()
+        self.state_file = self.log_dir / "log_monitor.state"
+        try:
+            if self.state_file.exists():
+                self.file_positions = json.loads(self.state_file.read_text())
+            else:
+                self.file_positions = {}
+        except Exception:
+            self.file_positions = {}
 
-    async def monitor_logs(self):
+    async def _persist_state(self) -> None:
+        try:
+            if not self.log_dir.exists():
+                await aiofiles.os.makedirs(self.log_dir, exist_ok=True)
+            async with aiofiles.open(self.state_file, "w") as sf:
+                await sf.write(json.dumps(self.file_positions))
+        except Exception as e:
+            logger.error("Erro ao salvar estado do monitor", error=str(e))
+
+    async def monitor_logs(self, interval: int | None = None):
+        if interval is None:
+            interval = config.LOG_MONITOR_INTERVAL
         while True:
             try:
                 if not self.log_dir.exists():
@@ -32,15 +51,19 @@ class LogMonitor:
                 for log_file in log_files:
                     await self._analyze_log_file(log_file)
                 self.last_checked = datetime.now()
-                await asyncio.sleep(60)
+                await self._persist_state()
+                await asyncio.sleep(interval)
             except Exception as e:
                 logger.error("Erro no monitor de logs", error=str(e))
                 await asyncio.sleep(30)
 
     async def _analyze_log_file(self, log_file: Path):
         try:
+            pos = self.file_positions.get(str(log_file), 0)
             async with aiofiles.open(log_file, "r") as f:
+                await f.seek(pos)
                 lines = await f.readlines()
+                self.file_positions[str(log_file)] = await f.tell()
             for line in lines:
                 if not line.strip():
                     continue
