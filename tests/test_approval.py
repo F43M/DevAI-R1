@@ -64,3 +64,25 @@ def test_requires_approval_remember(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
     assert not requires_approval("edit", "x.txt")
     assert requires_approval("edit", "y.txt")
+
+
+def test_auto_approval_rules(monkeypatch):
+    monkeypatch.setattr(
+        config,
+        "AUTO_APPROVAL_RULES",
+        [{"action": "edit", "path": "docs/**", "approve": True}],
+    )
+    monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
+    assert not requires_approval("edit", "docs/file.md")
+    assert requires_approval("edit", "src/file.py")
+
+
+def test_auto_approval_rules_force(monkeypatch):
+    monkeypatch.setattr(
+        config,
+        "AUTO_APPROVAL_RULES",
+        [{"action": "edit", "path": "docs/**", "approve": False}],
+    )
+    monkeypatch.setattr(config, "APPROVAL_MODE", "full_auto")
+    assert requires_approval("edit", "docs/file.md")
+    assert not requires_approval("edit", "src/file.py")

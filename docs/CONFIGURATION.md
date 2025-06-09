@@ -77,6 +77,22 @@ Valores aceitos:
 - `auto_edit` – confirma somente comandos de shell;
 - `suggest` – confirma ações de escrita ou execução de shell.
 
+### Regras de autoaprovação
+
+O campo `AUTO_APPROVAL_RULES` permite ignorar ou forçar confirmações
+com base em padrões de caminho. Cada item deve conter `action`, `path`
+e `approve`:
+
+```yaml
+AUTO_APPROVAL_RULES:
+  - action: edit
+    path: "docs/**"
+    approve: true
+```
+
+`path` usa sintaxe glob. Se `approve` for `true` a ação é aplicada
+sem perguntar; `false` exige confirmação mesmo em modos automáticos.
+
 ## Estilo de diff
 
 O DevAI pode mostrar patches lado a lado ou no formato tradicional. Defina
