@@ -20,16 +20,29 @@ except Exception:  # pragma: no cover - optional dependency
 class CLIUI:
     """Interactive command line UI using Rich and prompt_toolkit."""
 
-    def __init__(self, plain: bool = False, commands: Iterable[str] | None = None) -> None:
+    def __init__(self, plain: bool = False, commands: Iterable[str] | None = None, *, log: bool = True) -> None:
         self.plain = plain
         self.console = Console()
         self.history: List[str] = []
+        self.log = log
+        self.log_path = Path.home() / ".devai_chat.log"
         if not plain and PromptSession is not None:
             history_file = Path.home() / ".devai_history"
             completer = WordCompleter(list(commands or []), ignore_case=True)
             self.session = PromptSession(history=FileHistory(str(history_file)), completer=completer)
         else:
             self.session = None
+
+    def load_history(self, lines: int = 20) -> None:
+        """Load the last N lines from the log file."""
+        if not self.log:
+            return
+        if self.log_path.exists():
+            try:
+                content = self.log_path.read_text().splitlines()
+            except Exception:
+                return
+            self.history.extend(content[-lines:])
 
     async def read_command(self, prompt: str = ">>> ") -> str:
         if self.session is not None:
@@ -46,6 +59,12 @@ class CLIUI:
 
     def add_history(self, line: str) -> None:
         self.history.append(line)
+        if self.log:
+            try:
+                with self.log_path.open("a") as f:
+                    f.write(line + "\n")
+            except Exception:
+                pass
 
     def render_diff(self, diff: str) -> None:
         if self.plain:

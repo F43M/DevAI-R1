@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--cli", action="store_true", help="Inicia a interface de linha de comando")
     parser.add_argument("--guided", action="store_true", help="Mostra orientações passo a passo")
     parser.add_argument("--plain", action="store_true", help="Interface simples sem Rich")
+    parser.add_argument("--no-log", action="store_true", help="Não registra histórico de chat")
     parser.add_argument("--observer", action="store_true", help="Modo observador passivo")
     parser.add_argument("command", nargs="*", help="Comandos adicionais")
     args = parser.parse_args()
@@ -42,7 +43,7 @@ def main():
         asyncio.run(run_observer())
         return
     if args.cli:
-        asyncio.run(cli_main(guided=args.guided, plain=args.plain))
+        asyncio.run(cli_main(guided=args.guided, plain=args.plain, log=not args.no_log))
         return
 
     if args.command:
