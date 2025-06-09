@@ -83,6 +83,7 @@ async def cli_main(
     print("/historia [sessao] - Exibe histórico de conversa")
     print("/historico <arquivo> - Mostra histórico de mudanças")
     print("/historico_cli [N] - Exibe N linhas do log da CLI (ou tudo)")
+    print("/modo <suggest|auto_edit|full_auto> - Altera modo de aprovação")
     print("/ajuda - Mostra documentação dos comandos")
     print("/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo")
     print("/refatorar <arquivo> - Refatora o arquivo informado")

@@ -75,6 +75,14 @@ Exemplo:
 devai historico_cli 50
 ```
 
+## /modo <suggest|auto_edit|full_auto>
+Define rapidamente o `APPROVAL_MODE` sem editar arquivos.
+
+Exemplo:
+```bash
+devai modo auto_edit
+```
+
 ## /ajuda
 Mostra esta referência de comandos diretamente na CLI.
 
@@ -90,3 +98,4 @@ Defina `APPROVAL_MODE` em `config.yaml` ou via `--approval-mode`:
 - `full_auto` aplica tudo automaticamente;
 - `auto_edit` confirma apenas comandos de shell;
 - `suggest` confirma alterações de código e comandos externos.
+Também é possível alternar dinâmicamente usando `/modo`.

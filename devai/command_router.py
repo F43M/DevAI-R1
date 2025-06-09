@@ -408,6 +408,18 @@ async def handle_tests_local(ai, ui, args, *, plain, feedback_db):
     print(f"Execução isolada {status}")
 
 
+async def handle_modo(ai, ui, args, *, plain, feedback_db):
+    """Alterar config.APPROVAL_MODE em tempo real."""
+    mode = args.strip().lower()
+    if mode not in {"suggest", "auto_edit", "full_auto"}:
+        print("Uso: /modo <suggest|auto_edit|full_auto>")
+        return
+    old = config.APPROVAL_MODE
+    config.APPROVAL_MODE = mode
+    logger.info("Modo de aprovação alterado", antigo=old, novo=mode)
+    log_decision("config", "APPROVAL_MODE", f"{old}->{mode}", "cli", "ok")
+
+
 def _split_diff_by_file(diff: str) -> Dict[str, str]:
     """Return a mapping of file path to its diff chunk."""
     files: Dict[str, list[str]] = {}
@@ -545,6 +557,7 @@ COMMANDS = {
     "feedback": handle_feedback,
     "refatorar": handle_refatorar,
     "rever": handle_rever,
+    "modo": handle_modo,
     "resetar": handle_resetar,
     "tests_local": handle_tests_local,
 }
