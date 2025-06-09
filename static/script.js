@@ -31,6 +31,13 @@ function hideLoading(){
   }catch(e){}
 }
 
+function showStatus(msg){
+  const el=document.getElementById('statusMessage');
+  if(!el) return;
+  el.textContent=msg;
+  setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; },4000);
+}
+
 function toggleReasoning(){
   const el=document.getElementById('reasoningOutput');
   if(!el) return;

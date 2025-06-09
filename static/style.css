@@ -118,3 +118,15 @@
 .report-warning { color: orange; }
 .report-danger  { color: red; }
 .report-info    { color: deepskyblue; }
+
+.status-msg {
+  color: #666;
+  font-size: 13px;
+  margin: 4px 8px;
+}
+
+#diffOutput {
+  max-height: 300px;
+  overflow: auto;
+  margin-top: 10px;
+}

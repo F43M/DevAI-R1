@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <title>DevAI Painel</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs/editor/editor.main.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundle.min.css" />
 <link rel="stylesheet" href="style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs/loader.min.js"></script>
 <style>
@@ -51,6 +52,7 @@
       </div>
     </div>
   </div>
+  <div id="statusMessage" class="status-msg"></div>
 </div>
   <div id="aiPanel">
     <h3>Painel IA</h3>
@@ -61,7 +63,7 @@
     <button id="showContextBtn" style="display:none;" onclick="toggleContext()">🧠 Contexto Atual</button>
     <pre id="reasoningOutput" class="info-box" style="display:none;"></pre>
     <div id="contextPanel" class="info-box" style="display:none;"></div>
-    <pre id="diffOutput" class="diff"></pre>
+    <div id="diffOutput" class="diff"></div>
     <div id="loading-indicator" class="spinner" style="display:none;">
       <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span> Processando...
     </div>
@@ -85,6 +87,7 @@
   <button onclick="hideHelpOverlay()">Fechar</button>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/diff2html/bundle.min.js"></script>
 <script src="lang.js"></script>
 <script src="script.js"></script>
 <script>
@@ -152,6 +155,7 @@ async function send(cot){
     es.onerror=()=>{es.close();addChat('assistant',resp.trim());};
   }
   document.getElementById('query').value='';
+  showStatus('Comando executado.');
   persistUI();
 }
 function appendConsole(msg){
@@ -172,6 +176,7 @@ document.getElementById('investigate').onclick=async()=>{
   }finally{
     hideLoading();
   }
+  showStatus('Análise de projeto concluída.');
 };
 document.getElementById('trainSymbolic').onclick=async()=>{
   appendConsole('Aprendizado simbólico iniciado...');
@@ -192,6 +197,7 @@ document.getElementById('trainSymbolic').onclick=async()=>{
   }finally{
     hideLoading();
   }
+  showStatus('Treinamento simbólico finalizado.');
 };
 document.getElementById('autoMonitor').onclick=async()=>{
   appendConsole('Executando monitoramento automático...');
@@ -205,6 +211,7 @@ document.getElementById('autoMonitor').onclick=async()=>{
   }finally{
     hideLoading();
   }
+  showStatus('Monitoramento concluído.');
 };
 document.getElementById('shadowRefactor').onclick=async()=>{
   if(!requireFile()) return;
@@ -215,12 +222,8 @@ document.getElementById('shadowRefactor').onclick=async()=>{
   try{
     const r=await fetch('/dry_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:window.currentFile,suggested_code:code})});
     const data=await r.json();
-    const diffLines=data.diff.split("\n").map(l=>{
-      if(l.startsWith('+')) return '<span class="added">'+l+'</span>';
-      if(l.startsWith('-')) return '<span class="removed">'+l+'</span>';
-      return l;
-    }).join('\n');
-    document.getElementById('diffOutput').innerHTML=diffLines;
+    const diffHtml=Diff2Html.html(data.diff,{drawFileList:false,matching:'lines',outputFormat:'side-by-side'});
+    document.getElementById('diffOutput').innerHTML=diffHtml;
     let summary='';
     if(data.tests_passed){summary+='✅ Todos os testes passaram.';}
     else if(!data.test_output){summary+='⚠️ Nenhum teste encontrado no projeto.';}
@@ -230,6 +233,7 @@ document.getElementById('shadowRefactor').onclick=async()=>{
   }finally{
     hideLoading();
   }
+  showStatus('Simulação finalizada. Confira o diff.');
 };
 document.getElementById('applyRefactor').onclick=async()=>{
   if(!requireFile()||!window.lastDryRunCode) return;
@@ -242,6 +246,7 @@ document.getElementById('applyRefactor').onclick=async()=>{
   }finally{
     hideLoading();
   }
+  showStatus('Refatoração aplicada.');
 };
 </script>
 </body>
