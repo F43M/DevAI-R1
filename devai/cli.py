@@ -70,6 +70,7 @@ async def cli_main(
     print("/esquecer <termo> - Desativa memórias")
     print("/ajustar estilo:<param> valor:<opcao> - Ajusta preferência")
     print("/rastrear <arquivo|tarefa> - Mostra histórico")
+    print("/decisoes [lembrar|esquecer <id>] - Gerencia aprovações lembradas")
     print("/tarefa <nome> [args] - Executa uma tarefa")
     print("/analisar <função> - Analisa impacto de mudanças")
     print("/verificar - Verifica conformidade com especificação")

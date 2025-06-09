@@ -146,9 +146,16 @@ async def handle_editar(ai, ui, args, *, plain, feedback_db):
         return
     file, line_no, new_line = parts[0], int(parts[1]), parts[2]
     confirm = True
-    if requires_approval("edit"):
+    if requires_approval("edit", file):
         confirm = await ui.confirm("Aplicar edição no arquivo?")
-        log_decision("edit", file, "editar", "cli", "ok" if confirm else "nao")
+        log_decision(
+            "edit",
+            file,
+            "editar",
+            "cli",
+            "ok" if confirm else "nao",
+            remember=ui.remember_choice,
+        )
     if not confirm:
         print("Operação cancelada")
         return
@@ -163,9 +170,16 @@ async def handle_novoarq(ai, ui, args, *, plain, feedback_db):
     file = parts[0]
     content = parts[1] if len(parts) > 1 else ""
     confirm = True
-    if requires_approval("create"):
+    if requires_approval("create", file):
         confirm = await ui.confirm("Criar novo arquivo?")
-        log_decision("create", file, "novoarq", "cli", "ok" if confirm else "nao")
+        log_decision(
+            "create",
+            file,
+            "novoarq",
+            "cli",
+            "ok" if confirm else "nao",
+            remember=ui.remember_choice,
+        )
     if not confirm:
         print("Operação cancelada")
         return
@@ -176,9 +190,16 @@ async def handle_novoarq(ai, ui, args, *, plain, feedback_db):
 async def handle_novapasta(ai, ui, args, *, plain, feedback_db):
     path = args.strip()
     confirm = True
-    if requires_approval("create"):
+    if requires_approval("create", path):
         confirm = await ui.confirm("Criar nova pasta?")
-        log_decision("create", path, "novapasta", "cli", "ok" if confirm else "nao")
+        log_decision(
+            "create",
+            path,
+            "novapasta",
+            "cli",
+            "ok" if confirm else "nao",
+            remember=ui.remember_choice,
+        )
     if not confirm:
         print("Operação cancelada")
         return
@@ -189,9 +210,16 @@ async def handle_novapasta(ai, ui, args, *, plain, feedback_db):
 async def handle_deletar(ai, ui, args, *, plain, feedback_db):
     path = args.strip()
     confirmed = True
-    if requires_approval("delete"):
+    if requires_approval("delete", path):
         confirmed = await ui.confirm("Tem certeza que deseja remover?")
-        log_decision("delete", path, "deletar", "cli", "ok" if confirmed else "nao")
+        log_decision(
+            "delete",
+            path,
+            "deletar",
+            "cli",
+            "ok" if confirmed else "nao",
+            remember=ui.remember_choice,
+        )
     if not confirmed:
         print("Operação cancelada")
         return
@@ -273,6 +301,36 @@ async def handle_rastrear(ai, ui, args, *, plain, feedback_db):
             if target in line:
                 print(line.strip())
     log_decision("comando", "rastrear", target, "cli", "ok")
+
+
+async def handle_decisoes(ai, ui, args, *, plain, feedback_db):
+    """Manage decision log remembered entries."""
+    parts = args.split()
+    log_path = Path("decision_log.yaml")
+    try:
+        import yaml  # type: ignore
+    except Exception:  # pragma: no cover
+        from . import yaml_fallback as yaml
+    data = []
+    if log_path.exists():
+        try:
+            data = yaml.safe_load(log_path.read_text()) or []
+        except Exception:
+            data = []
+    if not parts:
+        for e in data:
+            flag = "*" if e.get("remember") else " "
+            print(f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')}")
+        return
+    if len(parts) == 2 and parts[0] in {"lembrar", "esquecer"}:
+        target_id = parts[1]
+        for e in data:
+            if str(e.get("id")) == target_id:
+                e["remember"] = parts[0] == "lembrar"
+                log_path.write_text(yaml.safe_dump(data, allow_unicode=True))
+                print("Atualizado")
+                return
+        print("ID não encontrado")
 
 
 async def handle_plugins(ai, ui, args, *, plain, feedback_db):
@@ -513,12 +571,19 @@ async def handle_default(
                 success = updater.safe_apply(f, _apply)
                 if success:
                     ui.console.print(f"[green]✅ {f} atualizado[/green]")
-                    log_decision("patch", f, "apply", "cli", "ok")
+                    log_decision("patch", f, "apply", "cli", "ok", remember=ui.remember_choice)
                 else:
                     ui.console.print(f"[red]❌ Falha em {f}[/red]")
-                    log_decision("patch", f, "apply", "cli", "falha")
+                    log_decision("patch", f, "apply", "cli", "falha", remember=ui.remember_choice)
         else:
-            log_decision("patch", "all", "rejeitado", "cli", "nao")
+            log_decision(
+                "patch",
+                "all",
+                "rejeitado",
+                "cli",
+                "nao",
+                remember=ui.remember_choice,
+            )
     elif plain:
         print(response)
     else:
@@ -546,6 +611,7 @@ COMMANDS = {
     "ajustar": handle_ajustar,
     "preferencia": handle_preferencia,
     "rastrear": handle_rastrear,
+    "decisoes": handle_decisoes,
     "plugins": handle_plugins,
     "plugin": handle_plugin,
     "historia": handle_historia,

@@ -21,6 +21,7 @@ def log_decision(
     resultado: str,
     score: str | None = None,
     fallback: bool | None = None,
+    remember: bool | None = None,
 ) -> Tuple[str, str]:
     """Register a decision entry in ``decision_log.yaml`` and ``decision_log.md``."""
     path = Path("decision_log.yaml")
@@ -29,6 +30,8 @@ def log_decision(
         try:
             data = yaml.safe_load(path.read_text()) or []
         except Exception:
+            data = []
+        if not isinstance(data, list):
             data = []
     entry_id = f"{len(data) + 1:03d}"
     h = hashlib.sha256(resultado.encode()).hexdigest()[:8]
@@ -45,6 +48,8 @@ def log_decision(
         entry["decision_score"] = score
     if fallback is not None:
         entry["fallback"] = fallback
+    if remember is not None:
+        entry["remember"] = remember
     data.append(entry)
     path.write_text(yaml.safe_dump(data, allow_unicode=True))
 
@@ -56,3 +61,24 @@ def log_decision(
 
     logger.info("Decisao registrada", id=entry_id, tipo=tipo)
     return entry_id, h
+
+
+def is_remembered(action: str, path: str) -> bool:
+    """Return True if a decision for ``action`` and ``path`` is marked to remember."""
+    log_path = Path("decision_log.yaml")
+    if not log_path.exists():
+        return False
+    try:
+        data = yaml.safe_load(log_path.read_text()) or []
+    except Exception:
+        return False
+    for entry in reversed(data):
+        if not isinstance(entry, dict):
+            continue
+        if (
+            entry.get("tipo") == action
+            and entry.get("modulo") == path
+            and entry.get("remember")
+        ):
+            return True
+    return False

@@ -39,6 +39,7 @@ class CLIUI:
         self.log_path = Path.home() / ".devai_chat.log"
         self.diff_panel = None
         self.progress_handler = None
+        self.remember_choice: bool = False
         if not plain and PromptSession is not None:
             history_file = Path.home() / ".devai_history"
             cmd_completer = WordCompleter(list(commands or []), ignore_case=True)
@@ -266,6 +267,7 @@ class CLIUI:
 
     async def confirm(self, message: str) -> bool:
         """Ask the user to confirm an action."""
+        result: bool | None = None
         if not self.plain:
             try:
                 from textual.app import App, ComposeResult
@@ -292,17 +294,22 @@ class CLIUI:
 
                 app = ConfirmApp(message)
                 await app.run_async()
-                if app.result is not None:
-                    return app.result
+                result = app.result
             except Exception:
                 try:
                     from rich.prompt import Confirm
 
-                    return Confirm.ask(
-                        Text(message), default=False, console=self.console
-                    )
+                    result = Confirm.ask(Text(message), default=False, console=self.console)
                 except Exception:
                     pass
 
-        resp = await self.read_command(f"{message} [s/N] ")
-        return resp.strip().lower() in {"s", "sim", "y", "yes"}
+        if result is None:
+            resp = await self.read_command(f"{message} [s/N] ")
+            result = resp.strip().lower() in {"s", "sim", "y", "yes"}
+
+        if result:
+            r = await self.read_command("Lembrar esta decisão? [s/N] ")
+            self.remember_choice = r.strip().lower() in {"s", "sim", "y", "yes"}
+        else:
+            self.remember_choice = False
+        return result
