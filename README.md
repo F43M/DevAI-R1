@@ -68,9 +68,9 @@ TEST_MEMORY_LIMIT_MB: 512
 O parâmetro `APPROVAL_MODE` define quando o DevAI solicita confirmação antes de
 executar ações sensíveis. Valores possíveis:
 
-- `auto` – nenhuma confirmação é pedida;
-- `suggest` – confirma alterações de código e comandos externos;
-- `manual` – sempre pergunta antes de qualquer operação.
+- `full_auto` – nenhuma confirmação é pedida;
+- `auto_edit` – confirma apenas comandos de shell;
+- `suggest` – confirma alterações de código e comandos externos.
 
 Você pode ajustar no `config.yaml` ou via `--approval-mode` ao iniciar.
 

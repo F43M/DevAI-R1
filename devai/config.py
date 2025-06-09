@@ -6,6 +6,7 @@ from typing import Dict, Any
 
 try:
     from dotenv import load_dotenv  # type: ignore
+
     load_dotenv()
 except Exception:
     pass
@@ -18,6 +19,7 @@ try:
 except Exception:  # pragma: no cover - optional
     structlog = None
 from config_utils import load_config
+
 
 @dataclass(init=False)
 class Config:
@@ -138,8 +140,10 @@ class Config:
             raise ValueError("COMPLEXITY_TAG_THRESHOLD must be integer")
         if not isinstance(self.AUTO_REVIEW_COMPLEXITY_THRESHOLD, int):
             raise ValueError("AUTO_REVIEW_COMPLEXITY_THRESHOLD must be integer")
-        if self.APPROVAL_MODE not in {"auto", "suggest", "manual"}:
-            raise ValueError("APPROVAL_MODE must be 'auto', 'suggest' or 'manual'")
+        if self.APPROVAL_MODE.lower() not in {"suggest", "auto_edit", "full_auto"}:
+            raise ValueError(
+                "APPROVAL_MODE must be 'suggest', 'auto_edit' or 'full_auto'"
+            )
 
     @property
     def model_name(self) -> str:
@@ -201,8 +205,14 @@ class Metrics:
             "max_memory_percent": self.max_memory_percent,
             "model_usage": dict(self.model_usage),
             "incomplete_responses": self.incomplete_responses,
-            "error_percent": (self.errors / self.api_calls * 100) if self.api_calls else 0,
-            "incomplete_percent": (self.incomplete_responses / self.api_calls * 100) if self.api_calls else 0,
+            "error_percent": (
+                (self.errors / self.api_calls * 100) if self.api_calls else 0
+            ),
+            "incomplete_percent": (
+                (self.incomplete_responses / self.api_calls * 100)
+                if self.api_calls
+                else 0
+            ),
         }
         if psutil:
             try:
@@ -235,23 +245,45 @@ def configure_logging(log_dir: str, aggregator: str = ""):
     else:
         logging.basicConfig(level=logging.INFO)
         base_logger = logging.getLogger("devai")
+
         class SimpleLogger:
             def __init__(self, l):
                 self._l = l
+
             def info(self, msg, **kw):
-                self._l.info(msg + (" " + " ".join(f"{k}={v}" for k,v in kw.items()) if kw else ""))
+                self._l.info(
+                    msg
+                    + (" " + " ".join(f"{k}={v}" for k, v in kw.items()) if kw else "")
+                )
+
             def warning(self, msg, **kw):
-                self._l.warning(msg + (" " + " ".join(f"{k}={v}" for k,v in kw.items()) if kw else ""))
+                self._l.warning(
+                    msg
+                    + (" " + " ".join(f"{k}={v}" for k, v in kw.items()) if kw else "")
+                )
+
             def error(self, msg, **kw):
-                self._l.error(msg + (" " + " ".join(f"{k}={v}" for k,v in kw.items()) if kw else ""))
+                self._l.error(
+                    msg
+                    + (" " + " ".join(f"{k}={v}" for k, v in kw.items()) if kw else "")
+                )
+
             def critical(self, msg, **kw):
-                self._l.critical(msg + (" " + " ".join(f"{k}={v}" for k,v in kw.items()) if kw else ""))
+                self._l.critical(
+                    msg
+                    + (" " + " ".join(f"{k}={v}" for k, v in kw.items()) if kw else "")
+                )
+
         logger_obj = SimpleLogger(base_logger)
 
     file_handler = logging.handlers.RotatingFileHandler(
-        filename=os.path.join(log_dir, "ai_core.log"), maxBytes=10 * 1024 * 1024, backupCount=5
+        filename=os.path.join(log_dir, "ai_core.log"),
+        maxBytes=10 * 1024 * 1024,
+        backupCount=5,
     )
-    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
 
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)

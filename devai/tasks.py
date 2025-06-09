@@ -20,6 +20,7 @@ from .plugin_manager import PluginManager
 from .notifier import Notifier
 from .test_runner import run_pytest
 from .approval import requires_approval
+from .decision_log import log_decision
 
 
 class TaskManager:
@@ -144,6 +145,9 @@ class TaskManager:
         action = action_map.get(task["type"])
         if action and ui and requires_approval(action):
             approved = await ui.confirm(f"Executar tarefa {task_name}?")
+            log_decision(
+                action, task_name, "execucao", "cli", "ok" if approved else "nao"
+            )
             if not approved:
                 return {"canceled": True}
 
@@ -157,9 +161,13 @@ class TaskManager:
             result = await self._perform_lint_task(task, *args)
         elif task["type"] == "test":
             try:
-                result = await self._perform_test_task(task, *args, progress_cb=progress, ui=ui)
+                result = await self._perform_test_task(
+                    task, *args, progress_cb=progress, ui=ui
+                )
             except TypeError:
-                result = await self._perform_test_task(task, *args, progress_cb=progress)
+                result = await self._perform_test_task(
+                    task, *args, progress_cb=progress
+                )
         elif task["type"] == "static_analysis":
             try:
                 result = await self._perform_static_analysis_task(task, *args, ui=ui)
@@ -359,7 +367,15 @@ class TaskManager:
         self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
         if ui and requires_approval("shell"):
-            if not await ui.confirm("Executar testes?"):
+            approved = await ui.confirm("Executar testes?")
+            log_decision(
+                "shell",
+                task.get("type", "test"),
+                "execucao",
+                "cli",
+                "ok" if approved else "nao",
+            )
+            if not approved:
                 return ["cancelado"]
         if progress_cb:
             progress_cb(0, "running tests")
@@ -369,9 +385,19 @@ class TaskManager:
         logger.info("Testes executados", success=ok)
         return out.splitlines()
 
-    async def _perform_static_analysis_task(self, task: Dict, *args, ui=None) -> List[str]:
+    async def _perform_static_analysis_task(
+        self, task: Dict, *args, ui=None
+    ) -> List[str]:
         if ui and requires_approval("shell"):
-            if not await ui.confirm("Executar análise estática?"):
+            approved = await ui.confirm("Executar análise estática?")
+            log_decision(
+                "shell",
+                task.get("type", "static"),
+                "execucao",
+                "cli",
+                "ok" if approved else "nao",
+            )
+            if not approved:
                 return ["cancelado"]
         cmd = ["flake8", str(self.code_analyzer.code_root)]
         try:
@@ -391,9 +417,19 @@ class TaskManager:
             logger.error("Erro na análise estática", error=str(e))
             return [f"Erro na análise estática: {e}"]
 
-    async def _perform_security_analysis_task(self, task: Dict, *args, ui=None) -> List[str]:
+    async def _perform_security_analysis_task(
+        self, task: Dict, *args, ui=None
+    ) -> List[str]:
         if ui and requires_approval("shell"):
-            if not await ui.confirm("Executar análise de segurança?"):
+            approved = await ui.confirm("Executar análise de segurança?")
+            log_decision(
+                "shell",
+                task.get("type", "security"),
+                "execucao",
+                "cli",
+                "ok" if approved else "nao",
+            )
+            if not approved:
                 return ["cancelado"]
         cmd = ["bandit", "-r", str(self.code_analyzer.code_root)]
         try:
@@ -415,7 +451,15 @@ class TaskManager:
 
     async def _perform_pylint_task(self, task: Dict, *args, ui=None) -> List[str]:
         if ui and requires_approval("shell"):
-            if not await ui.confirm("Executar pylint?"):
+            approved = await ui.confirm("Executar pylint?")
+            log_decision(
+                "shell",
+                task.get("type", "pylint"),
+                "execucao",
+                "cli",
+                "ok" if approved else "nao",
+            )
+            if not approved:
                 return ["cancelado"]
         cmd = ["pylint", str(self.code_analyzer.code_root)]
         try:
@@ -437,7 +481,15 @@ class TaskManager:
 
     async def _perform_type_check_task(self, task: Dict, *args, ui=None) -> List[str]:
         if ui and requires_approval("shell"):
-            if not await ui.confirm("Executar verificação de tipos?"):
+            approved = await ui.confirm("Executar verificação de tipos?")
+            log_decision(
+                "shell",
+                task.get("type", "type_check"),
+                "execucao",
+                "cli",
+                "ok" if approved else "nao",
+            )
+            if not approved:
                 return ["cancelado"]
         cmd = ["mypy", str(self.code_analyzer.code_root)]
         try:
@@ -461,7 +513,15 @@ class TaskManager:
         self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
         if ui and requires_approval("shell"):
-            if not await ui.confirm("Executar cobertura de testes?"):
+            approved = await ui.confirm("Executar cobertura de testes?")
+            log_decision(
+                "shell",
+                task.get("type", "coverage"),
+                "execucao",
+                "cli",
+                "ok" if approved else "nao",
+            )
+            if not approved:
                 return ["cancelado"]
         cmd = ["coverage", "run", "-m", "pytest", "-q"]
         try:
@@ -530,7 +590,15 @@ class TaskManager:
             p.write_text(suggestion)
 
         if ui and requires_approval("edit"):
-            if not await ui.confirm(f"Aplicar refatoração em {file_path}?"):
+            approved = await ui.confirm(f"Aplicar refatoração em {file_path}?")
+            log_decision(
+                "edit",
+                task.get("type", "auto_refactor"),
+                "execucao",
+                "cli",
+                "ok" if approved else "nao",
+            )
+            if not approved:
                 return {"canceled": True}
 
         try:
@@ -557,7 +625,17 @@ class TaskManager:
                 p.write_text(suggestion)
 
             if ui and requires_approval("edit"):
-                if not await ui.confirm(f"Aplicar refatoração em {file_path} (retry)?"):
+                approved = await ui.confirm(
+                    f"Aplicar refatoração em {file_path} (retry)?"
+                )
+                log_decision(
+                    "edit",
+                    task.get("type", "auto_refactor"),
+                    "retry",
+                    "cli",
+                    "ok" if approved else "nao",
+                )
+                if not approved:
                     return {"canceled": True}
             try:
                 success, _ = updater.safe_apply(
@@ -571,8 +649,12 @@ class TaskManager:
         self, task: Dict, *args, ui=None
     ) -> Dict[str, List[str]]:
         lint_t = self._perform_lint_task(self.tasks["lint"])
-        static_t = self._perform_static_analysis_task(self.tasks["static_analysis"], ui=ui)
-        sec_t = self._perform_security_analysis_task(self.tasks["security_analysis"], ui=ui)
+        static_t = self._perform_static_analysis_task(
+            self.tasks["static_analysis"], ui=ui
+        )
+        sec_t = self._perform_security_analysis_task(
+            self.tasks["security_analysis"], ui=ui
+        )
         tests_t = self._perform_test_task(self.tasks["run_tests"], ui=ui)
         results = await asyncio.gather(
             lint_t, static_t, sec_t, tests_t, return_exceptions=True

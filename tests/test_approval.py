@@ -12,11 +12,13 @@ def _write_cfg(tmp_path, text):
 
 
 def test_config_approval(tmp_path, monkeypatch):
-    path = _write_cfg(tmp_path, "APPROVAL_MODE: manual\n")
-    fake_yaml = types.SimpleNamespace(safe_load=lambda f: {"APPROVAL_MODE": "manual"})
+    path = _write_cfg(tmp_path, "APPROVAL_MODE: auto_edit\n")
+    fake_yaml = types.SimpleNamespace(
+        safe_load=lambda f: {"APPROVAL_MODE": "auto_edit"}
+    )
     monkeypatch.setattr(config_utils, "yaml", fake_yaml)
     cfg = Config(path)
-    assert cfg.APPROVAL_MODE == "manual"
+    assert cfg.APPROVAL_MODE == "auto_edit"
 
 
 def test_config_invalid_approval(tmp_path, monkeypatch):
@@ -28,10 +30,12 @@ def test_config_invalid_approval(tmp_path, monkeypatch):
 
 
 def test_requires_approval(monkeypatch):
-    monkeypatch.setattr(config, "APPROVAL_MODE", "auto")
+    monkeypatch.setattr(config, "APPROVAL_MODE", "full_auto")
     assert not requires_approval("patch")
-    monkeypatch.setattr(config, "APPROVAL_MODE", "manual")
-    assert requires_approval("anything")
+    monkeypatch.setattr(config, "APPROVAL_MODE", "auto_edit")
+    assert requires_approval("shell")
+    assert not requires_approval("patch")
     monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
     assert requires_approval("patch")
+    assert requires_approval("shell")
     assert not requires_approval("other")

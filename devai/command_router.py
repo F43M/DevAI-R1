@@ -12,6 +12,7 @@ from .config import config, logger
 from .core import CodeMemoryAI, run_scheduled_rlhf
 from .decision_log import log_decision
 from .feedback import FeedbackDB, registrar_preferencia
+
 try:
     from .cli import UpdateManager  # type: ignore
 except Exception:  # pragma: no cover - fallback for tests
@@ -21,6 +22,7 @@ from .approval import requires_approval
 
 def _new_updater():
     from .cli import UpdateManager as UM
+
     return UM()
 
 
@@ -51,7 +53,9 @@ async def handle_memoria(ai, ui, args, *, plain, feedback_db):
     if memory_type:
         args = args.replace(m_type.group(0), "").strip()
     query = args.replace("filtro:", "").strip()
-    results = ai.memory.search(query or "recent", top_k=5 * page, memory_type=memory_type)
+    results = ai.memory.search(
+        query or "recent", top_k=5 * page, memory_type=memory_type
+    )
     results = results[(page - 1) * 5 : page * 5]
     print("\nMemórias relevantes:")
     for m in results:
@@ -72,7 +76,9 @@ async def handle_tarefa(ai, ui, args, *, plain, feedback_db):
     task_args = parts[1:] if len(parts) > 1 else []
     if task_name in {"run_tests", "coverage"}:
         async with ui.progress("executando tarefa...") as update:
-            result = await ai.tasks.run_task(task_name, *task_args, progress=update, ui=ui)
+            result = await ai.tasks.run_task(
+                task_name, *task_args, progress=update, ui=ui
+            )
     else:
         result = await ai.tasks.run_task(task_name, *task_args, ui=ui)
     print(json.dumps(result, indent=2))
@@ -81,7 +87,9 @@ async def handle_tarefa(ai, ui, args, *, plain, feedback_db):
 async def handle_analisar(ai, ui, args, *, plain, feedback_db):
     report = await ai.analyze_impact([args])
     for item in report:
-        print(f"\nImpacto em {item['target']} (gatilhos: {', '.join(item['triggers'])}):")
+        print(
+            f"\nImpacto em {item['target']} (gatilhos: {', '.join(item['triggers'])}):"
+        )
         for finding in item["findings"]:
             if isinstance(finding, dict):
                 print(f"- {finding.get('chunk')}:")
@@ -140,6 +148,7 @@ async def handle_editar(ai, ui, args, *, plain, feedback_db):
     confirm = True
     if requires_approval("edit"):
         confirm = await ui.confirm("Aplicar edição no arquivo?")
+        log_decision("edit", file, "editar", "cli", "ok" if confirm else "nao")
     if not confirm:
         print("Operação cancelada")
         return
@@ -156,6 +165,7 @@ async def handle_novoarq(ai, ui, args, *, plain, feedback_db):
     confirm = True
     if requires_approval("create"):
         confirm = await ui.confirm("Criar novo arquivo?")
+        log_decision("create", file, "novoarq", "cli", "ok" if confirm else "nao")
     if not confirm:
         print("Operação cancelada")
         return
@@ -168,6 +178,7 @@ async def handle_novapasta(ai, ui, args, *, plain, feedback_db):
     confirm = True
     if requires_approval("create"):
         confirm = await ui.confirm("Criar nova pasta?")
+        log_decision("create", path, "novapasta", "cli", "ok" if confirm else "nao")
     if not confirm:
         print("Operação cancelada")
         return
@@ -180,6 +191,7 @@ async def handle_deletar(ai, ui, args, *, plain, feedback_db):
     confirmed = True
     if requires_approval("delete"):
         confirmed = await ui.confirm("Tem certeza que deseja remover?")
+        log_decision("delete", path, "deletar", "cli", "ok" if confirmed else "nao")
     if not confirmed:
         print("Operação cancelada")
         return
@@ -290,7 +302,9 @@ async def handle_historia(ai, ui, args, *, plain, feedback_db):
         if plain:
             print(f"{m.get('role')}: {m.get('content')}")
         else:
-            ui.console.print(Panel(m.get("content", ""), title=m.get("role", ""), expand=False))
+            ui.console.print(
+                Panel(m.get("content", ""), title=m.get("role", ""), expand=False)
+            )
 
 
 async def handle_historico(ai, ui, args, *, plain, feedback_db):
@@ -453,7 +467,9 @@ def _apply_patch_to_file(path: Path, diff: str) -> None:
     path.write_text("".join(result))
 
 
-async def handle_default(ai, ui, args, *, plain, feedback_db, side_by_side: bool = False):
+async def handle_default(
+    ai, ui, args, *, plain, feedback_db, side_by_side: bool = False
+):
     print("\nResposta:")
     tokens: list[str] = []
     async with ui.loading("Gerando resposta..."):
@@ -478,6 +494,7 @@ async def handle_default(ai, ui, args, *, plain, feedback_db, side_by_side: bool
             patches = _split_diff_by_file(response)
             updater = _new_updater()
             for f, diff_text in patches.items():
+
                 def _apply(p: Path, d=diff_text) -> None:
                     _apply_patch_to_file(p, d)
 

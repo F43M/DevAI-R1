@@ -1,12 +1,13 @@
 from .config import config
 
-_actions_suggest = {"patch", "shell", "edit", "delete", "create"}
+WRITE_ACTIONS = {"patch", "edit", "create", "delete"}
+
 
 def requires_approval(action: str) -> bool:
     """Return True if the given action requires confirmation."""
-    mode = getattr(config, "APPROVAL_MODE", "suggest")
-    if mode == "manual":
-        return True
-    if mode == "auto":
+    mode = getattr(config, "APPROVAL_MODE", "suggest").lower()
+    if mode == "full_auto":
         return False
-    return action in _actions_suggest
+    if mode == "auto_edit":
+        return action == "shell"
+    return action in WRITE_ACTIONS or action == "shell"

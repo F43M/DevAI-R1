@@ -87,6 +87,6 @@ devai ajuda
 
 Defina `APPROVAL_MODE` em `config.yaml` ou via `--approval-mode`:
 
-- `auto` aplica tudo automaticamente;
-- `suggest` solicita confirmação para patches e comandos externos;
-- `manual` pergunta antes de qualquer ação.
+- `full_auto` aplica tudo automaticamente;
+- `auto_edit` confirma apenas comandos de shell;
+- `suggest` confirma alterações de código e comandos externos.
