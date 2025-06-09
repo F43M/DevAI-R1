@@ -39,3 +39,27 @@ Busca memórias armazenadas filtrando por tipo e texto. Possui paginação e a f
 
 ## /historia [sessao]
 Exibe o histórico completo de mensagens trocadas com a IA. Caso nenhum `sessao` seja informado, usa "default".
+
+## /refatorar <arquivo>
+Aciona a refatoração automática para o arquivo informado.
+
+Exemplo:
+```bash
+devai refatorar src/modulo.py
+```
+
+## /rever <arquivo>
+Executa uma revisão automática de código no arquivo indicado.
+
+Exemplo:
+```bash
+devai rever src/modulo.py
+```
+
+## /resetar
+Limpa o histórico de conversa da sessão atual.
+
+Exemplo:
+```bash
+devai resetar
+```

@@ -309,3 +309,64 @@ def test_cli_no_log(monkeypatch):
     monkeypatch.setattr(cli, "CLIUI", make_ui)
     asyncio.run(cli.cli_main(log=False))
     assert called.get("log") is False
+
+
+def test_cli_refatorar(monkeypatch, capsys):
+    ai = DummyAI()
+    recorded = {}
+
+    async def run_task(name, target, *a, **k):
+        recorded["name"] = name
+        recorded["target"] = target
+        return {"ok": True}
+
+    ai.tasks = types.SimpleNamespace(run_task=run_task)
+    monkeypatch.setattr(cli, "CodeMemoryAI", lambda: ai)
+
+    def make_ui(*a, **k):
+        k.pop("commands", None)
+        return DummyUI(["/refatorar mod.py", "/sair"], **k)
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    out = capsys.readouterr().out
+    assert "ok" in out
+    assert recorded == {"name": "auto_refactor", "target": "mod.py"}
+
+
+def test_cli_rever(monkeypatch, capsys):
+    ai = DummyAI()
+
+    async def run_task(name, target, *a, **k):
+        assert name == "code_review"
+        assert target == "mod.py"
+        return ["clean"]
+
+    ai.tasks = types.SimpleNamespace(run_task=run_task)
+    monkeypatch.setattr(cli, "CodeMemoryAI", lambda: ai)
+
+    def make_ui(*a, **k):
+        k.pop("commands", None)
+        return DummyUI(["/rever mod.py", "/sair"], **k)
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    out = capsys.readouterr().out
+    assert "clean" in out
+
+
+def test_cli_resetar(monkeypatch, capsys):
+    called = []
+    ai = DummyAI()
+    ai.conv_handler = types.SimpleNamespace(reset=lambda s: called.append(s))
+    monkeypatch.setattr(cli, "CodeMemoryAI", lambda: ai)
+
+    def make_ui(*a, **k):
+        k.pop("commands", None)
+        return DummyUI(["/resetar", "/sair"], **k)
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    out = capsys.readouterr().out
+    assert "Conversa resetada" in out
+    assert called == ["default"]

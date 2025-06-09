@@ -49,6 +49,9 @@ async def cli_main(
         "/historia",
         "/historico",
         "/feedback",
+        "/refatorar",
+        "/rever",
+        "/resetar",
         "/tests_local",
         "/plugins",
         "/plugin",
@@ -104,6 +107,9 @@ async def cli_main(
     print("/historia [sessao] - Exibe histórico de conversa")
     print("/historico <arquivo> - Mostra histórico de mudanças")
     print("/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo")
+    print("/refatorar <arquivo> - Refatora o arquivo informado")
+    print("/rever <arquivo> - Executa revisão de código")
+    print("/resetar - Limpa o histórico de conversa")
     print("/tests_local - Alterna execução isolada dos testes")
     print("/sair - Encerra")
     try:
@@ -388,6 +394,21 @@ async def cli_main(
                     else:
                         feedback_db.add(parts[0], parts[1], parts[2])
                         print("Feedback registrado")
+                elif user_input.startswith("/refatorar "):
+                    target = user_input[len("/refatorar ") :].strip()
+                    result = await ai.tasks.run_task("auto_refactor", target)
+                    print(json.dumps(result, indent=2))
+                elif user_input.startswith("/rever "):
+                    target = user_input[len("/rever ") :].strip()
+                    result = await ai.tasks.run_task("code_review", target)
+                    for item in result:
+                        if isinstance(item, str):
+                            print(item)
+                        else:
+                            print(json.dumps(item, indent=2))
+                elif user_input == "/resetar":
+                    ai.conv_handler.reset("default")
+                    print("Conversa resetada.")
                 elif user_input == "/tests_local":
                     cfg_path = Path("config.yaml")
                     try:
