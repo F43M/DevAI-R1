@@ -120,18 +120,24 @@ class RLFineTuner:
         return metrics
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> None:
+    """CLI entrypoint for running the fine-tuning procedure."""
     import argparse
     import asyncio
+
     from .memory import MemoryManager
-    from .config import config
 
     parser = argparse.ArgumentParser(description="Run RLHF fine-tuning")
     parser.add_argument("base_model")
     parser.add_argument("output_dir")
     parser.add_argument("--db", default=config.MEMORY_DB)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     mem = MemoryManager(args.db, config.EMBEDDING_MODEL, model=None, index=None)
     tuner = RLFineTuner(mem)
-    asyncio.run(tuner.fine_tune(args.base_model, args.output_dir))
+    result = asyncio.run(tuner.fine_tune(args.base_model, args.output_dir))
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()
