@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List, Dict
 
 try:
     import yaml  # type: ignore
@@ -11,6 +11,9 @@ except Exception:  # pragma: no cover - fallback when PyYAML is missing
     from . import yaml_fallback as yaml
 
 from .config import logger
+
+# Pre-computed hash for approved actions ("ok")
+OK_HASH = hashlib.sha256("ok".encode()).hexdigest()[:8]
 
 
 def log_decision(
@@ -92,3 +95,35 @@ def is_remembered(action: str, path: str) -> bool:
                     pass
             return True
     return False
+
+
+def suggest_rules(threshold: int) -> List[Dict[str, str]]:
+    """Return candidate auto approval rules based on the decision log."""
+    if threshold <= 0:
+        return []
+    log_path = Path("decision_log.yaml")
+    if not log_path.exists():
+        return []
+    try:
+        data = yaml.safe_load(log_path.read_text()) or []
+    except Exception:
+        return []
+    counts: Dict[tuple[str, str], int] = {}
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        action = entry.get("tipo")
+        path = entry.get("modulo")
+        if not action or not path:
+            continue
+        if entry.get("remember"):
+            counts[(action, path)] = counts.get((action, path), 0) + threshold
+            continue
+        if str(entry.get("hash_resultado")) == OK_HASH:
+            counts[(action, path)] = counts.get((action, path), 0) + 1
+
+    suggestions = []
+    for (action, path), count in counts.items():
+        if count >= threshold:
+            suggestions.append({"action": action, "path": path, "approve": True})
+    return suggestions

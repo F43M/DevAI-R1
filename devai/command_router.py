@@ -11,7 +11,7 @@ from rich.panel import Panel
 
 from .config import config, logger
 from .core import CodeMemoryAI, run_scheduled_rlhf
-from .decision_log import log_decision
+from .decision_log import log_decision, suggest_rules
 from .feedback import FeedbackDB, registrar_preferencia
 
 try:
@@ -625,6 +625,41 @@ async def handle_regras(ai, ui, args, *, plain, feedback_db):
     print("Uso: /regras [add <acao> <caminho> <sim|nao>|del <id>]")
 
 
+async def handle_sugerir_regras(ai, ui, args, *, plain, feedback_db):
+    """Mostrar sugestões de AUTO_APPROVAL_RULES baseadas no log."""
+    parts = args.split()
+    threshold = 3
+    save = False
+    for p in parts:
+        if p.isdigit():
+            threshold = int(p)
+        if p == "--salvar":
+            save = True
+    suggestions = suggest_rules(threshold)
+    if not suggestions:
+        print("Nenhuma sugestão")
+        return
+    for i, r in enumerate(suggestions, start=1):
+        print(f"[{i}] {r['action']} {r['path']} -> sim")
+    if save:
+        cfg_path = Path("config.yaml")
+        try:
+            import yaml  # type: ignore
+        except Exception:  # pragma: no cover - fallback when PyYAML is missing
+            from . import yaml_fallback as yaml
+        data = {}
+        if cfg_path.exists():
+            data = yaml.safe_load(cfg_path.read_text()) or {}
+        rules = data.get("AUTO_APPROVAL_RULES", [])
+        for r in suggestions:
+            if r not in rules:
+                rules.append(r)
+        data["AUTO_APPROVAL_RULES"] = rules
+        cfg_path.write_text(yaml.safe_dump(data, allow_unicode=True))
+        config.reload(str(cfg_path))
+        print("✅ Regras atualizadas")
+
+
 def _split_diff_by_file(diff: str) -> Dict[str, str]:
     """Return a mapping of file path to its diff chunk."""
     files: Dict[str, list[str]] = {}
@@ -799,6 +834,7 @@ COMMANDS = {
     "aprovar_proxima": handle_aprovar_proxima,
     "modo": handle_modo,
     "regras": handle_regras,
+    "sugerir_regras": handle_sugerir_regras,
     "resetar": handle_resetar,
     "tests_local": handle_tests_local,
 }
