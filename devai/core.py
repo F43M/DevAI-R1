@@ -1087,22 +1087,16 @@ class CodeMemoryAI:
         watchers = list(getattr(self, "watchers", {}).items())
         for name, task in watchers:
             task.cancel()
-        if watchers:
-            results = []
-            for name, task in watchers:
-                try:
-                    await asyncio.wait_for(task, timeout=2)
-                    results.append(None)
-                except asyncio.CancelledError:
-                    results.append(None)
-                except asyncio.TimeoutError:
-                    logger.warning("Timeout ao encerrar watcher", watcher=name)
-                    results.append(None)
-                except Exception as e:
-                    results.append(e)
-            for (name, _), result in zip(watchers, results):
-                if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
-                    logger.error("Erro ao finalizar watcher", watcher=name, error=str(result))
+        for name, task in watchers:
+            try:
+                await asyncio.wait_for(task, timeout=2)
+            except asyncio.CancelledError:
+                pass
+            except asyncio.TimeoutError:
+                logger.warning("Timeout ao encerrar watcher", watcher=name)
+            except Exception as e:
+                logger.error("Erro ao finalizar watcher", watcher=name, error=str(e))
+            finally:
                 if hasattr(self, "watchers"):
                     self.watchers.pop(name, None)
                 if hasattr(self, "background_tasks"):
