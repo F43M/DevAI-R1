@@ -60,6 +60,8 @@ class Config:
     AUTO_MONITOR_FAILURES: int = 3
     AUTO_MONITOR_FILES: int = 5
     AUTO_MONITOR_HOURS: int = 72
+    RLHF_THRESHOLD: int = 10
+    RLHF_OUTPUT_DIR: str = "./logs/rlhf_results"
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -115,6 +117,10 @@ class Config:
             raise ValueError("AUTO_MONITOR_FILES must be integer")
         if not isinstance(self.AUTO_MONITOR_HOURS, int):
             raise ValueError("AUTO_MONITOR_HOURS must be integer")
+        if not isinstance(self.RLHF_THRESHOLD, int):
+            raise ValueError("RLHF_THRESHOLD must be integer")
+        if not isinstance(self.RLHF_OUTPUT_DIR, str):
+            raise ValueError("RLHF_OUTPUT_DIR must be string")
 
     @property
     def model_name(self) -> str:

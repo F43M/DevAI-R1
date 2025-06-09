@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from devai import rlhf
+from devai import rlhf, core
 from devai.memory import MemoryManager
 
 
@@ -26,11 +26,23 @@ def _create_memory(tmp_path: Path) -> DummyMemory:
     return mem
 
 
-def test_collect_examples_returns_content(tmp_path):
+def test_collect_examples_returns_content(tmp_path, monkeypatch):
     mem = _create_memory(tmp_path)
+    # duplicate entry should be removed
+    mem.save(
+        {
+            "type": "dialog",
+            "memory_type": "dialog_summary",
+            "content": "answer",
+            "metadata": {"prompt": "question"},
+            "feedback_score": 1,
+        }
+    )
+    monkeypatch.setattr(rlhf.config, "LOG_DIR", str(tmp_path))
     tuner = rlhf.RLFineTuner(mem)
     data = tuner.collect_examples()
-    assert data and data[0]["prompt"] == "question"
+    assert len(data) == 1
+    assert (tmp_path / "rlhf_dataset.json").exists()
 
 
 def test_collect_log_examples(tmp_path):
@@ -70,3 +82,23 @@ def test_train_from_memory_empty(tmp_path, monkeypatch):
 
     result = asyncio.run(rlhf.train_from_memory("base", str(tmp_path / "out")))
     assert result["status"] == "no_data"
+
+
+def test_run_scheduled_rlhf(tmp_path, monkeypatch):
+    mem = _create_memory(tmp_path)
+    monkeypatch.setattr(core.config, "RLHF_THRESHOLD", 1)
+    monkeypatch.setattr(core.config, "RLHF_OUTPUT_DIR", str(tmp_path / "out"))
+    monkeypatch.setattr(core.config, "LOG_DIR", str(tmp_path))
+    monkeypatch.setattr(core.config, "MODELS", {"default": {"name": "base"}})
+
+    async def fake_train(base, out):
+        Path(out).mkdir(parents=True, exist_ok=True)
+        return {"status": "ok"}
+
+    monkeypatch.setattr(core.rlhf, "train_from_memory", fake_train)
+
+    result = asyncio.run(core.run_scheduled_rlhf(mem))
+    assert result["status"] == "ok"
+    cur = mem.conn.cursor()
+    cur.execute("SELECT type FROM memory WHERE type = 'rlhf_training'")
+    assert cur.fetchone()
