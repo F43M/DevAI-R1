@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 
 from .ui import CLIUI
+from rich.panel import Panel
 
 
 async def cli_main(guided: bool = False, plain: bool = False):
@@ -36,6 +37,7 @@ async def cli_main(guided: bool = False, plain: bool = False):
         "/novoarq",
         "/novapasta",
         "/deletar",
+        "/historia",
         "/historico",
         "/feedback",
         "/tests_local",
@@ -85,6 +87,7 @@ async def cli_main(guided: bool = False, plain: bool = False):
     print("/novoarq <arquivo> [conteudo] - Cria novo arquivo")
     print("/novapasta <caminho> - Cria nova pasta")
     print("/deletar <caminho> - Remove arquivo ou pasta")
+    print("/historia [sessao] - Exibe histórico de conversa")
     print("/historico <arquivo> - Mostra histórico de mudanças")
     print("/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo")
     print("/tests_local - Alterna execução isolada dos testes")
@@ -274,6 +277,14 @@ async def cli_main(guided: bool = False, plain: bool = False):
                         else:
                             ok = ai.tasks.plugins.disable_plugin(name)
                             print("✅ Plugin desativado" if ok else "Plugin não encontrado")
+                elif user_input.startswith("/historia"):
+                    session_id = user_input[len("/historia"):].strip() or "default"
+                    hist = ai.conv_handler.history(session_id)
+                    for m in hist:
+                        if plain:
+                            print(f"{m.get('role')}: {m.get('content')}")
+                        else:
+                            ui.console.print(Panel(m.get("content", ""), title=m.get("role", ""), expand=False))
                 elif user_input.startswith("/historico "):
                     file = user_input[len("/historico "):].strip()
                     hist = await ai.analyzer.get_history(file)

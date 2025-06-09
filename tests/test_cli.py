@@ -15,7 +15,9 @@ class DummyUI:
         self.history: list[str] = []
         self.plain = plain
         self.outputs: list[str] = []
-        self.console = types.SimpleNamespace(print=lambda *a, **k: self.outputs.append(" ".join(map(str, a))))
+        self.console = types.SimpleNamespace(
+            print=lambda *a, **k: self.outputs.append(" ".join(map(str, a)))
+        )
 
     async def read_command(self, prompt: str = ">>> ") -> str:
         return self._cmds.pop(0)
@@ -33,20 +35,28 @@ class DummyUI:
     async def loading(self, message: str = "..."):
         yield
 
+
 class DummyAI:
     def __init__(self):
         async def noop(*a, **k):
             return []
-        self.analyzer = types.SimpleNamespace(deep_scan_app=noop, get_code_graph=lambda: {"nodes": [], "links": []})
+
+        self.analyzer = types.SimpleNamespace(
+            deep_scan_app=noop, get_code_graph=lambda: {"nodes": [], "links": []}
+        )
         self.memory = types.SimpleNamespace(search=lambda q, top_k=5: [])
         self.tasks = types.SimpleNamespace(run_task=noop)
         self.double_check = None
+
     async def analyze_impact(self, changed):
         return []
+
     async def verify_compliance(self, spec):
         return []
+
     async def generate_response(self, q):
         return "ok"
+
 
 def test_cli_exit(monkeypatch, capsys):
     monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
@@ -145,3 +155,25 @@ def test_cli_render_diff_plusminus(monkeypatch):
     assert ui_obj is not None
     assert "-old line\n+new line\n" in ui_obj.outputs
 
+
+def test_cli_historia(monkeypatch, capsys):
+    class HistAI(DummyAI):
+        def __init__(self):
+            super().__init__()
+            self.conv_handler = types.SimpleNamespace(
+                history=lambda s: [
+                    {"role": "user", "content": "hi"},
+                    {"role": "assistant", "content": "hello"},
+                ]
+            )
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", HistAI)
+
+    def make_ui(*a, **k):
+        return DummyUI(["/historia", "/sair"], plain=True)
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main(plain=True))
+    out = capsys.readouterr().out
+    assert "user: hi" in out
+    assert "assistant: hello" in out
