@@ -83,6 +83,7 @@ async def auto_monitor_cycle(
         "training_executed": False,
         "new_rules": 0,
         "errors_processed": 0,
+        "rule_sources": {},
     }
 
     _log("🧠 Avaliando necessidade de novo treinamento simbólico…")
@@ -90,7 +91,12 @@ async def auto_monitor_cycle(
         training_executed = True
         _log("EXECUTADO")
         logger.info("Monitor acionou treinamento simbólico")
-        training_result = await run_symbolic_training(analyzer, memory, ai_model)
+        from .learning_engine import LearningEngine
+
+        engine = LearningEngine(analyzer, memory, ai_model)
+        training_result = await run_symbolic_training(
+            analyzer, memory, ai_model, learning_engine=engine
+        )
         result_data.update(training_result.get("data", {}))
         result_data["training_executed"] = True
         decision_log.write_text(

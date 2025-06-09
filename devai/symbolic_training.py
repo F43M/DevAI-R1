@@ -6,7 +6,7 @@ from typing import Dict, List
 import json
 from datetime import datetime
 
-from .learning_engine import LESSONS_FILE
+from .learning_engine import LESSONS_FILE, LearningEngine
 
 from .config import config, logger
 from .memory import MemoryManager
@@ -20,6 +20,7 @@ async def run_symbolic_training(
     analyzer: CodeAnalyzer,
     memory: MemoryManager,
     ai_model: AIModel,
+    learning_engine: "LearningEngine | None" = None,
     max_logs: int = 100,
 ) -> Dict[str, object]:
     """Execute the symbolic deep training cycle returning a friendly summary."""
@@ -212,19 +213,23 @@ async def run_symbolic_training(
                     "logs": list(info["logs"]),
                 },
             }
-            memory.save(
-                {
-                    "type": "learned_rule",
-                    "memory_type": "rule",
-                    "content": r,
-                    "metadata": {
-                        "files": list(info["files"]),
-                        "lines": list(info.get("lines", [])),
-                        "logs": list(info["logs"]),
-                    },
-                    "tags": ["rule", "learning"],
-                }
-            )
+            meta = {
+                "files": list(info["files"]),
+                "lines": list(info.get("lines", [])),
+                "logs": list(info["logs"]),
+            }
+            if learning_engine is not None:
+                learning_engine.register_rule(r, meta)
+            else:
+                memory.save(
+                    {
+                        "type": "learned_rule",
+                        "memory_type": "rule",
+                        "content": r,
+                        "metadata": meta,
+                        "tags": ["rule", "learning"],
+                    }
+                )
     else:
         lines.append("Nenhum aprendizado novo encontrado desta vez.")
     lines.append("")
@@ -234,6 +239,7 @@ async def run_symbolic_training(
     for entry in items:
         if entry in pending_items:
             entry["processed"] = True
+            entry["processed_at"] = datetime.now().isoformat()
     try:
         LESSONS_FILE.write_text(json.dumps(items, indent=2))
     except Exception:
