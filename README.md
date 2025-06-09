@@ -77,11 +77,12 @@ python -m devai --api
 
 Com o servidor ativo, acesse `http://localhost:8000/static/index.html` para utilizar a interface web.
 
-- **Interface de linha de comando**:
+- **Interface de linha de comando (CLI)**:
 
 ```bash
 python -m devai --cli
 ```
+Adicione `--tui` para abrir a interface textual (TUI). Ambas utilizam o mesmo roteador de comandos em `devai/command_router.py`.
 
 Por padrão a CLI utiliza a interface colorida do [Rich](https://github.com/Textualize/rich). Para um terminal mais simples use a flag `--plain`.
 
@@ -98,7 +99,7 @@ Exemplo de tela:
 └───────────────────────────────┘
 ```
 
-Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`. Use `/ajuda` para ver a descrição detalhada de cada um. Para refatorar um arquivo automaticamente utilize:
+Os comandos disponíveis são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`. Use `/ajuda` para ver a descrição detalhada de cada um. Para refatorar um arquivo automaticamente utilize:
 `/tarefa auto_refactor caminho/para/arquivo.py`.
 
 - **Interface TUI (Textual)**:
@@ -106,8 +107,9 @@ Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memo
 ```bash
 python -m devai --cli --tui
 ```
+Utiliza o mesmo conjunto de comandos da CLI, exibindo painéis de histórico e diff.
 
-A TUI exibe janelas de histórico e diff. Os mesmos atalhos funcionam:
+Os mesmos atalhos funcionam:
 
 - setas **↑/↓** percorrem o histórico de comandos;
 - **Tab** sugere comandos e caminhos de arquivo.
