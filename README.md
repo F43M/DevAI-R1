@@ -98,7 +98,7 @@ Exemplo de tela:
 └───────────────────────────────┘
 ```
 
-Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`. Para refatorar um arquivo automaticamente utilize:
+Os comandos disponíveis na CLI são listados ao iniciar o programa, como `/memoria`, `/tarefa` e `/grafo`. Use `/ajuda` para ver a descrição detalhada de cada um. Para refatorar um arquivo automaticamente utilize:
 `/tarefa auto_refactor caminho/para/arquivo.py`.
 
 - **Interface TUI (Textual)**:
@@ -124,6 +124,8 @@ Além das tarefas padrão, a CLI permite explorar e modificar o diretório defin
 - `/deletar <caminho>` remove arquivo ou diretório (requer confirmação).
 - `/tarefa auto_refactor <arquivo>` refatora o arquivo informado e executa os testes.
 - `/historia [sessao]` exibe o histórico de conversa da sessão indicada.
+- `/historico_cli [N]` mostra N últimas linhas do log da CLI (ou todo o arquivo).
+- `/ajuda` exibe a documentação completa de comandos.
 
 Ao usar `/deletar`, a CLI exibe um diálogo de confirmação para evitar remoções acidentais.
 

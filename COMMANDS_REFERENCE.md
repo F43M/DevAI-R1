@@ -63,3 +63,19 @@ Exemplo:
 ```bash
 devai resetar
 ```
+
+## /historico_cli [N]
+Exibe o log completo da CLI. Informe `N` para limitar às últimas linhas.
+
+Exemplo:
+```bash
+devai historico_cli 50
+```
+
+## /ajuda
+Mostra esta referência de comandos diretamente na CLI.
+
+Exemplo:
+```bash
+devai ajuda
+```

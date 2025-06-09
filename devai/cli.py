@@ -48,6 +48,8 @@ async def cli_main(
         "/deletar",
         "/historia",
         "/historico",
+        "/historico_cli",
+        "/ajuda",
         "/feedback",
         "/refatorar",
         "/rever",
@@ -106,6 +108,8 @@ async def cli_main(
     print("/deletar <caminho> - Remove arquivo ou pasta")
     print("/historia [sessao] - Exibe histórico de conversa")
     print("/historico <arquivo> - Mostra histórico de mudanças")
+    print("/historico_cli [N] - Exibe N linhas do log da CLI (ou tudo)")
+    print("/ajuda - Mostra documentação dos comandos")
     print("/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo")
     print("/refatorar <arquivo> - Refatora o arquivo informado")
     print("/rever <arquivo> - Executa revisão de código")
@@ -119,6 +123,12 @@ async def cli_main(
                 ui.add_history(f">>> {user_input}")
                 if user_input.lower() == "/sair":
                     break
+                elif user_input == "/ajuda":
+                    help_path = Path(__file__).resolve().parent.parent / "COMMANDS_REFERENCE.md"
+                    if help_path.exists():
+                        print(help_path.read_text())
+                    else:
+                        print("Arquivo de ajuda não encontrado")
                 elif user_input.lower().startswith("/memoria"):
                     args = user_input[len("/memoria") :].strip()
                     detailed = "--detalhado" in args
@@ -351,6 +361,14 @@ async def cli_main(
                     hist = await ai.analyzer.get_history(file)
                     for h in hist:
                         print(json.dumps(h, indent=2))
+                elif user_input.startswith("/historico_cli"):
+                    arg = user_input[len("/historico_cli") :].strip()
+                    num = int(arg) if arg.isdigit() else None
+                    hist = ui.get_log()
+                    if num is not None:
+                        hist = hist[-num:]
+                    for line in hist:
+                        print(line)
                 elif user_input.startswith("/treinar_rlhf"):
                     parts = user_input.split()
                     if len(parts) < 2:

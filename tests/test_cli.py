@@ -377,3 +377,40 @@ def test_cli_resetar(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "Conversa resetada" in out
     assert called == ["default"]
+
+
+def test_cli_ajuda(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
+
+    def make_ui(*a, **k):
+        k.pop("commands", None)
+        return DummyUI(["/ajuda", "/sair"], **k)
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    out = capsys.readouterr().out
+    assert "DevAI Command Reference" in out
+
+
+def test_cli_historico_cli(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    log_file = tmp_path / ".devai_chat.log"
+    log_file.write_text("linha1\nlinha2\n")
+    monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
+
+    class TestUI(cli.CLIUI):
+        def __init__(self, commands: list[str]):
+            super().__init__(plain=True, log=True)
+            self._cmds = commands
+
+        async def read_command(self, prompt: str = ">>> ") -> str:
+            return self._cmds.pop(0)
+
+    def make_ui(*a, **k):
+        return TestUI(["/historico_cli", "/sair"])
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    out = capsys.readouterr().out
+    assert "linha1" in out
+    assert "linha2" in out
