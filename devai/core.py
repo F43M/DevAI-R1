@@ -59,6 +59,7 @@ class CodeMemoryAI:
         self.app = FastAPI(title="CodeMemoryAI API")
         self._setup_api_routes()
         self.background_tasks: Dict[str, asyncio.Task] = {}
+        self.task_status: Dict[str, Dict[str, Any]] = {}
         # Rastreamento de loops e watchers em execução
         self.watchers: Dict[str, asyncio.Task] = {}
         self.last_average_complexity = 0.0
@@ -121,21 +122,42 @@ class CodeMemoryAI:
             selected.append(msg)
         return list(reversed(selected))
 
+    def _symbolic_training_progress(self) -> float:
+        """Read progress of symbolic training from status file."""
+        try:
+            path = Path(config.LOG_DIR) / "symbolic_training_status.json"
+            if path.exists():
+                data = json.loads(path.read_text())
+                return float(data.get("progress", 0.0))
+        except Exception:
+            pass
+        return 0.0
+
     def start_deep_scan(self) -> bool:
         """Queue deep_scan_app as background task if not running."""
         if not hasattr(self, "background_tasks"):
             self.background_tasks = {}
+        if not hasattr(self, "task_status"):
+            self.task_status = {}
         if "deep_scan_app" in self.background_tasks:
             return False
+        self.task_status["deep_scan_app"] = {"progress": 0.0, "running": True}
         task = asyncio.create_task(self.analyzer.deep_scan_app(), name="deep_scan_app")
         self.background_tasks["deep_scan_app"] = task
-        task.add_done_callback(lambda t: self.background_tasks.pop("deep_scan_app", None))
+
+        def _done(_t: asyncio.Task) -> None:
+            self.background_tasks.pop("deep_scan_app", None)
+            self.task_status["deep_scan_app"] = {"progress": 1.0, "running": False}
+
+        task.add_done_callback(_done)
         return True
 
     def queue_symbolic_training(self) -> bool:
         """Run symbolic training in background and notify when done."""
         if not hasattr(self, "background_tasks"):
             self.background_tasks = {}
+        if not hasattr(self, "task_status"):
+            self.task_status = {}
         if "symbolic_training" in self.background_tasks:
             return False
 
@@ -149,9 +171,15 @@ class CodeMemoryAI:
                 pass
             return result
 
+        self.task_status["symbolic_training"] = {"progress": 0.0, "running": True}
         task = asyncio.create_task(_run(), name="symbolic_training")
         self.background_tasks["symbolic_training"] = task
-        task.add_done_callback(lambda t: self.background_tasks.pop("symbolic_training", None))
+
+        def _done(_t: asyncio.Task) -> None:
+            self.background_tasks.pop("symbolic_training", None)
+            self.task_status["symbolic_training"] = {"progress": 1.0, "running": False}
+
+        task.add_done_callback(_done)
         return True
 
     def _start_background_tasks(self):
@@ -284,6 +312,18 @@ class CodeMemoryAI:
 
         @self.app.get("/status")
         async def get_status():
+            tasks_info = {}
+            for name, task in self.background_tasks.items():
+                progress = None
+                if name == "deep_scan_app":
+                    progress = round(self.analyzer.scan_progress, 2)
+                elif name == "symbolic_training":
+                    progress = round(self._symbolic_training_progress(), 2)
+                status = {
+                    "running": not task.done(),
+                    "progress": progress,
+                }
+                tasks_info[name] = status
             return {
                 "code_chunks": len(self.analyzer.code_chunks),
                 "memory_items": len(self.memory.indexed_ids),
@@ -293,7 +333,7 @@ class CodeMemoryAI:
                 "show_reasoning_default": config.SHOW_REASONING_BY_DEFAULT,
                 "show_context_button": config.SHOW_CONTEXT_BUTTON,
                 "scan_progress": round(self.analyzer.scan_progress, 2),
-                "background_tasks": list(self.background_tasks.keys()),
+                "background_tasks": tasks_info,
             }
 
         @self.app.get("/metrics")
