@@ -38,6 +38,31 @@ function showStatus(msg){
   setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; },4000);
 }
 
+function showApprovalDialog(msg){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.className='modal';
+    overlay.innerHTML='<div class="modal-content"><p>'+msg+'</p><button id="apYes">Sim</button> <button id="apNo">Não</button></div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('#apYes').onclick=()=>{ cleanup(); resolve(true); };
+    overlay.querySelector('#apNo').onclick=()=>{ cleanup(); resolve(false); };
+    function cleanup(){ document.body.removeChild(overlay); }
+  });
+}
+
+async function listenApprovalRequests(){
+  while(true){
+    try{
+      const r=await fetch('/approval_request');
+      const data=await r.json();
+      if(data.message){
+        const ok=await showApprovalDialog(data.message);
+        await fetch('/approval_request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({approved:ok})});
+      }
+    }catch(e){await new Promise(res=>setTimeout(res,1000));}
+  }
+}
+
 function toggleReasoning(){
   const el=document.getElementById('reasoningOutput');
   if(!el) return;
@@ -247,6 +272,7 @@ async function resetSession(){
 window.addEventListener('load',async()=>{
   loadChat();
   renderChatHistory();
+  listenApprovalRequests();
   const data=loadSession();
   if(data){
     document.getElementById('console').textContent=data.console||'';

@@ -53,7 +53,9 @@ async def run_scheduled_rlhf(memory: MemoryManager) -> dict:
     before_files = set(ds_dir.glob("*.sha256"))
     data, new_hash = tuner.collect_examples(with_hash=True)
     after_files = set(ds_dir.glob("*.sha256"))
-    new_file = sorted(after_files - before_files)[-1] if after_files - before_files else None
+    new_file = (
+        sorted(after_files - before_files)[-1] if after_files - before_files else None
+    )
 
     if new_hash == prev_hash:
         if new_file:
@@ -81,7 +83,9 @@ async def run_scheduled_rlhf(memory: MemoryManager) -> dict:
             },
         }
     )
-    metrics.update({"hash": new_hash, "num_examples": len(data), "output_dir": str(out_dir)})
+    metrics.update(
+        {"hash": new_hash, "num_examples": len(data), "output_dir": str(out_dir)}
+    )
     return metrics
 
 
@@ -114,9 +118,7 @@ class CodeMemoryAI:
         self.response_cache_size = 32
         # Gerencia o histórico de cada sessão de conversa
         self.conv_handler = ConversationHandler(memory=self.memory)
-        self.conversation: List[Dict[str, str]] = self.conv_handler.history(
-            "default"
-        )
+        self.conversation: List[Dict[str, str]] = self.conv_handler.history("default")
         self.double_check = config.DOUBLE_CHECK
         self._start_background_tasks()
         logger.info(
@@ -154,7 +156,9 @@ class CodeMemoryAI:
         except Exception:
             pass
 
-    def _build_history_messages(self, session_id: str, buffer: int = 1000) -> List[Dict[str, str]]:
+    def _build_history_messages(
+        self, session_id: str, buffer: int = 1000
+    ) -> List[Dict[str, str]]:
         """Recupera o histórico recente sem ultrapassar o limite de tokens."""
         # always sync with disk and prune to max_history
         self.conv_handler.prune(session_id)
@@ -220,10 +224,16 @@ class CodeMemoryAI:
 
         async def _run():
             from .symbolic_training import run_symbolic_training
-            result = await run_symbolic_training(self.analyzer, self.memory, self.ai_model)
+
+            result = await run_symbolic_training(
+                self.analyzer, self.memory, self.ai_model
+            )
             try:
                 from .notifier import Notifier
-                Notifier().send("Treinamento simbólico concluído", result.get("report", "")[:200])
+
+                Notifier().send(
+                    "Treinamento simbólico concluído", result.get("report", "")[:200]
+                )
             except Exception:
                 pass
             return result
@@ -241,6 +251,7 @@ class CodeMemoryAI:
 
     def _start_background_tasks(self):
         from .metacognition import MetacognitionLoop
+
         if not hasattr(self, "watchers"):
             self.watchers = {}
 
@@ -263,8 +274,12 @@ class CodeMemoryAI:
         mode = getattr(config, "OPERATING_MODE", "standard")
         if mode == "continuous":
             from .monitor_engine import auto_monitor_cycle
+
             task_coros.append(
-                ("auto_monitor_cycle", auto_monitor_cycle(self.analyzer, self.memory, self.ai_model))
+                (
+                    "auto_monitor_cycle",
+                    auto_monitor_cycle(self.analyzer, self.memory, self.ai_model),
+                )
             )
         elif mode == "sandbox":
             logger.info("Modo sandbox ativo: background tasks desativadas.")
@@ -291,7 +306,10 @@ class CodeMemoryAI:
             if name in watcher_names:
                 self.watchers[name] = task
             task.add_done_callback(
-                lambda t, n=name: (self.background_tasks.pop(n, None), self.watchers.pop(n, None))
+                lambda t, n=name: (
+                    self.background_tasks.pop(n, None),
+                    self.watchers.pop(n, None),
+                )
             )
 
     def _setup_api_routes(self):
@@ -327,8 +345,11 @@ class CodeMemoryAI:
             from fastapi.responses import StreamingResponse
 
             async def event_gen():
-                async for token in self.generate_response_stream(query, session_id=session_id):
+                async for token in self.generate_response_stream(
+                    query, session_id=session_id
+                ):
                     yield f"data: {token}\n\n"
+
             return StreamingResponse(event_gen(), media_type="text/event-stream")
 
         @self.app.post("/reset_conversation")
@@ -528,7 +549,9 @@ class CodeMemoryAI:
                 log_simulation,
             )
 
-            diff, tests_ok, test_output, sim_id, patch_file = simulate_update(file_path, suggested_code)
+            diff, tests_ok, test_output, sim_id, patch_file = simulate_update(
+                file_path, suggested_code
+            )
             evaluation = await evaluate_change_with_ia(diff)
             status = "shadow_failed" if not tests_ok else "shadow_declined"
             patch_hash = hashlib.sha1(diff.encode("utf-8")).hexdigest()
@@ -699,6 +722,17 @@ class CodeMemoryAI:
             summary = await self.learning_engine.explain_learning_lessons()
             return {"summary": summary}
 
+        from .approval import wait_for_request, resolve_request
+
+        @self.app.get("/approval_request")
+        async def approval_wait():
+            return await wait_for_request()
+
+        @self.app.post("/approval_request")
+        async def approval_answer(approved: bool):
+            resolve_request(approved)
+            return {"status": "ok"}
+
         os.makedirs("static", exist_ok=True)
         self.app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -823,8 +857,8 @@ class CodeMemoryAI:
             graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
             logs_task = collect_recent_logs_async()
             actions = self.tasks.last_actions()
-            contextual_memories, suggestions, graph_summary, logs = await asyncio.gather(
-                mem_task, sugg_task, graph_task, logs_task
+            contextual_memories, suggestions, graph_summary, logs = (
+                await asyncio.gather(mem_task, sugg_task, graph_task, logs_task)
             )
             self.reason_stack = []
             self.reason_stack.append("Memórias coletadas")
@@ -840,7 +874,9 @@ class CodeMemoryAI:
                 "logs": logs,
             }
             self.last_context = {
-                "history": self._build_history_messages(session_id) if session_id else [],
+                "history": (
+                    self._build_history_messages(session_id) if session_id else []
+                ),
                 "context_blocks": context_blocks,
             }
             prompt = build_dynamic_prompt(
@@ -901,7 +937,11 @@ class CodeMemoryAI:
         self, query: str, session_id: str = "default"
     ) -> AsyncGenerator[str, None]:
         intent = detect_intent(query)
-        from .prompt_engine import build_dynamic_prompt_async, collect_recent_logs_async, SYSTEM_PROMPT_CONTEXT
+        from .prompt_engine import (
+            build_dynamic_prompt_async,
+            collect_recent_logs_async,
+            SYSTEM_PROMPT_CONTEXT,
+        )
 
         mem_task = asyncio.to_thread(self.memory.search, query, level="short")
         graph_fn = getattr(self.analyzer, "graph_summary_async", None)
@@ -919,7 +959,9 @@ class CodeMemoryAI:
             "actions": actions,
             "logs": logs,
         }
-        prompt = await build_dynamic_prompt_async(query, context_blocks, "normal", intent=intent)
+        prompt = await build_dynamic_prompt_async(
+            query, context_blocks, "normal", intent=intent
+        )
         if suggestions:
             prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
         messages = [
@@ -980,8 +1022,8 @@ class CodeMemoryAI:
             graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
             logs_task = collect_recent_logs_async()
             actions = self.tasks.last_actions()
-            contextual_memories, suggestions, graph_summary, logs = await asyncio.gather(
-                mem_task, sugg_task, graph_task, logs_task
+            contextual_memories, suggestions, graph_summary, logs = (
+                await asyncio.gather(mem_task, sugg_task, graph_task, logs_task)
             )
 
             context_blocks = {
@@ -991,7 +1033,9 @@ class CodeMemoryAI:
                 "logs": logs,
             }
             self.last_context = {
-                "history": self._build_history_messages(session_id) if session_id else [],
+                "history": (
+                    self._build_history_messages(session_id) if session_id else []
+                ),
                 "context_blocks": context_blocks,
             }
             prompt = build_dynamic_prompt(query, context_blocks, "deep", intent=intent)
@@ -1026,9 +1070,7 @@ class CodeMemoryAI:
                 self.conv_handler.append(session_id, "assistant", resp)
             else:
                 logger.info("multi_turn_fallback", session=session_id)
-            trace = (
-                f"\ud83d\udca1 Detalhes t\u00e9cnicos: A IA consultou {len(contextual_memories)} m\u00e9morias anteriores, analisou depend\u00eancias e gerou a resposta abaixo com base no padr\u00e3o simb\u00f3lico aprendido."
-            )
+            trace = f"\ud83d\udca1 Detalhes t\u00e9cnicos: A IA consultou {len(contextual_memories)} m\u00e9morias anteriores, analisou depend\u00eancias e gerou a resposta abaixo com base no padr\u00e3o simb\u00f3lico aprendido."
             result = {
                 "plan": plan,
                 "response": resp,
@@ -1153,18 +1195,24 @@ class CodeMemoryAI:
             logger.error("Erro ao inferir tipo de retorno", error=str(e))
         return None
 
-    def get_session_context(self, session_id: str = "default", n: int = 3) -> Dict[str, Any]:
+    def get_session_context(
+        self, session_id: str = "default", n: int = 3
+    ) -> Dict[str, Any]:
         """Return preview of conversation and activated memories."""
         try:
             history = self.conv_handler.last(session_id, n * 2)
             preview = [f"{m['role']}: {m['content']}" for m in history]
-            last_user = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
+            last_user = next(
+                (m["content"] for m in reversed(history) if m["role"] == "user"), ""
+            )
             symbolic = []
             warnings: List[str] = []
             try:
                 symbolic = [
                     f"{m.get('metadata', {}).get('tag', '')}: {m['content']}"
-                    for m in self.memory.search(last_user, memory_type="dialog_summary", top_k=n)
+                    for m in self.memory.search(
+                        last_user, memory_type="dialog_summary", top_k=n
+                    )
                 ]
             except Exception:
                 warnings.append("⚠️ Memória vetorial temporariamente indisponível.")
@@ -1239,7 +1287,9 @@ class CodeMemoryAI:
                 except Exception as e:
                     results.append(e)
             for (name, _), result in zip(tasks, results):
-                if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                if isinstance(result, Exception) and not isinstance(
+                    result, asyncio.CancelledError
+                ):
                     logger.error("Erro ao finalizar task", task=name, error=str(result))
                 if hasattr(self, "background_tasks"):
                     self.background_tasks.pop(name, None)
