@@ -1,6 +1,7 @@
 import asyncio
 from pathlib import Path
 import types
+import hashlib
 
 import pytest
 
@@ -32,10 +33,12 @@ def test_simulated_update_and_application(tmp_path, monkeypatch):
     test_file = code_root / "test_mod.py"
     test_file.write_text("import mod\n\ndef test_x():\n    assert mod.x == 2\n")
 
-    diff, temp_root, sim_id = simulate_update(str(file_path), "x = 2\n")
+    monkeypatch.setattr("devai.shadow_mode.run_tests_in_temp", lambda d: (True, ""))
+    diff, tests_ok, out, sim_id, patch_file = simulate_update(
+        str(file_path), "x = 2\n", cleanup_cb=lambda d: None
+    )
 
     # avoid real subprocess and API calls
-    monkeypatch.setattr("devai.shadow_mode.run_tests_in_temp", lambda d: (True, ""))
     monkeypatch.setattr("devai.shadow_mode.AIModel", lambda: DummyAI())
 
     history = FileHistory(str(tmp_path / "hist.json"))
@@ -57,7 +60,15 @@ def test_simulated_update_and_application(tmp_path, monkeypatch):
                     "metadata": {"arquivo": str(file_path), "contexto": "dry_run"},
                 }
             )
-            log_simulation(sim_id, str(file_path), True, evaluation["analysis"], "shadow_approved")
+            log_simulation(
+                sim_id,
+                str(file_path),
+                True,
+                evaluation["analysis"],
+                "shadow_approved",
+                patch_hash=hashlib.sha1(diff.encode("utf-8")).hexdigest(),
+                test_output=out,
+            )
         return success
 
     result = asyncio.run(run_flow())

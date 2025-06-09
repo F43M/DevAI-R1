@@ -3,6 +3,8 @@ import argparse
 import json
 import difflib
 import tempfile
+import subprocess
+import hashlib
 from pathlib import Path
 
 from .config import config
@@ -90,25 +92,29 @@ def main():
                 print("Preferência registrada com sucesso")
                 return
             elif cmd[0] == "simular" and len(cmd) > 2:
-                from .shadow_mode import simulate_update, evaluate_change_with_ia, log_simulation, run_tests_in_temp
+                from .shadow_mode import simulate_update, evaluate_change_with_ia, log_simulation
 
                 args = cmd[1:]
                 save_patch = False
                 side_by_side = False
+                rollback = False
                 if "--patch" in args:
                     save_patch = True
                     args.remove("--patch")
                 if "--html" in args:
                     side_by_side = True
                     args.remove("--html")
+                if "--rollback" in args:
+                    rollback = True
+                    args.remove("--rollback")
                 if len(args) < 2:
                     print("Uso: simular <arquivo> <codigo> [--patch] [--html]")
                     return
 
                 file_path = args[0]
                 new_code = " ".join(args[1:])
-                diff, temp_root, sim_id = simulate_update(file_path, new_code)
-                tests_ok, _ = run_tests_in_temp(temp_root)
+                diff, tests_ok, test_out, sim_id, patch_path = simulate_update(file_path, new_code)
+                patch_hash = hashlib.sha1(diff.encode("utf-8")).hexdigest()
                 evaluation = await evaluate_change_with_ia(diff)
 
                 if side_by_side:
@@ -122,18 +128,28 @@ def main():
                     print(diff)
 
                 if save_patch:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".patch", mode="w", encoding="utf-8") as f:
-                        f.write(diff)
-                    print(f"Patch salvo em {f.name}")
+                    print(f"Patch salvo em {patch_path}")
 
                 print(evaluation["analysis"])
                 if tests_ok and input("Aplicar? [s/N] ").lower() == "s":
                     from .update_manager import UpdateManager
-                    UpdateManager().safe_apply(file_path, lambda p: p.write_text(new_code))
-                    action = "shadow_approved"
+                    success, _ = UpdateManager().safe_apply(
+                        file_path, lambda p: p.write_text(new_code), capture_output=True
+                    )
+                    if not success and rollback:
+                        subprocess.run(["git", "apply", "-R", patch_path], cwd=config.CODE_ROOT)
+                    action = "shadow_approved" if success else "shadow_failed"
                 else:
                     action = "shadow_declined" if tests_ok else "shadow_failed"
-                log_simulation(sim_id, file_path, tests_ok, evaluation["analysis"], action)
+                log_simulation(
+                    sim_id,
+                    file_path,
+                    tests_ok,
+                    evaluation["analysis"],
+                    action,
+                    patch_hash=patch_hash,
+                    test_output=test_out,
+                )
                 return
             elif cmd[0] == "monitorar":
                 from .monitor_engine import auto_monitor_cycle

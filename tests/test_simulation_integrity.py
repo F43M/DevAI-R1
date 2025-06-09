@@ -17,8 +17,10 @@ def test_decline_change(tmp_path, monkeypatch):
     testf = code_root / "test_m.py"
     testf.write_text("import m\n\ndef test_x():\n    assert m.x == 1\n")
 
-    diff, temp_root, sim_id = simulate_update(str(f), "x = 2\n")
-    tests_ok, _ = shadow_mode.run_tests_in_temp(temp_root)
+    monkeypatch.setattr(shadow_mode, "run_tests_in_temp", lambda d: (False, ""))
+    diff, tests_ok, _, sim_id, patch_file = simulate_update(
+        str(f), "x = 2\n", cleanup_cb=lambda d: None
+    )
     assert not tests_ok
     evaluation = {"analysis": "negado"}
     log_simulation(sim_id, str(f), tests_ok, evaluation["analysis"], "shadow_failed")
@@ -37,9 +39,10 @@ def test_accept_change(tmp_path, monkeypatch):
     f = code_root / "n.py"
     f.write_text("print('old')\n")
 
-    diff, temp_root, sim_id = simulate_update(str(f), "print('new')\n")
     monkeypatch.setattr(shadow_mode, "run_tests_in_temp", lambda d: (True, ""))
-    tests_ok, _ = shadow_mode.run_tests_in_temp(temp_root)
+    diff, tests_ok, _, sim_id, patch_file = simulate_update(
+        str(f), "print('new')\n", cleanup_cb=lambda d: None
+    )
     evaluation = {"analysis": "ok"}
     if tests_ok:
         f.write_text("print('new')\n")
