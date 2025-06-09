@@ -34,6 +34,8 @@ O parâmetro `MAX_SESSION_TOKENS` controla a quantidade máxima de tokens mantid
 
 A classe `ConversationHandler` oferece o método `search_history(session_id, query)` que utiliza embeddings gravados em `memory.db` para localizar mensagens similares ao texto ou tag informados. Os embeddings de mensagens descartadas também são removidos do banco, evitando acúmulo de vetores antigos.
 
+O resumo periódico das conversas executado pelo `DialogSummarizer` agora é assíncrono. Métodos como `summarize_conversation()` e a rotina interna `_summarize_and_store()` do `ConversationHandler` são `async` e devem ser aguardados quando chamados diretamente.
+
 ## Classificador de intenções
 
 O arquivo `intent_samples.json` contém exemplos de frases e suas respectivas intenções. Adicione novos pares para ensinar o DevAI a reconhecer outras solicitações.
