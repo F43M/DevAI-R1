@@ -38,3 +38,4 @@ RLHF_THRESHOLD: 10
 RLHF_OUTPUT_DIR: ./logs/rlhf_results
 MAX_PROMPT_TOKENS: 1000
 APPROVAL_MODE: suggest
+DIFF_STYLE: inline  # options: inline, side_by_side

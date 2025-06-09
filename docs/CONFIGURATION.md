@@ -77,3 +77,15 @@ Valores aceitos:
 - `auto_edit` – confirma somente comandos de shell;
 - `suggest` – confirma ações de escrita ou execução de shell.
 
+## Estilo de diff
+
+O DevAI pode mostrar patches lado a lado ou no formato tradicional. Defina
+`DIFF_STYLE` no `config.yaml`:
+
+```yaml
+DIFF_STYLE: inline  # ou side_by_side
+```
+
+O valor `inline` exibe o diff como texto único, enquanto `side_by_side`
+separa as linhas em duas colunas.
+

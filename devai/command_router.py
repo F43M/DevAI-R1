@@ -538,7 +538,7 @@ def _apply_patch_to_file(path: Path, diff: str) -> None:
 
 
 async def handle_default(
-    ai, ui, args, *, plain, feedback_db, side_by_side: bool = False
+    ai, ui, args, *, plain, feedback_db, side_by_side: bool | None = None
 ):
     print("\nResposta:")
     tokens: list[str] = []
@@ -556,6 +556,8 @@ async def handle_default(
         or re.search(r"^[+-](?![+-])", response, re.MULTILINE)
     )
     if is_patch:
+        if side_by_side is None:
+            side_by_side = config.DIFF_STYLE == "side_by_side"
         ui.render_diff(response, side_by_side=side_by_side)
         apply = True
         if requires_approval("patch"):

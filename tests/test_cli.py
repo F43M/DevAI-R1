@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from devai import cli
+import devai.command_router as command_router
 import pytest
 
 
@@ -195,6 +196,43 @@ def test_cli_render_diff_side_by_side():
 
     assert captured
     assert isinstance(captured[0], Table)
+
+
+def test_cli_diff_style_config(monkeypatch):
+    diff = """diff --git a/x b/x
+--- a/x
++++ b/x
+@@
+-old
++new
+"""
+
+    class DiffAI(DummyAI):
+        async def generate_response(self, q):
+            return diff
+
+        async def generate_response_stream(self, q):
+            for ch in diff:
+                yield ch
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
+    monkeypatch.setattr(command_router, "requires_approval", lambda *_a, **_k: False)
+    monkeypatch.setattr(command_router, "_new_updater", lambda: types.SimpleNamespace(safe_apply=lambda *a, **k: True))
+    monkeypatch.setattr(command_router.config, "DIFF_STYLE", "side_by_side")
+    ui = cli.CLIUI()
+    @asynccontextmanager
+    async def dummy_loading(self, message: str = "..."):
+        yield
+    monkeypatch.setattr(cli.CLIUI, "loading", dummy_loading, raising=False)
+    monkeypatch.setattr(cli.CLIUI, "show_history", lambda self: None, raising=False)
+    monkeypatch.setattr(cli.CLIUI, "add_history", lambda self, line: None, raising=False)
+    captured: list[object] = []
+    panel = types.SimpleNamespace(clear=lambda: None, write=lambda t, scroll_end=True: captured.append(t))
+    ui.diff_panel = panel
+    ai = DiffAI()
+    asyncio.run(command_router.handle_default(ai, ui, "hi", plain=False, feedback_db=None))
+    from rich.table import Table
+    assert captured and isinstance(captured[0], Table)
 
 
 def test_cli_render_diff_plusminus(monkeypatch):
