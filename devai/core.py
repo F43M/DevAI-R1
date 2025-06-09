@@ -1084,8 +1084,30 @@ class CodeMemoryAI:
 
     async def shutdown(self):
         """Finaliza recursos como AIModel, watchers e ciclos ativos."""
-        if hasattr(self, "ai_model") and hasattr(self.ai_model, "shutdown"):
-            await self.ai_model.shutdown()
+        watchers = list(getattr(self, "watchers", {}).items())
+        for name, task in watchers:
+            task.cancel()
+        if watchers:
+            results = []
+            for name, task in watchers:
+                try:
+                    await asyncio.wait_for(task, timeout=2)
+                    results.append(None)
+                except asyncio.CancelledError:
+                    results.append(None)
+                except asyncio.TimeoutError:
+                    logger.warning("Timeout ao encerrar watcher", watcher=name)
+                    results.append(None)
+                except Exception as e:
+                    results.append(e)
+            for (name, _), result in zip(watchers, results):
+                if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                    logger.error("Erro ao finalizar watcher", watcher=name, error=str(result))
+                if hasattr(self, "watchers"):
+                    self.watchers.pop(name, None)
+                if hasattr(self, "background_tasks"):
+                    self.background_tasks.pop(name, None)
+
         tasks = list(getattr(self, "background_tasks", {}).items())
         for name, task in tasks:
             task.cancel()
@@ -1112,4 +1134,6 @@ class CodeMemoryAI:
         if hasattr(self, "memory") and hasattr(self.memory, "close"):
             self.memory.close()
         await persist_errors()
+        if hasattr(self, "ai_model") and hasattr(self.ai_model, "shutdown"):
+            await self.ai_model.shutdown()
         logger.info("🛑 DevAI finalizado com limpeza simbólica de recursos.")
