@@ -1,8 +1,10 @@
 # Plugins
 
 Coloque módulos Python neste diretório para estender o sistema de tarefas.
-Cada plugin deve definir uma função `register(task_manager)` que recebe a
-instância de `TaskManager` e adiciona novas tarefas ou métodos.
+Cada plugin deve definir um dicionário `PLUGIN_INFO` com `name`, `version` e
+`description` e uma função `register(task_manager)` que recebe a instância de
+`TaskManager` e adiciona novas tarefas ou métodos. Opcionalmente, uma função
+`unregister(task_manager)` pode ser fornecida para remoção das tarefas.
 
 Exemplo simples:
 ```python
