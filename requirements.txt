@@ -17,5 +17,6 @@ python-dotenv
 # UI dependencies
 rich
 prompt_toolkit
+textual
 # Optional: treinamento RLHF
 trl>=0.7

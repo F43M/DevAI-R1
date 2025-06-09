@@ -10,10 +10,19 @@ from pathlib import Path
 import re
 
 from .ui import CLIUI
+try:
+    from .tui import TUIApp
+except Exception:  # pragma: no cover - optional dependency
+    TUIApp = None  # type: ignore
 from rich.panel import Panel
 
 
-async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
+async def cli_main(
+    guided: bool = False,
+    plain: bool = False,
+    log: bool = True,
+    tui: bool = False,
+):
     """Interactive command loop for DevAI.
 
     Comandos principais: /lembrar, /esquecer, /ajustar, /rastrear e /memoria.
@@ -51,6 +60,10 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
     ]
     ui = CLIUI(plain=plain, commands=commands, log=log)
     ui.load_history()
+    if tui and not plain and TUIApp is not None:
+        app = TUIApp(ai=ai, cli_ui=ui, log=log)
+        app.run()
+        return
     run_scan = False
     if config.START_MODE == "full":
         run_scan = True
