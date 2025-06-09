@@ -610,6 +610,18 @@ class CodeMemoryAI:
             ]
             return rows
 
+        @self.app.get("/metacognition/summary")
+        async def metacognition_summary():
+            path = Path("devai/meta/score_map.json")
+            if not path.exists():
+                return {"critical": {}}
+            try:
+                scores = json.loads(path.read_text())
+            except Exception:
+                scores = {}
+            negatives = {f: s for f, s in scores.items() if s < 0}
+            return {"critical": negatives}
+
         @self.app.post("/memory/optimize")
         async def optimize_memory():
             compressed = self.memory.compress_memory()
