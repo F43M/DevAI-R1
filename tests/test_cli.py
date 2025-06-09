@@ -448,3 +448,107 @@ def test_cliui_includes_path_completer(monkeypatch):
         return False
 
     assert has_path(completer)
+
+
+def test_cli_patch_apply_accept(monkeypatch, tmp_path):
+    diff = """diff --git a/x.txt b/x.txt
+--- a/x.txt
++++ b/x.txt
+@@ -1 +1 @@
+-old
++new
+"""
+
+    class DiffAI(DummyAI):
+        async def generate_response(self, q):
+            return diff
+
+        async def generate_response_stream(self, q):
+            for ch in diff:
+                yield ch
+
+    file = tmp_path / "x.txt"
+    file.write_text("old\n")
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "log_decision", lambda *a, **k: None)
+
+    applied = []
+
+    class DummyUpd:
+        def safe_apply(self, path, func, *a, **k):
+            func(Path(path))
+            applied.append(path)
+            return True
+
+    monkeypatch.setattr(cli, "UpdateManager", lambda: DummyUpd())
+
+    def make_ui(*a, **k):
+        k.pop("commands", None)
+        ui = DummyUI(["hello", "/sair"], **k)
+
+        async def confirm(msg: str) -> bool:
+            return True
+
+        ui.confirm = confirm
+        return ui
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    assert file.read_text().strip() == "new"
+    assert applied == ["x.txt"]
+
+
+def test_cli_patch_apply_reject(monkeypatch, tmp_path):
+    diff = """diff --git a/x.txt b/x.txt
+--- a/x.txt
++++ b/x.txt
+@@ -1 +1 @@
+-old
++new
+"""
+
+    class DiffAI(DummyAI):
+        async def generate_response(self, q):
+            return diff
+
+        async def generate_response_stream(self, q):
+            for ch in diff:
+                yield ch
+
+    file = tmp_path / "x.txt"
+    file.write_text("old\n")
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "log_decision", lambda *a, **k: None)
+
+    class DummyUpd:
+        def safe_apply(self, path, func, *a, **k):
+            func(Path(path))
+            return True
+
+    dummy_upd = DummyUpd()
+    spy = []
+
+    def record_apply(path, func, *a, **k):
+        spy.append(path)
+        return dummy_upd.safe_apply(path, func, *a, **k)
+
+    monkeypatch.setattr(cli, "UpdateManager", lambda: types.SimpleNamespace(safe_apply=record_apply))
+
+    def make_ui(*a, **k):
+        k.pop("commands", None)
+        ui = DummyUI(["hello", "/sair"], **k)
+
+        async def confirm(msg: str) -> bool:
+            return False
+
+        ui.confirm = confirm
+        return ui
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    assert file.read_text().strip() == "old"
+    assert spy == []

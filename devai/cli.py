@@ -8,6 +8,10 @@ from .feedback import FeedbackDB, registrar_preferencia
 from .decision_log import log_decision
 from pathlib import Path
 import re
+import tempfile
+from typing import Dict
+
+from .update_manager import UpdateManager
 
 from .ui import CLIUI
 try:
@@ -367,6 +371,65 @@ async def handle_tests_local(ai, ui, args, *, plain, feedback_db):
     print(f"Execução isolada {status}")
 
 
+def _split_diff_by_file(diff: str) -> Dict[str, str]:
+    """Return a mapping of file path to its diff chunk."""
+    files: Dict[str, list[str]] = {}
+    current: str | None = None
+    for line in diff.splitlines():
+        if line.startswith("diff --git"):
+            if current and current in files:
+                files[current].append("\n")
+            current = None
+        if line.startswith("+++ "):
+            current = line.split()[1]
+            if current.startswith("b/"):
+                current = current[2:]
+            files[current] = []
+            continue
+        if line.startswith("--- "):
+            continue
+        if current:
+            files[current].append(line)
+    return {k: "\n".join(v) for k, v in files.items()}
+
+
+def _apply_patch_to_file(path: Path, diff: str) -> None:
+    """Apply a unified diff chunk to a file."""
+    lines = path.read_text().splitlines(keepends=True)
+    result: list[str] = []
+    i = 0
+    diff_lines = diff.splitlines()
+    idx = 0
+    while idx < len(diff_lines):
+        line = diff_lines[idx]
+        if line.startswith("@@"):
+            m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+            if not m:
+                idx += 1
+                continue
+            start = int(m.group(1)) - 1
+            result.extend(lines[i:start])
+            i = start
+            idx += 1
+            while idx < len(diff_lines):
+                h = diff_lines[idx]
+                if h.startswith("@@"):
+                    break
+                if h.startswith("-"):
+                    i += 1
+                elif h.startswith("+"):
+                    result.append(h[1:] + "\n")
+                else:
+                    if i < len(lines):
+                        result.append(lines[i])
+                    i += 1
+                idx += 1
+            continue
+        idx += 1
+    result.extend(lines[i:])
+    path.write_text("".join(result))
+
+
 async def handle_default(ai, ui, args, *, plain, feedback_db):
     print("\nResposta:")
     tokens: list[str] = []
@@ -385,6 +448,23 @@ async def handle_default(ai, ui, args, *, plain, feedback_db):
     )
     if is_patch:
         ui.render_diff(response)
+        apply = await ui.confirm("Aplicar mudanças?")
+        if apply:
+            patches = _split_diff_by_file(response)
+            updater = UpdateManager()
+            for f, diff_text in patches.items():
+                def _apply(p: Path, d=diff_text) -> None:
+                    _apply_patch_to_file(p, d)
+
+                success = updater.safe_apply(f, _apply)
+                if success:
+                    ui.console.print(f"[green]✅ {f} atualizado[/green]")
+                    log_decision("patch", f, "apply", "cli", "ok")
+                else:
+                    ui.console.print(f"[red]❌ Falha em {f}[/red]")
+                    log_decision("patch", f, "apply", "cli", "falha")
+        else:
+            log_decision("patch", "all", "rejeitado", "cli", "nao")
     elif plain:
         print(response)
     else:
