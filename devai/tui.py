@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import json
+import inspect
 from typing import Iterable
 
 from textual.app import App, ComposeResult
@@ -50,7 +52,10 @@ class TUIApp(App):
 
     def _progress_update(self, message: str) -> None:
         try:
-            self.progress_panel.write(message)
+            if message == "done":
+                self.progress_panel.clear()
+            else:
+                self.progress_panel.write(message)
         except Exception:
             pass
 
@@ -78,6 +83,24 @@ class TUIApp(App):
             await self.action_quit()
             return
         self.history_panel.write("", scroll_end=False)
+        if text.startswith("/tarefa "):
+            parts = text[len("/tarefa ") :].split()
+            task_name = parts[0]
+            args = parts[1:]
+            async with self.cli.progress("executando tarefa...") as update:
+                result = await self.ai.tasks.run_task(task_name, *args, progress=update)
+            out = json.dumps(result, indent=2)
+            self.history_panel.write(out)
+            self.cli.add_history(out)
+            return
+        elif text.startswith("/analisar "):
+            func = text[len("/analisar ") :]
+            async with self.cli.progress("analisando..."):
+                report = await self.ai.analyze_impact([func])
+            for item in report:
+                self.history_panel.write(json.dumps(item, indent=2))
+            self.cli.add_history(json.dumps(report, indent=2))
+            return
         tokens: list[str] = []
         async with self.cli.loading("Gerando resposta..."):
             async for token in self.ai.generate_response_stream(text):
@@ -124,4 +147,12 @@ class TUIApp(App):
                 self.input.value = self.completion_matches[self.completion_index]
                 self.completion_index = (self.completion_index + 1) % len(self.completion_matches)
                 event.stop()
+
+    async def action_quit(self) -> None:
+        """Clear progress panel and quit the app."""
+        self.progress_panel.clear()
+        method = super().action_quit
+        result = method()
+        if inspect.isawaitable(result):
+            await result
 
