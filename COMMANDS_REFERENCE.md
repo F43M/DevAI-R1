@@ -4,6 +4,9 @@ Este documento descreve os comandos simbólicos disponíveis no DevAI via CLI. T
 
 Ao iniciar a CLI com `python -m devai --cli` é apresentada uma interface colorida baseada em Rich. Um terminal simples pode usar `--plain`.
 
+O comportamento de confirmação de ações é controlado pelo `APPROVAL_MODE`. Use
+`--approval-mode` na linha de comando para sobrescrever o valor de `config.yaml`.
+
 Exemplo:
 
 ```
@@ -79,3 +82,11 @@ Exemplo:
 ```bash
 devai ajuda
 ```
+
+### Modos de aprovação
+
+Defina `APPROVAL_MODE` em `config.yaml` ou via `--approval-mode`:
+
+- `auto` aplica tudo automaticamente;
+- `suggest` solicita confirmação para patches e comandos externos;
+- `manual` pergunta antes de qualquer ação.

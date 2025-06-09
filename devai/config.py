@@ -68,6 +68,7 @@ class Config:
     AUTO_MONITOR_HOURS: int = 72
     RLHF_THRESHOLD: int = 10
     RLHF_OUTPUT_DIR: str = "./logs/rlhf_results"
+    APPROVAL_MODE: str = "suggest"
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -137,6 +138,8 @@ class Config:
             raise ValueError("COMPLEXITY_TAG_THRESHOLD must be integer")
         if not isinstance(self.AUTO_REVIEW_COMPLEXITY_THRESHOLD, int):
             raise ValueError("AUTO_REVIEW_COMPLEXITY_THRESHOLD must be integer")
+        if self.APPROVAL_MODE not in {"auto", "suggest", "manual"}:
+            raise ValueError("APPROVAL_MODE must be 'auto', 'suggest' or 'manual'")
 
     @property
     def model_name(self) -> str:

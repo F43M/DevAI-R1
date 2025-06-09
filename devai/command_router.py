@@ -12,7 +12,16 @@ from .config import config, logger
 from .core import CodeMemoryAI, run_scheduled_rlhf
 from .decision_log import log_decision
 from .feedback import FeedbackDB, registrar_preferencia
-from .update_manager import UpdateManager
+try:
+    from .cli import UpdateManager  # type: ignore
+except Exception:  # pragma: no cover - fallback for tests
+    from .update_manager import UpdateManager
+from .approval import requires_approval
+
+
+def _new_updater():
+    from .cli import UpdateManager as UM
+    return UM()
 
 
 async def handle_sair(ai, ui, args, *, plain, feedback_db):
@@ -63,9 +72,9 @@ async def handle_tarefa(ai, ui, args, *, plain, feedback_db):
     task_args = parts[1:] if len(parts) > 1 else []
     if task_name in {"run_tests", "coverage"}:
         async with ui.progress("executando tarefa...") as update:
-            result = await ai.tasks.run_task(task_name, *task_args, progress=update)
+            result = await ai.tasks.run_task(task_name, *task_args, progress=update, ui=ui)
     else:
-        result = await ai.tasks.run_task(task_name, *task_args)
+        result = await ai.tasks.run_task(task_name, *task_args, ui=ui)
     print(json.dumps(result, indent=2))
 
 
@@ -128,6 +137,12 @@ async def handle_editar(ai, ui, args, *, plain, feedback_db):
         print("Uso: /editar <arquivo> <linha> <novo>")
         return
     file, line_no, new_line = parts[0], int(parts[1]), parts[2]
+    confirm = True
+    if requires_approval("edit"):
+        confirm = await ui.confirm("Aplicar edição no arquivo?")
+    if not confirm:
+        print("Operação cancelada")
+        return
     ok = await ai.analyzer.edit_line(file, line_no, new_line)
     print("✅ Linha atualizada" if ok else "Falha ao editar")
 
@@ -138,19 +153,33 @@ async def handle_novoarq(ai, ui, args, *, plain, feedback_db):
         return
     file = parts[0]
     content = parts[1] if len(parts) > 1 else ""
+    confirm = True
+    if requires_approval("create"):
+        confirm = await ui.confirm("Criar novo arquivo?")
+    if not confirm:
+        print("Operação cancelada")
+        return
     ok = await ai.analyzer.create_file(file, content)
     print("✅ Arquivo criado" if ok else "Falha ao criar")
 
 
 async def handle_novapasta(ai, ui, args, *, plain, feedback_db):
     path = args.strip()
+    confirm = True
+    if requires_approval("create"):
+        confirm = await ui.confirm("Criar nova pasta?")
+    if not confirm:
+        print("Operação cancelada")
+        return
     ok = await ai.analyzer.create_directory(path)
     print("✅ Pasta criada" if ok else "Falha ao criar pasta")
 
 
 async def handle_deletar(ai, ui, args, *, plain, feedback_db):
     path = args.strip()
-    confirmed = await ui.confirm("Tem certeza que deseja remover?")
+    confirmed = True
+    if requires_approval("delete"):
+        confirmed = await ui.confirm("Tem certeza que deseja remover?")
     if not confirmed:
         print("Operação cancelada")
         return
@@ -329,13 +358,13 @@ async def handle_feedback(ai, ui, args, *, plain, feedback_db):
 
 async def handle_refatorar(ai, ui, args, *, plain, feedback_db):
     target = args.strip()
-    result = await ai.tasks.run_task("auto_refactor", target)
+    result = await ai.tasks.run_task("auto_refactor", target, ui=ui)
     print(json.dumps(result, indent=2))
 
 
 async def handle_rever(ai, ui, args, *, plain, feedback_db):
     target = args.strip()
-    result = await ai.tasks.run_task("code_review", target)
+    result = await ai.tasks.run_task("code_review", target, ui=ui)
     for item in result:
         if isinstance(item, str):
             print(item)
@@ -442,10 +471,12 @@ async def handle_default(ai, ui, args, *, plain, feedback_db, side_by_side: bool
     )
     if is_patch:
         ui.render_diff(response, side_by_side=side_by_side)
-        apply = await ui.confirm("Aplicar mudanças?")
+        apply = True
+        if requires_approval("patch"):
+            apply = await ui.confirm("Aplicar mudanças?")
         if apply:
             patches = _split_diff_by_file(response)
-            updater = UpdateManager()
+            updater = _new_updater()
             for f, diff_text in patches.items():
                 def _apply(p: Path, d=diff_text) -> None:
                     _apply_patch_to_file(p, d)
