@@ -71,6 +71,7 @@ class Config:
     RLHF_THRESHOLD: int = 10
     RLHF_OUTPUT_DIR: str = "./logs/rlhf_results"
     APPROVAL_MODE: str = "suggest"
+    DIFF_STYLE: str = "inline"
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -144,6 +145,8 @@ class Config:
             raise ValueError(
                 "APPROVAL_MODE must be 'suggest', 'auto_edit' or 'full_auto'"
             )
+        if self.DIFF_STYLE not in {"inline", "side_by_side"}:
+            raise ValueError("DIFF_STYLE must be 'inline' or 'side_by_side'")
 
     @property
     def model_name(self) -> str:

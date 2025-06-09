@@ -72,6 +72,10 @@ executar ações sensíveis. Valores possíveis:
 - `auto_edit` – confirma apenas comandos de shell;
 - `suggest` – confirma alterações de código e comandos externos.
 
+O parâmetro `DIFF_STYLE` controla como os patches são exibidos na interface. Use
+`inline` para o formato tradicional ou `side_by_side` para mostrar as mudanças em
+duas colunas.
+
 Você pode ajustar no `config.yaml`, via `--approval-mode` ao iniciar
 ou dinamicamente com o comando `/modo`.
 
