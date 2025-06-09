@@ -1,6 +1,7 @@
 import asyncio
 from unittest.mock import patch
 import types
+from pathlib import Path
 from devai import cli
 
 class DummyAI:
@@ -41,3 +42,20 @@ def test_cli_preferencia(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "Preferência registrada com sucesso" in out
     assert recorded == ["usar x"]
+
+
+def test_cli_tests_local(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.yaml").write_text("TESTS_USE_ISOLATION: true\n")
+
+    async def run():
+        with patch("builtins.input", side_effect=["/tests_local", "/sair"]):
+            await cli.cli_main()
+
+    asyncio.run(run())
+    out = capsys.readouterr().out
+    assert "Execução isolada" in out
+    data = Path("config.yaml").read_text()
+    assert "TESTS_USE_ISOLATION" in data
+    assert "False" in data or "false" in data
