@@ -84,7 +84,7 @@ class MemoryManager:
         self.embedding_cache: "OrderedDict[str, Any]" = OrderedDict()
         self.embedding_cache_size = cache_size
         if self.index is not None:
-            self._load_index()
+            self.load_index()
 
     def _init_db(self):
         cursor = self.conn.cursor()
@@ -140,20 +140,34 @@ class MemoryManager:
             cursor.execute("ALTER TABLE memory ADD COLUMN disabled INTEGER DEFAULT 0")
         self.conn.commit()
 
-    def _load_index(self):
-        if not (faiss and os.path.exists(config.INDEX_FILE) and os.path.exists(config.INDEX_IDS_FILE)):
+    def _load_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+        if not faiss:
             return
-        self.index = faiss.read_index(config.INDEX_FILE)
-        with open(config.INDEX_IDS_FILE, "r") as f:
+        index_file = index_file or config.INDEX_FILE
+        ids_file = ids_file or config.INDEX_IDS_FILE
+        if not (os.path.exists(index_file) and os.path.exists(ids_file)):
+            return
+        self.index = faiss.read_index(index_file)
+        with open(ids_file, "r") as f:
             self.indexed_ids = json.load(f)
         logger.info("Índice de memória carregado do disco", items=len(self.indexed_ids))
 
-    def _persist_index(self):
-        if not faiss:
+    def _persist_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+        if not faiss or self.index is None:
             return
-        faiss.write_index(self.index, config.INDEX_FILE)
-        with open(config.INDEX_IDS_FILE, "w") as f:
+        index_file = index_file or config.INDEX_FILE
+        ids_file = ids_file or config.INDEX_IDS_FILE
+        faiss.write_index(self.index, index_file)
+        with open(ids_file, "w") as f:
             json.dump(self.indexed_ids, f)
+
+    def persist_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+        """Public wrapper to persist the current index to disk."""
+        self._persist_index(index_file, ids_file)
+
+    def load_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+        """Public wrapper to load index and ids if files exist."""
+        self._load_index(index_file, ids_file)
 
     def _rebuild_index(self):
         if not faiss:
@@ -169,7 +183,7 @@ class MemoryManager:
                 embeddings.append(np.frombuffer(row[1], dtype=np.float32).reshape(1, -1))
         if embeddings and np is not None:
             self.index.add(np.concatenate(embeddings))
-        self._persist_index()
+        self.persist_index()
 
     def _get_embedding(self, text: str):
         if self.embedding_model is None:
@@ -233,7 +247,7 @@ class MemoryManager:
                 else:
                     self.index.add([vec])
                 self.indexed_ids.append(entry["id"])
-                self._persist_index()
+                self.persist_index()
         self.conn.commit()
         logger.info("Memória salva" if not update_feedback else "Feedback atualizado", entry_type=entry.get("type"))
 
@@ -542,7 +556,7 @@ class MemoryManager:
         """Persist index and close database connection."""
         try:
             if self.index is not None:
-                self._persist_index()
+                self.persist_index()
             self.conn.commit()
             self.conn.close()
         except Exception:
