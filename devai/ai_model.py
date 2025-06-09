@@ -330,6 +330,10 @@ class AIModel:
             fallback=fallback,
         )
 
+        metrics.record_model_usage(used_model)
+        if is_response_incomplete(response_text):
+            metrics.record_incomplete()
+
         self.cache.add(key, response_text)
         return annotation + response_text
 
