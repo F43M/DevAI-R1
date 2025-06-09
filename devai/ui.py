@@ -44,8 +44,11 @@ class CLIUI:
         else:
             self.session = None
 
-    def load_history(self, lines: int = 20) -> None:
-        """Load the last N lines from the log file."""
+    def load_history(self, lines: int | None = 20) -> None:
+        """Load lines from the log file.
+
+        When ``lines`` is ``None`` the entire file is loaded.
+        """
         if not self.log:
             return
         if self.log_path.exists():
@@ -53,7 +56,10 @@ class CLIUI:
                 content = self.log_path.read_text().splitlines()
             except Exception:
                 return
-            self.history.extend(content[-lines:])
+            if lines is None:
+                self.history.extend(content)
+            else:
+                self.history.extend(content[-lines:])
 
     async def read_command(self, prompt: str = ">>> ") -> str:
         if self.session is not None:
@@ -76,6 +82,17 @@ class CLIUI:
                     f.write(line + "\n")
             except Exception:
                 pass
+
+    def get_log(self) -> list[str]:
+        """Return the entire CLI log as a list of lines."""
+        if not self.log:
+            return []
+        if not self.log_path.exists():
+            return []
+        try:
+            return self.log_path.read_text().splitlines()
+        except Exception:
+            return []
 
     def render_diff(
         self,
