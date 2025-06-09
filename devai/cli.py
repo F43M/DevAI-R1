@@ -231,6 +231,16 @@ async def cli_main(guided: bool = False):
                     hist = await ai.analyzer.get_history(file)
                     for h in hist:
                         print(json.dumps(h, indent=2))
+                elif user_input.startswith("/treinar_rlhf"):
+                    parts = user_input.split()
+                    if len(parts) < 2:
+                        print("Uso: /treinar_rlhf <modelo_base> [destino]")
+                    else:
+                        base = parts[1]
+                        out = parts[2] if len(parts) > 2 else "./model_ft"
+                        from .rlhf import train_from_memory
+                        result = await train_from_memory(base, out)
+                        print(json.dumps(result, indent=2))
                 elif user_input.startswith("/feedback "):
                     parts = user_input[len("/feedback "):].split(maxsplit=2)
                     if len(parts) < 3:

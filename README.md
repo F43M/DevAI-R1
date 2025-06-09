@@ -121,13 +121,16 @@ python -m devai --cli
 
 ## Treinamento RLHF
 
-Depois de registrar feedback positivo via API ou CLI, é possível refinar o modelo base utilizando a biblioteca [`trl`](https://github.com/huggingface/trl). Instale as dependências do projeto e execute:
+Depois de registrar feedback positivo via API ou CLI, é possível refinar o modelo base utilizando a biblioteca [`trl`](https://github.com/huggingface/trl).
+Instale as dependências opcionais `transformers` e `trl` e execute:
 
 ```bash
 python -m devai.rlhf <modelo_base> ./model_ft
+# ou pela CLI interativa
+/treinar_rlhf <modelo_base> [pasta_destino]
 ```
 
-O comando coleta os exemplos do banco de memória, monta um pequeno dataset supervisionado e chama o `SFTTrainer` da `trl`. Os checkpoints do modelo e o arquivo `metrics.json` são gravados em `./model_ft`.
+O comando coleta os exemplos do banco de memória, monta um pequeno dataset supervisionado e chama o `SFTTrainer` da `trl`. Os checkpoints do modelo e o arquivo `metrics.json` são gravados no diretório indicado.
 
 ### Integração contínua
 
@@ -165,7 +168,7 @@ Melhorias em andamento:
 - Cache de memória para acelerar consultas
 - Sistema de plugins para novas tarefas *(implementado)*
 - Prompts com raciocínio em etapas *(Chain-of-Thought)*
-- Estrutura para treinamento via RLHF (execute `python -m devai.rlhf <modelo> <pasta>`)
+- Estrutura para treinamento via RLHF (execute `python -m devai.rlhf <modelo> <pasta>` ou use `/treinar_rlhf` pela CLI)
 - Sandbox de execução para testes isolados *(implementado)*
 - Relatórios de cobertura integrados
 - Monitoramento de complexidade ao longo do tempo

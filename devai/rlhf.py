@@ -5,6 +5,23 @@ from pathlib import Path
 
 from .config import logger, config
 
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+except Exception as exc:  # pragma: no cover - optional heavy dep
+    AutoModelForCausalLM = None
+    AutoTokenizer = None
+    TrainingArguments = None
+    logger.warning(
+        "transformers não encontrado; funções RLHF indisponíveis",
+        error=str(exc),
+    )
+
+try:
+    from trl import SFTTrainer
+except Exception as exc:  # pragma: no cover - optional dep
+    SFTTrainer = None
+    logger.warning("trl não encontrado; funções RLHF indisponíveis", error=str(exc))
+
 
 class RLFineTuner:
     """Simple RLHF fine-tuning helper using TRL."""
@@ -65,24 +82,11 @@ class RLFineTuner:
 
     async def fine_tune(self, base_model: str, output_dir: str) -> dict:
         """Fine tune the language model with RLHF using the TRL library."""
-        from pathlib import Path
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-        try:
-            from transformers import (
-                AutoModelForCausalLM,
-                AutoTokenizer,
-                TrainingArguments,
-            )
-        except Exception as exc:  # pragma: no cover - optional heavy dep
-            logger.warning("transformers não encontrado; pulando RLHF")
-            return {"status": "skipped", "error": str(exc)}
-
-        try:
-            from trl import SFTTrainer
-        except Exception as exc:  # pragma: no cover - optional dep
-            logger.warning("trl não encontrado; pulando treinamento RLHF")
-            return {"status": "skipped", "error": str(exc)}
+        if AutoModelForCausalLM is None or SFTTrainer is None:
+            logger.warning("Dependências de RLHF ausentes; pulando treinamento")
+            return {"status": "skipped", "error": "missing_dependencies"}
 
         data = self.collect_examples()
         if not data:
@@ -120,6 +124,20 @@ class RLFineTuner:
         return metrics
 
 
+async def train_from_memory(
+    base_model: str, output_dir: str, db: str | None = None, log_dir: str | None = None
+) -> dict:
+    """Collect examples and fine tune if possible."""
+    from .memory import MemoryManager
+
+    mem = MemoryManager(db or config.MEMORY_DB, config.EMBEDDING_MODEL, model=None, index=None)
+    tuner = RLFineTuner(mem)
+    if not tuner.collect_examples(log_dir):
+        logger.warning("Sem exemplos para treinamento RLHF")
+        return {"status": "no_data"}
+    return await tuner.fine_tune(base_model, output_dir)
+
+
 def main(argv: list[str] | None = None) -> None:
     """CLI entrypoint for running the fine-tuning procedure."""
     import argparse
@@ -133,9 +151,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--db", default=config.MEMORY_DB)
     args = parser.parse_args(argv)
 
-    mem = MemoryManager(args.db, config.EMBEDDING_MODEL, model=None, index=None)
-    tuner = RLFineTuner(mem)
-    result = asyncio.run(tuner.fine_tune(args.base_model, args.output_dir))
+    result = asyncio.run(
+        train_from_memory(args.base_model, args.output_dir, db=args.db)
+    )
     print(json.dumps(result, indent=2))
 
 

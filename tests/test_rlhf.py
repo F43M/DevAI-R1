@@ -61,3 +61,12 @@ def test_cli_main_runs(tmp_path, monkeypatch, capsys):
     out_text = capsys.readouterr().out
     assert out.exists()
     assert "status" in out_text
+
+
+def test_train_from_memory_empty(tmp_path, monkeypatch):
+    import devai.memory as memory_module
+    monkeypatch.setattr(memory_module, "MemoryManager", DummyMemory)
+    monkeypatch.setattr(rlhf.config, "MEMORY_DB", str(tmp_path / "mem.sqlite"))
+
+    result = asyncio.run(rlhf.train_from_memory("base", str(tmp_path / "out")))
+    assert result["status"] == "no_data"
