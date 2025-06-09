@@ -1,4 +1,5 @@
 from typing import Dict, List
+from .config import config
 
 previous_hashes: Dict[str, str] = {}
 
@@ -19,4 +20,12 @@ def tag_memory_entry(metadata: Dict) -> List[str]:
     doc = metadata.get("docstring", "").lower()
     if "erro" in doc or "bug" in doc:
         tags.append("@erro_corrigido")
+    if "deprecated" in doc or "obsoleto" in doc:
+        tags.append("@descontinuado")
+    complexity = metadata.get("complexity")
+    try:
+        if float(complexity) > config.COMPLEXITY_TAG_THRESHOLD:
+            tags.append("@complexo")
+    except Exception:
+        pass
     return tags

@@ -12,6 +12,7 @@ NOTIFY_EMAIL: ''
 # Caminho opcional para um modelo local da HuggingFace
 LOCAL_MODEL: ''
 COMPLEXITY_HISTORY: complexity_history.json
+COMPLEXITY_TAG_THRESHOLD: 10
 START_MODE: fast  # options: fast, full, custom
 START_TASKS: []  # aplica apenas se START_MODE = custom (scan, watch, monitor)
 RESCAN_INTERVAL_MINUTES: 15
