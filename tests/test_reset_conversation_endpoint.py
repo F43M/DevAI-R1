@@ -3,13 +3,15 @@ import types
 from datetime import datetime
 from devai.core import CodeMemoryAI
 from devai.conversation_handler import ConversationHandler
+from devai.config import config
 
 class DummyModel:
     async def safe_api_call(self, prompt, max_tokens, context="", memory=None, temperature=0.0):
         return "ok"
 
 
-def test_reset_conversation_endpoint(monkeypatch):
+def test_reset_conversation_endpoint(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "LOG_DIR", str(tmp_path))
     ai = object.__new__(CodeMemoryAI)
     ai.memory = types.SimpleNamespace(search=lambda *a, **k: [])
     ai.analyzer = types.SimpleNamespace(graph_summary=lambda: "", code_chunks={}, last_analysis_time=datetime.now())
@@ -34,6 +36,8 @@ def test_reset_conversation_endpoint(monkeypatch):
 
     ai.conv_handler.append("s", "user", "hi")
     ai.conv_handler.symbolic_memories.append("pref")
+    file = ai.conv_handler._history_file("s")
+    assert file.exists()
 
     fn = record['/reset_conversation']
     result = asyncio.run(fn(session_id='s'))
@@ -41,3 +45,4 @@ def test_reset_conversation_endpoint(monkeypatch):
     assert result['status'] == 'reset'
     assert ai.conv_handler.history('s') == []
     assert ai.conv_handler.symbolic_memories == ['pref']
+    assert not file.exists()
