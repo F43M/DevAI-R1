@@ -48,6 +48,7 @@ class Config:
     DOUBLE_CHECK: bool = False
     SHOW_REASONING_BY_DEFAULT: bool = False
     SHOW_CONTEXT_BUTTON: bool = False
+    ENABLE_AI_SUMMARY: bool = False
     START_MODE: str = "fast"  # options: fast, full, custom
     START_TASKS: list[str] = field(default_factory=list)
     RESCAN_INTERVAL_MINUTES: int = 15  # intervalo mínimo para novas varreduras
@@ -97,6 +98,8 @@ class Config:
             raise ValueError("TEST_MEMORY_LIMIT_MB must be integer")
         if not isinstance(self.TESTS_USE_ISOLATION, bool):
             raise ValueError("TESTS_USE_ISOLATION must be boolean")
+        if not isinstance(self.ENABLE_AI_SUMMARY, bool):
+            raise ValueError("ENABLE_AI_SUMMARY must be boolean")
 
     @property
     def model_name(self) -> str:

@@ -21,9 +21,12 @@ As memórias ficam disponíveis para novas rodadas de sugestão de código, refo
 2. Esse resumo gera memórias simbólicas classificadas com tags de preferência do usuário ou lições aprendidas.
 3. As memórias são armazenadas via `MemoryManager` com `memory_type` `dialog_summary`.
 4. Em prompts futuros, blocos relevantes de memória são incluídos automaticamente.
+5. Se nenhuma regra regex gerar memórias, é realizada uma etapa leve de resumo via modelo
+   (`ENABLE_AI_SUMMARY`). O retorno deve conter linhas no formato `#tag: resumo` que são
+   armazenadas pelo `MemoryManager`.
 
 ## pending_features
-- memory_extraction_fallback
+- ~~memory_extraction_fallback~~ (implementado)
 - embedding_fallback
 - Sincronização automática entre backend e chatHistory local para sessões multi-turn.
 - Em sessões curtas, o botão “🧠 Contexto Atual” pode não retornar memórias ainda.

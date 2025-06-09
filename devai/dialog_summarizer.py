@@ -4,15 +4,24 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from .config import logger
+from .config import logger, config
+
+import asyncio
+
+from .ai_model import AIModel
+from .memory import MemoryManager
 
 
 class DialogSummarizer:
     """Extract symbolic memories from conversation history."""
 
-    def summarize_conversation(self, history: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    def summarize_conversation(
+        self,
+        history: List[Dict[str, Any]],
+        memory: Optional[MemoryManager] = None,
+    ) -> List[Dict[str, str]]:
         """Analyze conversation pairs and return symbolic memory sentences."""
 
         memories: List[Dict[str, str]] = []
@@ -63,8 +72,58 @@ class DialogSummarizer:
                     memories.append({"tag": tag, "content": sent})
 
         if not memories:
-            logger.info("\u26a0\ufe0f Nenhuma mem\u00f3ria simb\u00f3lica extra\u00edda da conversa.")
+            logger.info(
+                "\u26a0\ufe0f Nenhuma mem\u00f3ria simb\u00f3lica extra\u00edda da conversa."
+            )
             self._register_fallback()
+            if config.ENABLE_AI_SUMMARY:
+                try:
+                    recent = [m.get("content", "") for m in history[-4:]]
+                    prompt = (
+                        "Resuma em ate 3 pontos as preferencias ou licoes do usuario:\n"
+                        + "\n".join(recent)
+                    )
+
+                    async def _call() -> str:
+                        ai = AIModel()
+                        try:
+                            return await ai.safe_api_call(prompt, 150)
+                        finally:
+                            await ai.close()
+
+                    resp = asyncio.run(_call())
+                    extracted: List[Dict[str, str]] = []
+                    for line in resp.splitlines():
+                        m = re.match(r"-?\s*(#[\w_]+)[:\-]?\s*(.*)", line.strip())
+                        if not m:
+                            continue
+                        tag = m.group(1)
+                        text = m.group(2).strip()
+                        sent = f"{tag}: {text.rstrip('.')}." if text else tag
+                        key = f"{tag}:{sent.lower()}"
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        entry = {"tag": tag, "content": sent}
+                        extracted.append(entry)
+                        if memory is not None:
+                            try:
+                                memory.save(
+                                    {
+                                        "type": "dialog",
+                                        "memory_type": "dialog_summary",
+                                        "content": sent,
+                                        "metadata": {"tag": tag, "origin": "ai_summary"},
+                                        "tags": [tag],
+                                    }
+                                )
+                            except Exception:
+                                pass
+                    if memory is not None:
+                        return []
+                    memories.extend(extracted)
+                except Exception as e:  # pragma: no cover - unexpected errors
+                    logger.error("summary_fallback_failed", error=str(e))
 
         return memories
 
