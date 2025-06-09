@@ -7,6 +7,9 @@ import asyncio
 from .config import config, logger
 from .feedback import listar_preferencias
 
+
+_logs_cache: Dict[int, Dict[str, Any]] = {}
+
 SYSTEM_PROMPT_CONTEXT = (
     "Você atua como engenheiro simbólico. "
     "Você é um assistente de desenvolvimento focado em manter continuidade de raciocínio. "
@@ -39,14 +42,19 @@ def _load_project_identity() -> tuple[str, dict]:
 
 def _format_memories(memories: Sequence[Dict]) -> str:
     parts = []
+    tokens = 0
+    limit = getattr(config, "MAX_PROMPT_TOKENS", 1000)
     for m in memories[:3]:
         content = m.get("content", "")
         name = m.get("metadata", {}).get("name", "?")
         score = m.get("similarity_score", 0.0)
         tags = ",".join(m.get("tags", []))
-        parts.append(
-            f"// Memória relevante: {content}\n// Função: {name}, Similaridade: {score:.2f} Tags:{tags}"
-        )
+        text = f"// Memória relevante: {content}\n// Função: {name}, Similaridade: {score:.2f} Tags:{tags}"
+        count = len(text.split())
+        if tokens + count > limit:
+            break
+        tokens += count
+        parts.append(text)
     return "\n".join(parts)
 
 
@@ -55,8 +63,14 @@ def collect_recent_logs(lines: int = 50) -> str:
     log_file = Path(config.LOG_DIR) / "ai_core.log"
     if not log_file.exists():
         return ""
+    mtime = log_file.stat().st_mtime
+    cached = _logs_cache.get(lines)
+    if cached and cached.get("mtime") == mtime:
+        return cached["data"]
     data = log_file.read_text().splitlines()[-lines:]
-    return "\n".join(data)
+    text = "\n".join(data)
+    _logs_cache[lines] = {"mtime": mtime, "data": text}
+    return text
 
 
 async def collect_recent_logs_async(lines: int = 50) -> str:
@@ -66,9 +80,15 @@ async def collect_recent_logs_async(lines: int = 50) -> str:
     log_file = Path(config.LOG_DIR) / "ai_core.log"
     if not log_file.exists():
         return ""
+    mtime = log_file.stat().st_mtime
+    cached = _logs_cache.get(lines)
+    if cached and cached.get("mtime") == mtime:
+        return cached["data"]
     async with aio_open(log_file, "r") as f:
         data = (await f.read()).splitlines()[-lines:]
-    return "\n".join(data)
+    text = "\n".join(data)
+    _logs_cache[lines] = {"mtime": mtime, "data": text}
+    return text
 
 
 def build_cot_prompt(

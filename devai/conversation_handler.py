@@ -28,6 +28,9 @@ class ConversationHandler:
         self.symbolic_memories: List[str] = []
         self.history_dir = Path(history_dir or Path(config.LOG_DIR) / "sessions")
         self.history_dir.mkdir(parents=True, exist_ok=True)
+        self._summary_task: asyncio.Task | None = None
+        self._last_summary: float = 0.0
+        self._summary_throttle: float = 0.05
 
     @staticmethod
     def _estimate_tokens(text: str) -> int:
@@ -83,28 +86,40 @@ class ConversationHandler:
             self.conversation_context.setdefault(session_id, [])
         return self.conversation_context[session_id]
 
-    async def _summarize_and_store(self, session_id: str, hist: List[Dict[str, str]]) -> None:
-        """Summarize history and persist symbolic memories."""
-        try:
-            summary = self.summarizer.summarize_conversation(hist, self.memory)
-            if summary and self.memory:
-                for item in summary:
-                    try:
-                        self.memory.save(
-                            {
-                                "type": "dialog",
-                                "memory_type": "dialog_summary",
-                                "content": item.get("content", ""),
-                                "metadata": {"tag": item.get("tag"), "origin": "dialog_summary"},
-                                "tags": [item.get("tag", "")],
-                            }
-                        )
-                    except Exception:
-                        pass
-            self.conversation_context[session_id] = hist[-self.max_history:]
-            self._save_session(session_id)
-        except Exception:
-            pass
+    def _summarize_and_store(self, session_id: str, hist: List[Dict[str, str]]) -> None:
+        """Summarize history and persist symbolic memories in background."""
+
+        if self._summary_task and not self._summary_task.done():
+            return
+
+        async def _run() -> None:
+            now = asyncio.get_running_loop().time()
+            wait = self._summary_throttle - (now - self._last_summary)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            try:
+                summary = self.summarizer.summarize_conversation(hist, self.memory)
+                if summary and self.memory:
+                    for item in summary:
+                        try:
+                            self.memory.save(
+                                {
+                                    "type": "dialog",
+                                    "memory_type": "dialog_summary",
+                                    "content": item.get("content", ""),
+                                    "metadata": {"tag": item.get("tag"), "origin": "dialog_summary"},
+                                    "tags": [item.get("tag", "")],
+                                }
+                            )
+                        except Exception:
+                            pass
+                self.conversation_context[session_id] = hist[-self.max_history:]
+                self._save_session(session_id)
+            except Exception:
+                pass
+            self._last_summary = asyncio.get_running_loop().time()
+
+        self._summary_task = asyncio.create_task(_run())
 
     def append(self, session_id: str, role: str, content: str) -> None:
         hist = self.history(session_id)
@@ -135,12 +150,7 @@ class ConversationHandler:
             except Exception:
                 logger.error("failed_to_store_conv_embedding", session=session_id)
         if len(hist) >= self.summary_threshold:
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                asyncio.run(self._summarize_and_store(session_id, hist.copy()))
-            else:
-                asyncio.create_task(self._summarize_and_store(session_id, hist.copy()))
+            self._summarize_and_store(session_id, hist.copy())
         else:
             self._save_session(session_id)
 
