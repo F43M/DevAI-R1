@@ -414,3 +414,8 @@ def test_cli_historico_cli(monkeypatch, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "linha1" in out
     assert "linha2" in out
+
+
+def test_commands_mapping():
+    assert "memoria" in cli.COMMANDS
+    assert callable(cli.COMMANDS["memoria"])
