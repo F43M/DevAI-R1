@@ -14,6 +14,8 @@ aiohttp = "*"
 structlog = "*"
 python-dotenv = "*"
 trl = "*"
+networkx = "*"
+scikit-learn = "*"
 
 [tool.pytest.ini_options]
 addopts = "-q"

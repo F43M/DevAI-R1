@@ -1,7 +1,9 @@
 import sys
 import types
 
-if 'networkx' not in sys.modules:
+try:  # prefer real library when available
+    import networkx  # type: ignore  # noqa: F401
+except Exception:
     class DiGraph:
         def __init__(self):
             self._adj = {}
@@ -37,7 +39,11 @@ if 'networkx' not in sys.modules:
         return seen
     sys.modules['networkx'] = types.SimpleNamespace(DiGraph=DiGraph, descendants=descendants)
 
-if 'fastapi' not in sys.modules:
+try:
+    from fastapi import FastAPI  # type: ignore  # noqa: F401
+    from fastapi.staticfiles import StaticFiles  # noqa: F401
+    from fastapi.responses import StreamingResponse  # noqa: F401
+except Exception:
     class FastAPI:
         def __init__(self, *a, **k):
             pass
@@ -73,7 +79,9 @@ if 'fastapi' not in sys.modules:
     sys.modules['fastapi.staticfiles'] = staticfiles_module
     sys.modules['fastapi.responses'] = responses_module
 
-if 'uvicorn' not in sys.modules:
+try:
+    import uvicorn  # type: ignore  # noqa: F401
+except Exception:
     class Config:
         def __init__(self, *a, **k):
             pass
@@ -93,7 +101,9 @@ if 'uvicorn' not in sys.modules:
     uvicorn_stub.run = run
     sys.modules['uvicorn'] = uvicorn_stub
 
-if 'aiohttp' not in sys.modules:
+try:
+    from aiohttp import ClientSession, ClientTimeout  # type: ignore  # noqa: F401
+except Exception:
     class ClientSession:
         async def post(self, *a, **k):
             class Resp:
@@ -116,7 +126,10 @@ if 'aiohttp' not in sys.modules:
     aiohttp_stub.ClientConnectionError = Exception
     sys.modules['aiohttp'] = aiohttp_stub
 
-if 'aiofiles' not in sys.modules:
+try:
+    import aiofiles  # type: ignore  # noqa: F401
+    import aiofiles.os  # type: ignore  # noqa: F401
+except Exception:
     import os
     class _AIOFile:
         def __init__(self, path, mode='r'):
@@ -142,7 +155,9 @@ if 'aiofiles' not in sys.modules:
     sys.modules['aiofiles'] = aiofiles_stub
     sys.modules['aiofiles.os'] = aiofiles_os
 
-if 'sklearn' not in sys.modules:
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore  # noqa: F401
+except Exception:
     class TF:
         def fit_transform(self, docs):
             class Mat(list):

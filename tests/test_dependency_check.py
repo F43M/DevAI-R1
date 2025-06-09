@@ -13,9 +13,9 @@ class DummyLogger:
         self.errors.append((msg, args, kwargs))
 
 
-def test_check_dependencies_warns_for_stubs(monkeypatch):
+def test_check_dependencies_no_warning_when_stubs_present(monkeypatch):
     logger = DummyLogger()
     monkeypatch.setattr(dependency_check, "logger", logger)
     dependency_check.check_dependencies()
-    assert any("simplificada" in w for w in logger.warnings)
-    assert not logger.errors
+    assert logger.warnings == []
+    assert logger.errors == []
