@@ -53,21 +53,29 @@ class CodeAnalyzer:
         async with aiofiles.open(path, "w") as f:
             await f.write(json.dumps(status))
 
-    async def deep_scan_app(self):
+    async def deep_scan_app(self, progress_cb=None):
         logger.info("Iniciando varredura profunda do aplicativo")
         self.scan_progress = 0.0
         await self._save_scan_status()
-        await self.scan_app()
+        if progress_cb:
+            progress_cb(0, "scanning files")
+        await self.scan_app(progress_cb)
         self.scan_progress = 0.6
+        if progress_cb:
+            progress_cb(60, "building graph")
         logger.info("Construindo grafo de dependências", progress=self.scan_progress)
         await self._save_scan_status()
         self.last_scan_time = datetime.now()
         await self._build_semantic_relations()
         self.scan_progress = 0.8
+        if progress_cb:
+            progress_cb(80, "analyzing patterns")
         logger.info("Analisando padrões", progress=self.scan_progress)
         await self._save_scan_status()
         await self._analyze_patterns()
         self.scan_progress = 1.0
+        if progress_cb:
+            progress_cb(100, "done")
         logger.info("Varredura concluída", progress=self.scan_progress)
         await self._save_scan_status()
         logger.info(
@@ -76,7 +84,7 @@ class CodeAnalyzer:
             relations=self.code_graph.number_of_edges(),
         )
 
-    async def scan_app(self):
+    async def scan_app(self, progress_cb=None):
         patterns = [
             "*.py",
             "*.js",
@@ -99,6 +107,8 @@ class CodeAnalyzer:
                 self.scan_progress = i / total * 0.5
                 if i % max(1, total // 10) == 0 or i == total:
                     await self._save_scan_status()
+                    if progress_cb:
+                        progress_cb(self.scan_progress * 100, "scanning files")
                     logger.info(
                         "Progresso da varredura",
                         progress=round(self.scan_progress, 2),
