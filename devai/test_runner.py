@@ -1,5 +1,8 @@
 import subprocess
-import resource
+try:  # 'resource' is unavailable on Windows
+    import resource
+except ImportError:  # pragma: no cover - Windows compatibility
+    resource = None
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple
@@ -33,6 +36,8 @@ def _parse_output(output: str) -> str:
 
 def _preexec(cpu: int, mem: int) -> None:
     """Apply resource limits before executing the child process."""
+    if resource is None:
+        return
     if cpu > 0:
         resource.setrlimit(resource.RLIMIT_CPU, (cpu, cpu))
     if mem > 0:
@@ -63,7 +68,12 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
     else:
 
         def _limits() -> None:
-            _preexec(config.TEST_CPU_LIMIT, config.TEST_MEMORY_LIMIT_MB * 1024 * 1024)
+            _preexec(
+                config.TEST_CPU_LIMIT,
+                config.TEST_MEMORY_LIMIT_MB * 1024 * 1024,
+            )
+
+        preexec = _limits if resource is not None else None
 
         try:
             proc = subprocess.run(
@@ -73,7 +83,7 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
                 cwd=cwd,
                 timeout=timeout,
                 text=True,
-                preexec_fn=_limits,
+                preexec_fn=preexec,
             )
             return proc.returncode == 0, _parse_output(proc.stdout)
         except subprocess.TimeoutExpired:
