@@ -10,7 +10,7 @@ from devai import cli
 class DummyUI:
     """Simple stand-in for the Rich UI used by the CLI."""
 
-    def __init__(self, commands: list[str], *, plain: bool = False):
+    def __init__(self, commands: list[str], *, plain: bool = False, log: bool = True):
         self._cmds = commands
         self.history: list[str] = []
         self.plain = plain
@@ -30,6 +30,9 @@ class DummyUI:
 
     def render_diff(self, diff: str) -> None:
         self.outputs.append(diff)
+
+    def load_history(self, lines: int = 20) -> None:
+        pass
 
     @asynccontextmanager
     async def loading(self, message: str = "..."):
@@ -62,7 +65,8 @@ def test_cli_exit(monkeypatch, capsys):
     monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
 
     def make_ui(*a, **k):
-        return DummyUI(["/sair"])
+        k.pop("commands", None)
+        return DummyUI(["/sair"], **k)
 
     monkeypatch.setattr(cli, "CLIUI", make_ui)
     asyncio.run(cli.cli_main())
@@ -77,7 +81,8 @@ def test_cli_preferencia(monkeypatch, capsys):
     monkeypatch.setattr(cli, "registrar_preferencia", lambda t: recorded.append(t))
 
     def make_ui(*a, **k):
-        return DummyUI(["/preferencia usar x", "/sair"])
+        k.pop("commands", None)
+        return DummyUI(["/preferencia usar x", "/sair"], **k)
 
     monkeypatch.setattr(cli, "CLIUI", make_ui)
     asyncio.run(cli.cli_main())
@@ -92,7 +97,8 @@ def test_cli_tests_local(monkeypatch, tmp_path, capsys):
     (tmp_path / "config.yaml").write_text("TESTS_USE_ISOLATION: true\n")
 
     def make_ui(*a, **k):
-        return DummyUI(["/tests_local", "/sair"])
+        k.pop("commands", None)
+        return DummyUI(["/tests_local", "/sair"], **k)
 
     monkeypatch.setattr(cli, "CLIUI", make_ui)
     asyncio.run(cli.cli_main())
@@ -109,7 +115,9 @@ def test_cli_plain_mode(monkeypatch):
 
     def make_ui(*a, **k):
         assert k.get("plain") is True
-        ui = DummyUI(["/sair"], plain=True)
+        k.pop("commands", None)
+        k.pop("plain", None)
+        ui = DummyUI(["/sair"], plain=True, **k)
         ui.console.print = lambda *a, **k: called.append(True)
         return ui
 
@@ -128,7 +136,8 @@ def test_cli_render_diff(monkeypatch):
 
     def make_ui(*a, **k):
         nonlocal ui_obj
-        ui_obj = DummyUI(["hi", "/sair"])
+        k.pop("commands", None)
+        ui_obj = DummyUI(["hi", "/sair"], **k)
         return ui_obj
 
     monkeypatch.setattr(cli, "CLIUI", make_ui)
@@ -147,7 +156,8 @@ def test_cli_render_diff_plusminus(monkeypatch):
 
     def make_ui(*a, **k):
         nonlocal ui_obj
-        ui_obj = DummyUI(["hi", "/sair"])
+        k.pop("commands", None)
+        ui_obj = DummyUI(["hi", "/sair"], **k)
         return ui_obj
 
     monkeypatch.setattr(cli, "CLIUI", make_ui)
@@ -170,10 +180,41 @@ def test_cli_historia(monkeypatch, capsys):
     monkeypatch.setattr(cli, "CodeMemoryAI", HistAI)
 
     def make_ui(*a, **k):
-        return DummyUI(["/historia", "/sair"], plain=True)
+        k.pop("commands", None)
+        k.pop("plain", None)
+        return DummyUI(["/historia", "/sair"], plain=True, **k)
 
     monkeypatch.setattr(cli, "CLIUI", make_ui)
     asyncio.run(cli.cli_main(plain=True))
     out = capsys.readouterr().out
     assert "user: hi" in out
     assert "assistant: hello" in out
+
+
+def test_cliui_log_persistence(tmp_path, monkeypatch):
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    from devai.ui import CLIUI
+
+    ui = CLIUI(plain=True, log=True)
+    ui.load_history()
+    assert ui.history == []
+    ui.add_history("hi")
+    ui.add_history("bye")
+
+    ui2 = CLIUI(plain=True, log=True)
+    ui2.load_history()
+    assert ui2.history[-2:] == ["hi", "bye"]
+
+
+def test_cli_no_log(monkeypatch):
+    monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
+    called = {}
+
+    def make_ui(*a, **k):
+        called["log"] = k.get("log")
+        k.pop("commands", None)
+        return DummyUI(["/sair"], **k)
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main(log=False))
+    assert called.get("log") is False

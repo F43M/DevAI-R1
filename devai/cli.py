@@ -13,7 +13,7 @@ from .ui import CLIUI
 from rich.panel import Panel
 
 
-async def cli_main(guided: bool = False, plain: bool = False):
+async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
     """Interactive command loop for DevAI.
 
     Comandos principais: /lembrar, /esquecer, /ajustar, /rastrear e /memoria.
@@ -49,7 +49,8 @@ async def cli_main(guided: bool = False, plain: bool = False):
         "/preferencia",
         "/sair",
     ]
-    ui = CLIUI(plain=plain, commands=commands)
+    ui = CLIUI(plain=plain, commands=commands, log=log)
+    ui.load_history()
     run_scan = False
     if config.START_MODE == "full":
         run_scan = True
