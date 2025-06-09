@@ -93,6 +93,9 @@ AUTO_APPROVAL_RULES:
 `path` usa sintaxe glob. Se `approve` for `true` a ação é aplicada
 sem perguntar; `false` exige confirmação mesmo em modos automáticos.
 
+O comando `/sugerir_regras` pode analisar o `decision_log.yaml` e
+propor entradas para esta lista automaticamente.
+
 ## Estilo de diff
 
 O DevAI pode mostrar patches lado a lado ou no formato tradicional. Defina

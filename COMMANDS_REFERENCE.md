@@ -106,6 +106,16 @@ devai regras add edit docs/** sim
 devai regras del 1
 ```
 
+## /sugerir_regras [N] [--salvar]
+Mostra sugestões de regras automáticas com base no `decision_log.yaml`.
+`N` define o mínimo de aprovações para gerar a dica (padrão `3`).
+Use `--salvar` para escrever as regras sugeridas no `config.yaml`.
+
+Exemplo:
+```bash
+devai sugerir_regras 5 --salvar
+```
+
 ## /ajuda
 Mostra esta referência de comandos diretamente na CLI.
 
