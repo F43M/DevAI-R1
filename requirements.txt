@@ -14,5 +14,8 @@ psutil
 PyYAML
 PyJWT
 python-dotenv
+# UI dependencies
+rich
+prompt_toolkit
 # Optional: treinamento RLHF
 trl>=0.7
