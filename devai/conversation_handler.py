@@ -102,7 +102,11 @@ class ConversationHandler:
 
     def reset(self, session_id: str) -> None:
         self.conversation_context[session_id] = []
-        self._save_session(session_id)
+        try:
+            self._history_file(session_id).unlink()
+            self._mtimes.pop(session_id, None)
+        except Exception:
+            pass
         logger.info("messages_cleared", session=session_id)
 
     def clear_session(self, session_id: str = "default") -> None:

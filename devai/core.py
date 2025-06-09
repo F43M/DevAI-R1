@@ -228,9 +228,14 @@ class CodeMemoryAI:
 
         @self.app.post("/analyze")
         async def analyze_code(query: str, session_id: str = "default"):
-            return await self.generate_response(
+            # reload conversation from disk before processing
+            self.conv_handler.history(session_id)
+            result = await self.generate_response(
                 query, double_check=self.double_check, session_id=session_id
             )
+            if session_id == "default":
+                self.conversation = self.conv_handler.history("default")
+            return result
 
         @self.app.get("/analyze_stream")
         async def analyze_stream(query: str, session_id: str = "default"):
