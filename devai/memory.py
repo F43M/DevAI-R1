@@ -131,6 +131,16 @@ class MemoryManager:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS conversation_embeddings (
+                session_id TEXT,
+                message_id INTEGER,
+                vector BLOB,
+                PRIMARY KEY (session_id, message_id)
+            )
+            """
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_feedback ON memory(feedback_score)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_access ON memory(access_count)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_type ON memory(memory_type)")

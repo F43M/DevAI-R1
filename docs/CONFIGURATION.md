@@ -28,3 +28,9 @@ TEST_MEMORY_LIMIT_MB: 512  # memória máxima em MB
 
 Quando `TESTS_USE_ISOLATION` for `true`, o DevAI executará `pytest` em um container Docker com os limites configurados.
 
+## Histórico de conversa
+
+O parâmetro `MAX_SESSION_TOKENS` controla a quantidade máxima de tokens mantidos no arquivo de histórico de cada sessão. Ao exceder esse limite, as mensagens mais antigas são removidas (pruning). Defina `0` para desabilitar a limpeza automática.
+
+A classe `ConversationHandler` oferece o método `search_history(session_id, query)` que utiliza embeddings gravados em `memory.db` para localizar mensagens similares ao texto ou tag informados.
+
