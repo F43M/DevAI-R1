@@ -16,6 +16,18 @@ from .ai_model import AIModel
 STATUS_FILE = Path(config.LOG_DIR) / "symbolic_training_status.json"
 
 
+def _write_status(progress: float, last_analysis: "datetime | None" = None) -> None:
+    """Persist symbolic training progress to disk."""
+    try:
+        STATUS_FILE.parent.mkdir(exist_ok=True)
+        data = {"progress": round(progress, 2)}
+        if last_analysis:
+            data["last_analysis"] = last_analysis.isoformat()
+        STATUS_FILE.write_text(json.dumps(data, indent=2))
+    except Exception:
+        logger.warning("Nao foi possivel atualizar symbolic_training_status.json")
+
+
 async def run_symbolic_training(
     analyzer: CodeAnalyzer,
     memory: MemoryManager,
@@ -24,7 +36,9 @@ async def run_symbolic_training(
     max_logs: int = 100,
 ) -> Dict[str, object]:
     """Execute the symbolic deep training cycle returning a friendly summary."""
+    _write_status(0.0)
     await analyzer.scan_app()
+    _write_status(0.3)
     code_root = Path(config.CODE_ROOT)
 
     last_analysis: datetime | None = None
@@ -156,6 +170,7 @@ async def run_symbolic_training(
             unique_rules[first]["lines"].add(line_no)
         await asyncio.sleep(0)
 
+    _write_status(0.6)
     report = ["# Relatório de Treinamento Simbólico Profundo", ""]
     if sensitive:
         report.append("## Arquivos sensíveis")
@@ -245,12 +260,7 @@ async def run_symbolic_training(
     except Exception:
         logger.warning("Nao foi possivel atualizar lessons.json")
 
-    try:
-        STATUS_FILE.write_text(
-            json.dumps({"last_analysis": datetime.now().isoformat()}, indent=2)
-        )
-    except Exception:
-        logger.warning("Nao foi possivel atualizar symbolic_training_status.json")
+    _write_status(1.0, datetime.now())
 
     return {
         "report": "\n".join(lines),
