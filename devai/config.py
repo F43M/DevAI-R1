@@ -44,6 +44,7 @@ class Config:
     INDEX_FILE: str = "faiss.index"
     INDEX_IDS_FILE: str = "faiss_ids.json"
     NOTIFY_EMAIL: str = os.getenv("NOTIFY_EMAIL", "")
+    NOTIFY_SLACK: str = os.getenv("NOTIFY_SLACK", "")
     LOCAL_MODEL: str = os.getenv("LOCAL_MODEL", "")
     MAX_SESSION_TOKENS: int = 1000
     MAX_PROMPT_TOKENS: int = 1000
