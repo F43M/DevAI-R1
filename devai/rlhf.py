@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import hashlib
+from datetime import datetime
 
 from .config import logger, config
 
@@ -73,8 +75,13 @@ class RLFineTuner:
                         examples.append({"prompt": q, "response": a, "score": 1})
         return examples
 
-    def collect_examples(self, log_dir: str | None = None) -> list[dict]:
-        """Gather examples from memory and optional log files, removing duplicates."""
+    def collect_examples(
+        self, log_dir: str | None = None, *, with_hash: bool = False
+    ) -> list[dict] | tuple[list[dict], str]:
+        """Gather examples from memory and optional log files, removing duplicates.
+
+        If ``with_hash`` is True, return a tuple ``(data, sha256)``.
+        """
 
         data = self._collect_from_memory()
         data.extend(self._collect_from_logs(log_dir))
@@ -87,12 +94,25 @@ class RLFineTuner:
                 seen.add(key)
                 deduped.append(ex)
 
+        dataset_json = json.dumps(deduped, indent=2)
+
         try:
             path = Path(config.LOG_DIR) / "rlhf_dataset.json"
-            path.write_text(json.dumps(deduped, indent=2))
+            path.write_text(dataset_json)
         except Exception:
             pass
 
+        digest = hashlib.sha256(dataset_json.encode()).hexdigest()
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ds_dir = Path(config.RLHF_OUTPUT_DIR) / "datasets"
+        ds_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            (ds_dir / f"{ts}.sha256").write_text(digest)
+        except Exception:
+            pass
+
+        if with_hash:
+            return deduped, digest
         return deduped
 
     async def fine_tune(self, base_model: str, output_dir: str) -> dict:

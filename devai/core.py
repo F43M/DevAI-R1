@@ -42,27 +42,46 @@ def estimate_token_count(text: str) -> int:
 
 
 async def run_scheduled_rlhf(memory: MemoryManager) -> dict:
-    """Run RLHF fine-tuning if enough new examples are available."""
+    """Run RLHF fine-tuning when the example dataset changes."""
 
-    dataset_path = Path(config.LOG_DIR) / "rlhf_dataset.json"
-    prev_count = 0
-    if dataset_path.exists():
-        try:
-            prev_count = len(json.loads(dataset_path.read_text()))
-        except Exception:
-            prev_count = 0
+    ds_dir = Path(config.RLHF_OUTPUT_DIR) / "datasets"
+    ds_dir.mkdir(parents=True, exist_ok=True)
+    existing = sorted(ds_dir.glob("*.sha256"))
+    prev_hash = existing[-1].read_text().strip() if existing else ""
 
     tuner = rlhf.RLFineTuner(memory)
-    data = tuner.collect_examples()
-    new_examples = len(data) - prev_count
-    if new_examples < config.RLHF_THRESHOLD:
-        logger.info("RLHF threshold not reached", new_examples=new_examples)
-        return {"status": "skipped", "new_examples": new_examples}
+    before_files = set(ds_dir.glob("*.sha256"))
+    data, new_hash = tuner.collect_examples(with_hash=True)
+    after_files = set(ds_dir.glob("*.sha256"))
+    new_file = sorted(after_files - before_files)[-1] if after_files - before_files else None
+
+    if new_hash == prev_hash:
+        if new_file:
+            try:
+                Path(new_file).unlink()
+            except Exception:
+                pass
+        logger.info("RLHF dataset unchanged")
+        return {"status": "skipped", "reason": "dataset_unchanged"}
+
+    if len(data) < config.RLHF_THRESHOLD:
+        logger.info("RLHF threshold not reached", num_examples=len(data))
+        return {"status": "skipped", "reason": "threshold", "num_examples": len(data)}
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = Path(config.RLHF_OUTPUT_DIR) / ts
     metrics = await rlhf.train_from_memory(config.model_name, str(out_dir))
-    memory.save({"type": "rlhf_training", "metadata": metrics})
+    memory.save(
+        {
+            "type": "rlhf_training",
+            "metadata": {
+                "hash": new_hash,
+                "num_examples": len(data),
+                "output_dir": str(out_dir),
+            },
+        }
+    )
+    metrics.update({"hash": new_hash, "num_examples": len(data), "output_dir": str(out_dir)})
     return metrics
 
 
