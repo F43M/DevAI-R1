@@ -52,3 +52,14 @@ ERROR_LOG_PATH: errors_log.jsonl
 ERROR_LOG_MAX_LINES: 1000
 ```
 
+## Notificações
+
+Para receber avisos automáticos, defina um e-mail ou um webhook do Slack:
+
+```yaml
+NOTIFY_EMAIL: ''       # opcional
+NOTIFY_SLACK: ''       # opcional
+```
+
+Quando configurados, ambos os canais serão utilizados.
+

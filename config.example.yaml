@@ -11,6 +11,8 @@ MODELS:
     url: https://openrouter.ai/api/v1/chat/completions
 # E-mail para notificações (opcional)
 NOTIFY_EMAIL: ''
+# Webhook Slack para notificações (opcional)
+NOTIFY_SLACK: ''
 # Caminho opcional para um modelo local da HuggingFace
 LOCAL_MODEL: ''
 COMPLEXITY_HISTORY: complexity_history.json
