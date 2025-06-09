@@ -51,7 +51,7 @@ class MemoryManager:
         index: Optional[Any] = None,
         cache_size: int = 128,
     ):
-        self.conn = sqlite3.connect(db_file)
+        self.conn = sqlite3.connect(db_file, check_same_thread=False)
         self.feedback_db = FeedbackDB()
         self._init_db()
         if model is None:
