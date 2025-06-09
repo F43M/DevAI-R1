@@ -549,6 +549,26 @@ class MemoryManager:
         logger.info("Memoria comprimida", count=len(duplicates))
         return len(duplicates)
 
+    def recent_entries(self, entry_type: str, limit: int = 10) -> List[Dict]:
+        """Return the most recent memory entries of a given type."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT id, type, content, metadata, created_at FROM memory "
+            "WHERE type = ? ORDER BY id DESC LIMIT ?",
+            (entry_type, limit),
+        )
+        rows = cursor.fetchall()
+        return [
+            {
+                "id": r[0],
+                "type": r[1],
+                "content": r[2],
+                "metadata": json.loads(r[3]),
+                "created_at": r[4],
+            }
+            for r in rows
+        ]
+
     def prune_old_memories(self, threshold_days: int = 30) -> int:
         """Archive old memories to latent_memory.json with a symbolic reference."""
         cutoff = datetime.now() - timedelta(days=threshold_days)

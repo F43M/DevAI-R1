@@ -31,6 +31,7 @@ class Config:
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     TASK_DEFINITIONS: str = "tasks.yaml"
     LOG_DIR: str = "./logs"
+    LOG_MONITOR_INTERVAL: int = 60
     FILE_HISTORY: str = "file_history.json"
     API_SECRET: str = os.getenv("API_SECRET", "")
     API_PORT: int = 8000
@@ -86,6 +87,8 @@ class Config:
             raise ValueError("API_PORT must be integer")
         if not isinstance(self.LEARNING_LOOP_INTERVAL, int):
             raise ValueError("LEARNING_LOOP_INTERVAL must be integer")
+        if not isinstance(self.LOG_MONITOR_INTERVAL, int):
+            raise ValueError("LOG_MONITOR_INTERVAL must be integer")
         if self.START_MODE not in {"fast", "full", "custom"}:
             raise ValueError("START_MODE must be 'fast', 'full' or 'custom'")
         if not isinstance(self.START_TASKS, list):

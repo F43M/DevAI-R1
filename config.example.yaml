@@ -1,6 +1,7 @@
 CODE_ROOT: ./app
 API_PORT: 8000
 LOG_DIR: ./logs
+LOG_MONITOR_INTERVAL: 60
 MODELS:
   default:
     name: deepseek/deepseek-r1-0528:free
