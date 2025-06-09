@@ -84,7 +84,7 @@ class ConversationHandler:
     async def _summarize_and_store(self, session_id: str, hist: List[Dict[str, str]]) -> None:
         """Summarize history and persist symbolic memories."""
         try:
-            summary = self.summarizer.summarize_conversation(hist)
+            summary = self.summarizer.summarize_conversation(hist, self.memory)
             if summary and self.memory:
                 for item in summary:
                     try:
