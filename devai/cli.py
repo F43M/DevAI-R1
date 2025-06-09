@@ -260,6 +260,22 @@ async def cli_main(guided: bool = False):
                 elif user_input.startswith("/treinar_rlhf_auto"):
                     result = await run_scheduled_rlhf(ai.memory)
                     print(json.dumps(result, indent=2))
+                elif user_input.startswith("/train_intents"):
+                    path = user_input[len("/train_intents"):].strip() or "intent_samples.json"
+                    file_path = Path(path)
+                    if not file_path.exists():
+                        print("Arquivo de exemplos não encontrado")
+                    else:
+                        data = json.loads(file_path.read_text())
+                        samples = []
+                        for item in data:
+                            if isinstance(item, dict):
+                                samples.append((item.get("text", ""), item.get("intent", "")))
+                            elif isinstance(item, list) and len(item) == 2:
+                                samples.append((item[0], item[1]))
+                        from .intent_classifier import train_intent_model
+                        train_intent_model(samples)
+                        print("Modelo de intenções treinado")
                 elif user_input.startswith("/feedback "):
                     parts = user_input[len("/feedback "):].split(maxsplit=2)
                     if len(parts) < 3:

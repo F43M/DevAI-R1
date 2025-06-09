@@ -34,3 +34,9 @@ O parâmetro `MAX_SESSION_TOKENS` controla a quantidade máxima de tokens mantid
 
 A classe `ConversationHandler` oferece o método `search_history(session_id, query)` que utiliza embeddings gravados em `memory.db` para localizar mensagens similares ao texto ou tag informados.
 
+## Classificador de intenções
+
+O arquivo `intent_samples.json` contém exemplos de frases e suas respectivas intenções. Adicione novos pares para ensinar o DevAI a reconhecer outras solicitações.
+
+Após atualizar esse arquivo, execute o comando `/train_intents` no CLI. O processo irá gerar `intent_model.pkl`, utilizado pelo roteador de intenções. Caso o modelo não exista, o DevAI continuará usando apenas o mapeamento por palavras‑chave.
+

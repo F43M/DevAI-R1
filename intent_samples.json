@@ -1,0 +1,9 @@
+[
+  {"text": "Ocorreu um erro ao rodar o código", "intent": "debug"},
+  {"text": "Crie um novo módulo de autenticação", "intent": "create"},
+  {"text": "Edite o arquivo de configuração", "intent": "edit"},
+  {"text": "Adicione testes unitários para a função", "intent": "tests"},
+  {"text": "Faça uma revisão do código da API", "intent": "review"},
+  {"text": "Como está a arquitetura do projeto?", "intent": "architecture"}
+]
+
