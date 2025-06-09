@@ -32,6 +32,8 @@ class Config:
     TASK_DEFINITIONS: str = "tasks.yaml"
     LOG_DIR: str = "./logs"
     LOG_MONITOR_INTERVAL: int = 60
+    ERROR_LOG_PATH: str = "errors_log.jsonl"
+    ERROR_LOG_MAX_LINES: int = 1000
     FILE_HISTORY: str = "file_history.json"
     API_SECRET: str = os.getenv("API_SECRET", "")
     API_PORT: int = 8000
@@ -123,6 +125,10 @@ class Config:
             raise ValueError("RLHF_THRESHOLD must be integer")
         if not isinstance(self.RLHF_OUTPUT_DIR, str):
             raise ValueError("RLHF_OUTPUT_DIR must be string")
+        if not isinstance(self.ERROR_LOG_PATH, str):
+            raise ValueError("ERROR_LOG_PATH must be string")
+        if not isinstance(self.ERROR_LOG_MAX_LINES, int):
+            raise ValueError("ERROR_LOG_MAX_LINES must be integer")
         if not isinstance(self.MAX_PROMPT_TOKENS, int):
             raise ValueError("MAX_PROMPT_TOKENS must be integer")
         if not isinstance(self.COMPLEXITY_TAG_THRESHOLD, int):

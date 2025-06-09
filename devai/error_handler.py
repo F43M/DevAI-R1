@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Callable, Awaitable, TypeVar
 from pathlib import Path
 
-from .config import logger
+from .config import logger, config
 import json
 import aiofiles
 
@@ -14,7 +14,7 @@ error_memory = []  # persist across runs
 
 def load_persisted_errors() -> None:
     """Load errors from previous runs into memory."""
-    path = Path("errors_log.jsonl")
+    path = Path(config.ERROR_LOG_PATH)
     if not path.exists():
         return
     try:
@@ -76,7 +76,9 @@ def log_error(func_name: str, e: Exception) -> None:
 
 async def persist_errors() -> None:
     """Persist the in-memory error log to disk."""
-    async with aiofiles.open("errors_log.jsonl", "a") as f:
+    path = Path(config.ERROR_LOG_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    async with aiofiles.open(path, "a") as f:
         for err in error_memory:
             data = {
                 "timestamp": err["timestamp"].isoformat(),
@@ -86,6 +88,13 @@ async def persist_errors() -> None:
             }
             await f.write(json.dumps(data) + "\n")
     error_memory.clear()
+    try:
+        lines = path.read_text().splitlines()
+        if len(lines) > config.ERROR_LOG_MAX_LINES:
+            lines = lines[-config.ERROR_LOG_MAX_LINES :]
+            path.write_text("\n".join(lines) + "\n")
+    except Exception as e:
+        logger.warning("Erro ao truncar log", error=str(e))
 
 def friendly_message(e: Exception) -> str:
     """Map technical errors to friendly messages for the user."""

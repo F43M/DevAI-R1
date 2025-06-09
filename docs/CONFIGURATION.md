@@ -40,3 +40,13 @@ O arquivo `intent_samples.json` contém exemplos de frases e suas respectivas in
 
 Após atualizar esse arquivo, execute o comando `/train_intents` no CLI. O processo irá gerar `intent_model.pkl`, utilizado pelo roteador de intenções. Caso o modelo não exista, o DevAI continuará usando apenas o mapeamento por palavras‑chave.
 
+## Log de erros
+
+O DevAI mantém um histórico dos erros ocorridos em `ERROR_LOG_PATH`.
+Após cada execução, o arquivo é truncado para no máximo `ERROR_LOG_MAX_LINES` linhas para evitar crescimento indefinido.
+
+```yaml
+ERROR_LOG_PATH: errors_log.jsonl
+ERROR_LOG_MAX_LINES: 1000
+```
+
