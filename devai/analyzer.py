@@ -330,9 +330,7 @@ class CodeAnalyzer:
                     rel,
                     strength=strength,
                 )
-        all_code = [
-            (mid, json.loads(meta)["name"]) for name, mid in code_memories.items()
-        ]
+        all_code = [(mid, name) for name, mid in code_memories.items()]
         for i, (mid1, name1) in enumerate(all_code):
             for j, (mid2, name2) in enumerate(all_code[i + 1 :], i + 1):
                 if self._name_similarity(name1, name2) > 0.7:
