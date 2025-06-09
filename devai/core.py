@@ -249,10 +249,15 @@ class CodeMemoryAI:
             return {"status": "reset", "session": session_id}
 
         @self.app.post("/session/reset")
-        async def reset_session():
-            self.conv_handler.clear_session()
-            self.conversation = self.conv_handler.history("default")
-            return {"status": "ok", "message": "Sessão reiniciada com sucesso"}
+        async def reset_session(session_id: str = "default"):
+            self.conv_handler.clear_session(session_id)
+            if session_id == "default":
+                self.conversation = self.conv_handler.history("default")
+            return {"status": "ok", "session": session_id}
+
+        @self.app.get("/session/history")
+        async def session_history(session_id: str = "default"):
+            return self.conv_handler.history(session_id)
 
         @self.app.post("/analyze_deep")
         async def analyze_deep(query: str, session_id: str = "default"):

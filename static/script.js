@@ -185,7 +185,7 @@ function showHistoryWarning(){
 
 async function syncChatFromBackend(){
   try{
-    const r=await fetch('/history');
+    const r=await fetch('/session/history');
     const hist=await r.json();
     if(Array.isArray(hist)){
       window.chatHistory=hist;
@@ -228,7 +228,7 @@ function addSystemMessage(msg){
 }
 
 async function resetSession(){
-  await fetch('/session/reset', {method:'POST'});
+  await fetch('/session/reset?session_id=default', {method:'POST'});
   clearUIConversation();
   try{localStorage.removeItem(CHAT_KEY);}catch(e){}
   addSystemMessage('✅ Sessão reiniciada com sucesso.');
@@ -254,7 +254,7 @@ window.addEventListener('load',async()=>{
     if('show_reasoning_default' in info) showReasoningByDefault=info.show_reasoning_default;
     if('show_context_button' in info) showContextButton=info.show_context_button;
   }catch(e){}
-  // syncChatFromBackend(); // habilitar quando endpoint /history estiver disponível
+  syncChatFromBackend();
   const btn=document.getElementById('clearHistoryBtn');
   if(btn) btn.onclick=clearChat;
   const reset=document.getElementById('reset-session-btn');
