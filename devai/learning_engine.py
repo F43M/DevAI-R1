@@ -91,6 +91,8 @@ class LearningEngine:
         self.rate_limit = rate_limit
         self._call_times: List[float] = []
         self.call_count = 0
+        self.score_map = Path("devai/meta/score_map.json")
+        self.priority_files: list[str] = []
         cur = self.memory.conn.cursor()
         cur.execute(
             """
@@ -103,6 +105,29 @@ class LearningEngine:
             """
         )
         self.memory.conn.commit()
+
+    def _load_negative_scores(self) -> None:
+        """Load negative scored files from score_map.json."""
+        if not self.score_map.exists():
+            self.priority_files = []
+            return
+        try:
+            scores = json.loads(self.score_map.read_text())
+        except Exception:
+            scores = {}
+        negatives = {f: s for f, s in scores.items() if s < 0}
+        self.priority_files = list(negatives)
+        for f, score in negatives.items():
+            self.memory.save(
+                {
+                    "type": "reflection",
+                    "memory_type": "reflection",
+                    "content": f"Arquivo {f} com score negativo {score}",
+                    "metadata": {"file": f, "score": score},
+                    "tags": ["metacognition", "critico"],
+                    "context_level": "short",
+                }
+            )
 
     def register_rule(self, rule: str, source: Dict[str, Any]) -> None:
         """Store a learned rule and its origin."""
@@ -155,7 +180,12 @@ class LearningEngine:
             async with sem:
                 return await self._rate_limited_call(prompt, max_len)
 
+        self._load_negative_scores()
         chunks = list(self.analyzer.code_chunks.values())
+        if self.priority_files:
+            prioritized = [c for c in chunks if c.get("file") in self.priority_files]
+            others = [c for c in chunks if c.get("file") not in self.priority_files]
+            chunks = prioritized + others
         total = len(chunks)
         processed = 0
         _write_progress(0.0)
