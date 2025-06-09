@@ -13,4 +13,4 @@ psutil
 PyYAML
 PyJWT
 python-dotenv
-trl
+trl>=0.7

@@ -8,7 +8,7 @@ from devai.memory import MemoryManager
 
 
 class DummyMemory(MemoryManager):
-    def __init__(self, path: str):
+    def __init__(self, path: str, *a, **k):
         super().__init__(path, "dummy", model=None, index=None)
 
 
@@ -49,3 +49,15 @@ def test_fine_tune_creates_output(tmp_path):
     result = asyncio.run(tuner.fine_tune("base", str(out)))
     assert out.exists()
     assert "status" in result
+
+
+def test_cli_main_runs(tmp_path, monkeypatch, capsys):
+    _create_memory(tmp_path)
+    out = tmp_path / "model"
+    import devai.memory as memory_module
+    monkeypatch.setattr(memory_module, "MemoryManager", DummyMemory)
+    monkeypatch.setattr(rlhf.config, "MEMORY_DB", str(tmp_path / "mem.sqlite"))
+    rlhf.main(["base", str(out)])
+    out_text = capsys.readouterr().out
+    assert out.exists()
+    assert "status" in out_text
