@@ -1,6 +1,7 @@
 import asyncio
 import os
 import json
+import hashlib
 from collections import defaultdict, OrderedDict
 from datetime import datetime
 from typing import Dict, List, Optional, Any, AsyncGenerator
@@ -476,14 +477,21 @@ class CodeMemoryAI:
                 simulate_update,
                 evaluate_change_with_ia,
                 log_simulation,
-                run_tests_in_temp,
             )
 
-            diff, temp_root, sim_id = simulate_update(file_path, suggested_code)
-            tests_ok, test_output = run_tests_in_temp(temp_root)
+            diff, tests_ok, test_output, sim_id, patch_file = simulate_update(file_path, suggested_code)
             evaluation = await evaluate_change_with_ia(diff)
             status = "shadow_failed" if not tests_ok else "shadow_declined"
-            log_simulation(sim_id, file_path, tests_ok, evaluation["analysis"], status)
+            patch_hash = hashlib.sha1(diff.encode("utf-8")).hexdigest()
+            log_simulation(
+                sim_id,
+                file_path,
+                tests_ok,
+                evaluation["analysis"],
+                status,
+                patch_hash=patch_hash,
+                test_output=test_output,
+            )
             return {
                 "id": sim_id,
                 "diff": diff,
