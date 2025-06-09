@@ -40,6 +40,7 @@ class DummyAI:
         self.analyzer = types.SimpleNamespace(deep_scan_app=noop, get_code_graph=lambda: {"nodes": [], "links": []})
         self.memory = types.SimpleNamespace(search=lambda q, top_k=5: [])
         self.tasks = types.SimpleNamespace(run_task=noop)
+        self.double_check = None
     async def analyze_impact(self, changed):
         return []
     async def verify_compliance(self, spec):
@@ -105,3 +106,42 @@ def test_cli_plain_mode(monkeypatch):
     monkeypatch.setattr(cli, "CLIUI", make_ui)
     asyncio.run(cli.cli_main(plain=True))
     assert called == []
+
+
+def test_cli_render_diff(monkeypatch):
+    class DiffAI(DummyAI):
+        async def generate_response(self, q, **kw):
+            return "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@\n-old\n+new\n"
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
+    ui_obj = None
+
+    def make_ui(*a, **k):
+        nonlocal ui_obj
+        ui_obj = DummyUI(["hi", "/sair"])
+        return ui_obj
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    assert ui_obj is not None
+    assert any("diff --git" in out for out in ui_obj.outputs)
+
+
+def test_cli_render_diff_plusminus(monkeypatch):
+    class DiffAI(DummyAI):
+        async def generate_response(self, q, **kw):
+            return "-old line\n+new line\n"
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
+    ui_obj = None
+
+    def make_ui(*a, **k):
+        nonlocal ui_obj
+        ui_obj = DummyUI(["hi", "/sair"])
+        return ui_obj
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    assert ui_obj is not None
+    assert "-old line\n+new line\n" in ui_obj.outputs
+
