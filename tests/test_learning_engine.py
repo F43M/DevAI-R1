@@ -57,6 +57,8 @@ def test_skip_already_processed(tmp_path):
 
     engine._rate_limited_call = fake_call
     asyncio.run(engine.learn_from_codebase())
+    progress_file = Path("logs/learning_progress.json")
+    assert progress_file.exists()
     assert count == 3
     count = 0
     asyncio.run(engine.learn_from_codebase())
