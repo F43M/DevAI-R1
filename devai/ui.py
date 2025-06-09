@@ -177,7 +177,14 @@ class CLIUI:
                     except Exception:
                         pass
 
-            yield _update
+            try:
+                yield _update
+            finally:
+                if self.progress_handler:
+                    try:
+                        self.progress_handler("done")
+                    except Exception:
+                        pass
         else:
             from rich.progress import (
                 Progress,
@@ -211,7 +218,14 @@ class CLIUI:
                         except Exception:
                             pass
 
-                yield _update
+                try:
+                    yield _update
+                finally:
+                    if self.progress_handler:
+                        try:
+                            self.progress_handler("done")
+                        except Exception:
+                            pass
 
     async def confirm(self, message: str) -> bool:
         """Ask the user to confirm an action."""
