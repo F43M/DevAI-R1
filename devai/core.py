@@ -783,7 +783,7 @@ class CodeMemoryAI:
 
         Accept minor variations like spaces around the marker.
         """
-        m = re.search(r"===\s*RESPOSTA\s*===", text)
+        m = re.search(r"===\s*RESPOSTA\s*===", text, re.IGNORECASE)
         if m:
             plan = text[: m.start()]
             resp = text[m.end() :]

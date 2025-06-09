@@ -55,6 +55,7 @@
   <div id="aiPanel">
     <h3>Painel IA</h3>
     <div id="ia-panel" class="chat"></div>
+    <pre id="planOutput"></pre>
     <pre id="aiOutput"></pre>
     <button id="toggleReason" style="display:none;" onclick="toggleReasoning()">👁️ Ver raciocínio da IA</button>
     <button id="showContextBtn" style="display:none;" onclick="toggleContext()">🧠 Contexto Atual</button>
@@ -127,7 +128,9 @@ async function send(cot){
     const r=await fetch(url+'?'+new URLSearchParams({query:q}),{method:'POST'});
     let data;
     try{ data=await r.json(); }catch(e){ data={}; }
-    if(data.plan) appendConsole('🧠 Plano de Raciocínio:\n'+data.plan);
+    if(data.plan){
+      document.getElementById('planOutput').textContent=data.plan;
+    }
     const answer=data.main_response||data.response||'';
     document.getElementById('aiOutput').textContent=answer;
     addChat('assistant',answer);
