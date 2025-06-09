@@ -78,6 +78,18 @@ class LearningEngine:
         self.rate_limit = rate_limit
         self._call_times: List[float] = []
         self.call_count = 0
+        cur = self.memory.conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS processing_state (
+                file TEXT PRIMARY KEY,
+                hash TEXT,
+                mtime REAL,
+                last_processed TEXT
+            )
+            """
+        )
+        self.memory.conn.commit()
 
     def register_rule(self, rule: str, source: Dict[str, Any]) -> None:
         """Store a learned rule and its origin."""
@@ -105,47 +117,79 @@ class LearningEngine:
             prompt, max_length, prompt, self.memory
         )
 
+    def _get_processing_state(self, file: str):
+        cur = self.memory.conn.cursor()
+        cur.execute(
+            "SELECT hash, mtime FROM processing_state WHERE file=?",
+            (file,),
+        )
+        return cur.fetchone()
+
+    def _update_processing_state(self, file: str, h: str, mtime: float) -> None:
+        cur = self.memory.conn.cursor()
+        cur.execute(
+            "INSERT OR REPLACE INTO processing_state (file, hash, mtime, last_processed) VALUES (?, ?, ?, ?)",
+            (file, h, mtime, datetime.now().isoformat()),
+        )
+        self.memory.conn.commit()
+
     async def learn_from_codebase(self):
         """Scan analyzed chunks and record explanations and best practices."""
-        # Loop over every known function to extract knowledge for the memory bank
+        sem = asyncio.Semaphore(self.rate_limit)
+
+        async def limited_call(prompt: str, max_len: int = 800) -> str:
+            async with sem:
+                return await self._rate_limited_call(prompt, max_len)
+
+        tasks = []
+
         for chunk in self.analyzer.code_chunks.values():
             code = chunk.get("code") or ""
             if not code:
                 continue
-            meta = {"function": chunk["name"], "file": chunk.get("file")}
-            resp = await self._rate_limited_call(
-                f"Explique o que essa funcao faz:\n{code}"
-            )
-            self.memory.save(
-                {
-                    "type": "learning",
-                    "memory_type": "explicacao",
-                    "content": resp,
-                    "metadata": meta,
-                }
-            )
-            resp = await self._rate_limited_call(
-                f"Ha algum risco ou ambiguidade?\n{code}"
-            )
-            self.memory.save(
-                {
-                    "type": "learning",
-                    "memory_type": "risco_oculto",
-                    "content": resp,
-                    "metadata": meta,
-                }
-            )
-            resp = await self._rate_limited_call(
-                f"Essa estrutura esta otimizada?\n{code}"
-            )
-            self.memory.save(
-                {
-                    "type": "learning",
-                    "memory_type": "boas_praticas",
-                    "content": resp,
-                    "metadata": meta,
-                }
-            )
+            file_path = chunk.get("file") or ""
+            mtime = Path(file_path).stat().st_mtime if file_path else 0.0
+            state = self._get_processing_state(file_path)
+            if state and (state[0] == chunk.get("hash") or float(state[1]) == mtime):
+                continue
+
+            async def process(c=chunk, mt=mtime):
+                meta = {"function": c["name"], "file": c.get("file")}
+                resp1, resp2, resp3 = await asyncio.gather(
+                    limited_call(f"Explique o que essa funcao faz:\n{c['code']}"),
+                    limited_call(f"Ha algum risco ou ambiguidade?\n{c['code']}"),
+                    limited_call(f"Essa estrutura esta otimizada?\n{c['code']}")
+                )
+                self.memory.save(
+                    {
+                        "type": "learning",
+                        "memory_type": "explicacao",
+                        "content": resp1,
+                        "metadata": meta,
+                    }
+                )
+                self.memory.save(
+                    {
+                        "type": "learning",
+                        "memory_type": "risco_oculto",
+                        "content": resp2,
+                        "metadata": meta,
+                    }
+                )
+                self.memory.save(
+                    {
+                        "type": "learning",
+                        "memory_type": "boas_praticas",
+                        "content": resp3,
+                        "metadata": meta,
+                    }
+                )
+                self._update_processing_state(c.get("file"), c.get("hash", ""), mt)
+
+            tasks.append(asyncio.create_task(process()))
+
+        if tasks:
+            await asyncio.gather(*tasks)
         logger.info("Aprendizado do codigo concluido", calls=self.call_count)
 
     async def learn_from_errors(self):
@@ -153,7 +197,14 @@ class LearningEngine:
         log_dir = Path(config.LOG_DIR)
         if not log_dir.exists():
             return
-        # Inspect each log and extract insights when error keywords show up
+        sem = asyncio.Semaphore(self.rate_limit)
+
+        async def limited_call(prompt: str, max_len: int = 800) -> str:
+            async with sem:
+                return await self._rate_limited_call(prompt, max_len)
+
+        tasks = []
+
         for log_file in log_dir.glob("*.log"):
             meta_file = log_file.with_suffix(log_file.suffix + ".meta")
             if meta_file.exists():
@@ -163,29 +214,36 @@ class LearningEngine:
                         continue
                 except Exception:
                     pass
-            try:
-                text = log_file.read_text()[-2000:]
-            except Exception:
+            mtime = log_file.stat().st_mtime
+            state = self._get_processing_state(str(log_file))
+            if state and float(state[1]) == mtime:
                 continue
-            if any(kw in text for kw in ["ERROR", "Exception", "FAIL"]):
-                prompt = f"Explique esse erro e como evita-lo:\n{text}"
-                resp = await self._rate_limited_call(prompt)
+
+            async def process(file_path=log_file, mt=mtime):
+                try:
+                    text = file_path.read_text()[-2000:]
+                except Exception:
+                    return
+                if not any(kw in text for kw in ["ERROR", "Exception", "FAIL"]):
+                    return
+                resp1, resp2 = await asyncio.gather(
+                    limited_call(f"Explique esse erro e como evita-lo:\n{text}"),
+                    limited_call(f"O que causou esse comportamento?\n{text}")
+                )
                 self.memory.save(
                     {
                         "type": "erro",
                         "memory_type": "erro_estudado",
-                        "content": resp,
-                        "metadata": {"file": str(log_file)},
+                        "content": resp1,
+                        "metadata": {"file": str(file_path)},
                     }
                 )
-                prompt = f"O que causou esse comportamento?\n{text}"
-                resp = await self._rate_limited_call(prompt)
                 self.memory.save(
                     {
                         "type": "erro",
                         "memory_type": "licao_aprendida",
-                        "content": resp,
-                        "metadata": {"file": str(log_file)},
+                        "content": resp2,
+                        "metadata": {"file": str(file_path)},
                     }
                 )
                 meta_file.write_text(
@@ -194,6 +252,12 @@ class LearningEngine:
                         indent=2,
                     )
                 )
+                self._update_processing_state(str(file_path), "", mt)
+
+            tasks.append(asyncio.create_task(process()))
+
+        if tasks:
+            await asyncio.gather(*tasks)
         logger.info("Aprendizado de erros concluido")
 
     async def extract_positive_patterns(self):

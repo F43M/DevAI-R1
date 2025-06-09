@@ -30,3 +30,71 @@ def test_explain_learning_lessons(tmp_path, monkeypatch):
     summary_file = Path("logs/learning_summary.md")
     assert summary_file.exists()
     assert result == "resumo"
+
+
+def test_skip_already_processed(tmp_path):
+    db = tmp_path / "mem.sqlite"
+    mem = MemoryManager(str(db), "dummy", model=None, index=None)
+    analyzer = CodeAnalyzer(str(tmp_path), mem)
+    file = tmp_path / "f.py"
+    file.write_text("def a():\n    pass")
+    analyzer.code_chunks = {
+        "a": {
+            "name": "a",
+            "file": str(file),
+            "code": "def a(): pass",
+            "hash": "h1",
+        }
+    }
+
+    engine = LearningEngine(analyzer, mem, DummyModel(), rate_limit=2)
+    count = 0
+
+    async def fake_call(*a, **k):
+        nonlocal count
+        count += 1
+        return "ok"
+
+    engine._rate_limited_call = fake_call
+    asyncio.run(engine.learn_from_codebase())
+    assert count == 3
+    count = 0
+    asyncio.run(engine.learn_from_codebase())
+    assert count == 0
+
+
+def test_concurrent_calls(tmp_path):
+    db = tmp_path / "mem.sqlite"
+    mem = MemoryManager(str(db), "dummy", model=None, index=None)
+    analyzer = CodeAnalyzer(str(tmp_path), mem)
+    files = []
+    chunks = {}
+    for i in range(3):
+        f = tmp_path / f"f{i}.py"
+        f.write_text(f"def f{i}():\n    pass")
+        files.append(f)
+        chunks[f"f{i}"] = {
+            "name": f"f{i}",
+            "file": str(f),
+            "code": f"def f{i}(): pass",
+            "hash": str(i),
+        }
+
+    analyzer.code_chunks = chunks
+
+    engine = LearningEngine(analyzer, mem, DummyModel(), rate_limit=2)
+    active = 0
+    observed = 0
+
+    async def fake_call(*a, **k):
+        nonlocal active, observed
+        active += 1
+        observed = max(observed, active)
+        await asyncio.sleep(0.01)
+        active -= 1
+        return "ok"
+
+    engine._rate_limited_call = fake_call
+    asyncio.run(engine.learn_from_codebase())
+    assert observed > 1
+    assert observed <= 2
