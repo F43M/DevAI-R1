@@ -2,6 +2,16 @@
 
 Este documento descreve os comandos simbólicos disponíveis no DevAI via CLI. Todos eles produzem mensagens simbólicas e estão preparados para integração futura ao painel visual.
 
+Ao iniciar a CLI com `python -m devai --cli` é apresentada uma interface colorida baseada em Rich. Um terminal simples pode usar `--plain`.
+
+Exemplo:
+
+```
+┌─ DevAI ──────────────┐
+│ >>> /rastrear app.py │
+└──────────────────────┘
+```
+
 ## /lembrar <conteúdo> [tipo:<tag>]
 Armazena uma memória manualmente na base vetorial. Opcionalmente é possível definir uma tag de tipo.
 
