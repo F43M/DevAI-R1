@@ -87,7 +87,7 @@ Por padrão a CLI utiliza a interface colorida do [Rich](https://github.com/Text
 
 Atalhos comuns:
 - setas **↑/↓** percorrem o histórico de comandos;
-- **Tab** autocompleta nomes e caminhos.
+- **Tab** sugere comandos e caminhos de arquivo.
 
 Exemplo de tela:
 
@@ -110,7 +110,7 @@ python -m devai --cli --tui
 A TUI exibe janelas de histórico e diff. Os mesmos atalhos funcionam:
 
 - setas **↑/↓** percorrem o histórico de comandos;
-- **Tab** autocompleta nomes e caminhos.
+- **Tab** sugere comandos e caminhos de arquivo.
 
 ### Gerenciamento de arquivos
 

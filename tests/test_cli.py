@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from devai import cli
+import pytest
 
 
 class DummyUI:
@@ -419,3 +420,31 @@ def test_cli_historico_cli(monkeypatch, tmp_path, capsys):
 def test_commands_mapping():
     assert "memoria" in cli.COMMANDS
     assert callable(cli.COMMANDS["memoria"])
+
+
+def test_cliui_includes_path_completer(monkeypatch):
+    pt = pytest.importorskip("prompt_toolkit")
+    from prompt_toolkit.completion import PathCompleter
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
+
+    ui = cli.CLIUI()
+    if ui.session is None:
+        pytest.skip("PromptSession not available")
+
+    completer = ui.session.completer
+
+    def has_path(comp):
+        if isinstance(comp, PathCompleter):
+            return True
+        for attr in ("completers", "children", "child"):
+            sub = getattr(comp, attr, None)
+            if isinstance(sub, list):
+                if any(has_path(c) for c in sub):
+                    return True
+            elif sub is not None:
+                if has_path(sub):
+                    return True
+        return False
+
+    assert has_path(completer)
