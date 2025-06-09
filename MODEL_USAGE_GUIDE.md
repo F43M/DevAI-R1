@@ -15,3 +15,11 @@ tokens** por resposta. O DevAI envia `stream=True` para transmitir os tokens aos
 poucos; caso o modelo não ofereça streaming, o texto completo é retornado de uma
 única vez. Consulte [limitations.md](limitations.md) para detalhes e para
 entender eventuais variações observadas no endpoint `/analyze_deep`.
+
+## Estatísticas de uso
+
+O endpoint `/metrics` agora mostra contadores de chamadas por modelo e a
+porcentagem de respostas incompletas detectadas.  Use `model_usage` para
+avaliar a frequência de cada provedor configurado.  Os campos
+`error_percent` e `incomplete_percent` indicam, respectivamente, a taxa de
+falhas de API e de respostas que precisaram de recuperação por corte.

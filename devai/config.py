@@ -138,6 +138,8 @@ class Metrics:
         self.errors = 0
         self.max_cpu_percent = 0.0
         self.max_memory_percent = 0.0
+        self.model_usage: Dict[str, int] = {}
+        self.incomplete_responses = 0
 
     def record_call(self, duration: float):
         self.api_calls += 1
@@ -146,6 +148,12 @@ class Metrics:
 
     def record_error(self):
         self.errors += 1
+
+    def record_model_usage(self, name: str) -> None:
+        self.model_usage[name] = self.model_usage.get(name, 0) + 1
+
+    def record_incomplete(self) -> None:
+        self.incomplete_responses += 1
 
     def update_resources(self) -> None:
         if not psutil:
@@ -166,6 +174,10 @@ class Metrics:
             "errors": self.errors,
             "max_cpu_percent": self.max_cpu_percent,
             "max_memory_percent": self.max_memory_percent,
+            "model_usage": dict(self.model_usage),
+            "incomplete_responses": self.incomplete_responses,
+            "error_percent": (self.errors / self.api_calls * 100) if self.api_calls else 0,
+            "incomplete_percent": (self.incomplete_responses / self.api_calls * 100) if self.api_calls else 0,
         }
         if psutil:
             try:
