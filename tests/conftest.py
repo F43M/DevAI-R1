@@ -39,6 +39,44 @@ except Exception:
         return seen
     sys.modules['networkx'] = types.SimpleNamespace(DiGraph=DiGraph, descendants=descendants)
 
+# Provide lightweight Rich stubs when the library is unavailable
+try:  # pragma: no cover - prefer real library when present
+    from rich.console import Console  # type: ignore  # noqa: F401
+except Exception:  # pragma: no cover - fallback for test env
+    console_mod = types.ModuleType('rich.console')
+    class Console:
+        def __init__(self, *a, **k):
+            pass
+        def print(self, *a, **k):
+            print(*a)
+    console_mod.Console = Console
+
+    panel_mod = types.ModuleType('rich.panel')
+    class Panel(str):
+        pass
+    panel_mod.Panel = Panel
+
+    syntax_mod = types.ModuleType('rich.syntax')
+    class Syntax(str):
+        def __init__(self, code: str, *_a, **_k):
+            str.__init__(self)
+    syntax_mod.Syntax = Syntax
+
+    text_mod = types.ModuleType('rich.text')
+    text_mod.Text = str
+
+    rich_mod = types.ModuleType('rich')
+    rich_mod.console = console_mod
+    rich_mod.panel = panel_mod
+    rich_mod.syntax = syntax_mod
+    rich_mod.text = text_mod
+
+    sys.modules.setdefault('rich', rich_mod)
+    sys.modules.setdefault('rich.console', console_mod)
+    sys.modules.setdefault('rich.panel', panel_mod)
+    sys.modules.setdefault('rich.syntax', syntax_mod)
+    sys.modules.setdefault('rich.text', text_mod)
+
 try:
     from fastapi import FastAPI  # type: ignore  # noqa: F401
     from fastapi.staticfiles import StaticFiles  # noqa: F401
