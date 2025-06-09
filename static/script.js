@@ -185,7 +185,7 @@ function showHistoryWarning(){
 
 async function syncChatFromBackend(){
   try{
-    const r=await fetch('/session/history');
+    const r=await fetch('/history');
     const hist=await r.json();
     if(Array.isArray(hist)){
       window.chatHistory=hist;
