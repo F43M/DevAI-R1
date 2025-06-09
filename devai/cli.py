@@ -9,8 +9,10 @@ from .decision_log import log_decision
 from pathlib import Path
 import re
 
+from .ui import CLIUI
 
-async def cli_main(guided: bool = False):
+
+async def cli_main(guided: bool = False, plain: bool = False):
     """Interactive command loop for DevAI.
 
     Comandos principais: /lembrar, /esquecer, /ajustar, /rastrear e /memoria.
@@ -18,6 +20,34 @@ async def cli_main(guided: bool = False):
     print("Inicializando CodeMemoryAI com DeepSeek-R1...")
     ai = CodeMemoryAI()
     feedback_db = FeedbackDB()
+    commands = [
+        "/memoria",
+        "/lembrar",
+        "/esquecer",
+        "/ajustar",
+        "/rastrear",
+        "/tarefa",
+        "/analisar",
+        "/verificar",
+        "/grafo",
+        "/ls",
+        "/abrir",
+        "/editar",
+        "/novoarq",
+        "/novapasta",
+        "/deletar",
+        "/historico",
+        "/feedback",
+        "/tests_local",
+        "/plugins",
+        "/plugin",
+        "/treinar_rlhf",
+        "/treinar_rlhf_auto",
+        "/train_intents",
+        "/preferencia",
+        "/sair",
+    ]
+    ui = CLIUI(plain=plain, commands=commands)
     run_scan = False
     if config.START_MODE == "full":
         run_scan = True
@@ -62,7 +92,8 @@ async def cli_main(guided: bool = False):
     try:
         while True:
             try:
-                user_input = input("\n>>> ").strip()
+                user_input = await ui.read_command("\n>>> ")
+                ui.add_history(f">>> {user_input}")
                 if user_input.lower() == "/sair":
                     break
                 elif user_input.lower().startswith("/memoria"):
@@ -155,7 +186,7 @@ async def cli_main(guided: bool = False):
                     print("✅ Pasta criada" if ok else "Falha ao criar pasta")
                 elif user_input.startswith("/deletar "):
                     path = user_input[len("/deletar "):].strip()
-                    confirm = input("Tem certeza que deseja remover? [s/N] ").lower()
+                    confirm = (await ui.read_command("Tem certeza que deseja remover? [s/N] ")).lower()
                     if confirm != "s":
                         print("Operação cancelada")
                         continue
@@ -300,9 +331,15 @@ async def cli_main(guided: bool = False):
                     status = "ativada" if new_val else "desativada"
                     print(f"Execução isolada {status}")
                 else:
-                    response = await ai.generate_response(user_input, double_check=ai.double_check)
+                    async with ui.loading("Gerando resposta..."):
+                        response = await ai.generate_response(user_input, double_check=ai.double_check)
                     print("\nResposta:")
-                    print(response)
+                    if plain:
+                        print(response)
+                    else:
+                        ui.console.print(response)
+                    ui.add_history(response)
+                    ui.show_history()
             except Exception as e:
                 log_error("CLI", e)
                 print(friendly_message(e))

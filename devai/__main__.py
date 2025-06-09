@@ -18,6 +18,7 @@ def main():
     parser.add_argument("--api", action="store_true", help="Inicia o servidor API")
     parser.add_argument("--cli", action="store_true", help="Inicia a interface de linha de comando")
     parser.add_argument("--guided", action="store_true", help="Mostra orientações passo a passo")
+    parser.add_argument("--plain", action="store_true", help="Interface simples sem Rich")
     parser.add_argument("--observer", action="store_true", help="Modo observador passivo")
     parser.add_argument("command", nargs="*", help="Comandos adicionais")
     args = parser.parse_args()
@@ -41,7 +42,7 @@ def main():
         asyncio.run(run_observer())
         return
     if args.cli:
-        asyncio.run(cli_main(guided=args.guided))
+        asyncio.run(cli_main(guided=args.guided, plain=args.plain))
         return
 
     if args.command:
