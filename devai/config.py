@@ -75,6 +75,9 @@ class Config:
     AUTO_APPROVAL_RULES: list[dict] = field(default_factory=list)
 
     def __init__(self, path: str = "config.yaml") -> None:
+        self._load(path)
+
+    def _load(self, path: str) -> None:
         defaults: Dict[str, Any] = {}
         for f in fields(self.__class__):
             if f.default is not MISSING:
@@ -94,6 +97,10 @@ class Config:
                     "Valores divergentes para 'MODEL_NAME' e 'MODELS.default.name'"
                 )
         self._validate()
+
+    def reload(self, path: str = "config.yaml") -> None:
+        """Reload configuration from ``path`` updating current fields."""
+        self._load(path)
 
     def _validate(self) -> None:
         if not isinstance(self.API_PORT, int):

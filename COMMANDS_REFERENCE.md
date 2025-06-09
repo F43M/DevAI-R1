@@ -95,6 +95,17 @@ Exemplo:
 devai aprovar_proxima 3
 ```
 
+## /regras [add <acao> <caminho> <sim|nao>|del <id>]
+Gerencia as `AUTO_APPROVAL_RULES` do `config.yaml`. Sem argumentos apenas lista
+as regras atuais numeradas.
+
+Exemplo:
+```bash
+devai regras
+devai regras add edit docs/** sim
+devai regras del 1
+```
+
 ## /ajuda
 Mostra esta referência de comandos diretamente na CLI.
 
