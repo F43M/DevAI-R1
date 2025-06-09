@@ -2,6 +2,7 @@ import types
 import pytest
 import config_utils
 import asyncio
+from devai import approval
 from devai.config import Config, config
 from devai.approval import requires_approval
 import devai.command_router as command_router
@@ -100,3 +101,28 @@ def test_temporary_auto_approval(monkeypatch):
     assert not requires_approval("patch")
     assert command_router.approval.auto_approve_remaining == 0
     assert requires_approval("patch")
+
+
+def test_request_approval_notifies(monkeypatch):
+    sent = []
+
+    class DummyNotifier:
+        def __init__(self):
+            self.enabled = True
+
+        def send(self, subj, body):
+            sent.append(body)
+
+    monkeypatch.setattr("devai.approval.Notifier", DummyNotifier)
+    monkeypatch.setattr(config, "API_PORT", 1234, raising=False)
+
+    async def run():
+        fut = asyncio.create_task(approval.request_approval("Permitir?"))
+        req = await approval.wait_for_request()
+        approval.resolve_request(True)
+        result = await fut
+        return req, result
+
+    req, result = asyncio.run(run())
+    assert result is True
+    assert req["token"] in sent[0]
