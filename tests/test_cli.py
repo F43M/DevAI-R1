@@ -165,6 +165,28 @@ def test_cli_render_diff():
     assert any("..." in c for c in captured)
 
 
+def test_cli_render_diff_side_by_side():
+    from devai.ui import CLIUI
+    from rich.table import Table
+
+    ui = CLIUI()
+    captured: list[object] = []
+    panel = types.SimpleNamespace(clear=lambda: None, write=lambda t: captured.append(t))
+    ui.diff_panel = panel
+
+    diff_lines = [
+        "--- a/x",
+        "+++ b/x",
+        "@@",
+        "-old",
+        "+new",
+    ]
+    ui.render_diff("\n".join(diff_lines), side_by_side=True)
+
+    assert captured
+    assert isinstance(captured[0], Table)
+
+
 def test_cli_render_diff_plusminus(monkeypatch):
     class DiffAI(DummyAI):
         async def generate_response(self, q, **kw):
