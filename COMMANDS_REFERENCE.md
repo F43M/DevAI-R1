@@ -86,6 +86,15 @@ Exemplo:
 devai modo auto_edit
 ```
 
+## /aprovar_proxima [N]
+Ativa aprovações automáticas temporárias para as próximas `N` ações.
+O padrão é `1`.
+
+Exemplo:
+```bash
+devai aprovar_proxima 3
+```
+
 ## /ajuda
 Mostra esta referência de comandos diretamente na CLI.
 

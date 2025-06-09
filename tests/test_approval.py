@@ -1,8 +1,10 @@
 import types
 import pytest
 import config_utils
+import asyncio
 from devai.config import Config, config
 from devai.approval import requires_approval
+import devai.command_router as command_router
 import devai.decision_log as decision_log
 
 
@@ -87,3 +89,14 @@ def test_auto_approval_rules_force(monkeypatch):
     monkeypatch.setattr(config, "APPROVAL_MODE", "full_auto")
     assert requires_approval("edit", "docs/file.md")
     assert not requires_approval("edit", "src/file.py")
+
+
+def test_temporary_auto_approval(monkeypatch):
+    monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
+    command_router.approval.auto_approve_remaining = 0
+    asyncio.run(command_router.handle_aprovar_proxima(None, None, "2", plain=True, feedback_db=None))
+    assert command_router.approval.auto_approve_remaining == 2
+    assert not requires_approval("patch")
+    assert not requires_approval("patch")
+    assert command_router.approval.auto_approve_remaining == 0
+    assert requires_approval("patch")

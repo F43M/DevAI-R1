@@ -18,6 +18,7 @@ try:
     from .cli import UpdateManager  # type: ignore
 except Exception:  # pragma: no cover - fallback for tests
     from .update_manager import UpdateManager
+from . import approval
 from .approval import requires_approval, request_approval
 
 
@@ -544,6 +545,19 @@ async def handle_tests_local(ai, ui, args, *, plain, feedback_db):
     print(f"Execução isolada {status}")
 
 
+async def handle_aprovar_proxima(ai, ui, args, *, plain, feedback_db):
+    """Ativar aprovações automáticas temporárias."""
+    try:
+        count = int(args.strip() or "1")
+    except ValueError:
+        print("Uso: /aprovar_proxima <n>")
+        return
+    approval.auto_approve_remaining = max(0, count)
+    print(
+        f"Próximas {approval.auto_approve_remaining} ações aprovadas automaticamente"
+    )
+
+
 async def handle_modo(ai, ui, args, *, plain, feedback_db):
     """Alterar config.APPROVAL_MODE em tempo real."""
     mode = args.strip().lower()
@@ -727,6 +741,7 @@ COMMANDS = {
     "feedback": handle_feedback,
     "refatorar": handle_refatorar,
     "rever": handle_rever,
+    "aprovar_proxima": handle_aprovar_proxima,
     "modo": handle_modo,
     "resetar": handle_resetar,
     "tests_local": handle_tests_local,

@@ -7,6 +7,9 @@ _approval_event = asyncio.Event()
 _approval_future: asyncio.Future | None = None
 _approval_message = ""
 
+# Remaining actions allowed without manual approval
+auto_approve_remaining = 0
+
 WRITE_ACTIONS = {"patch", "edit", "create", "delete"}
 
 
@@ -20,6 +23,10 @@ def match_glob(pattern: str, target: str) -> bool:
 
 def requires_approval(action: str, path: str | None = None) -> bool:
     """Return True if the given action requires confirmation."""
+    global auto_approve_remaining
+    if auto_approve_remaining > 0:
+        auto_approve_remaining -= 1
+        return False
     if path and is_remembered(action, path):
         return False
 
