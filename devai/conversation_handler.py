@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import asyncio
 
+from .memory import np, faiss
+
 from .config import logger, config
 from .dialog_summarizer import DialogSummarizer
 
@@ -106,9 +108,32 @@ class ConversationHandler:
 
     def append(self, session_id: str, role: str, content: str) -> None:
         hist = self.history(session_id)
+        message_id = len(hist)
         hist.append({"role": role, "content": content})
         self.prune(session_id)
         self._trim_by_tokens(session_id, config.MAX_SESSION_TOKENS)
+        if (
+            self.memory
+            and hasattr(self.memory, "_get_embedding")
+            and hasattr(self.memory, "conn")
+        ):
+            try:
+                vec = self.memory._get_embedding(content)
+                if vec is not None:
+                    if np is not None:
+                        blob = np.array(vec, dtype=np.float32).tobytes()
+                    else:
+                        blob = json.dumps(vec).encode()
+                else:
+                    blob = None
+                cur = self.memory.conn.cursor()
+                cur.execute(
+                    "INSERT OR REPLACE INTO conversation_embeddings (session_id, message_id, vector) VALUES (?, ?, ?)",
+                    (session_id, message_id, blob),
+                )
+                self.memory.conn.commit()
+            except Exception:
+                logger.error("failed_to_store_conv_embedding", session=session_id)
         if len(hist) >= self.summary_threshold:
             try:
                 loop = asyncio.get_running_loop()
@@ -128,6 +153,66 @@ class ConversationHandler:
 
     def last(self, session_id: str, n: int) -> List[Dict[str, str]]:
         return self.history(session_id)[-n:]
+
+    def search_history(self, session_id: str, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        """Return messages similar to ``query`` using FAISS search."""
+        if (
+            not self.memory
+            or not hasattr(self.memory, "_get_embedding")
+            or not hasattr(self.memory, "conn")
+            or faiss is None
+        ):
+            return []
+
+        cur = self.memory.conn.cursor()
+        cur.execute(
+            "SELECT message_id, vector FROM conversation_embeddings WHERE session_id = ?",
+            (session_id,),
+        )
+        rows = cur.fetchall()
+        if not rows:
+            return []
+
+        vecs = []
+        ids: list[int] = []
+        for mid, blob in rows:
+            if blob is None:
+                continue
+            if np is not None:
+                vec = np.frombuffer(blob, dtype=np.float32).reshape(1, -1)
+            else:
+                vec = json.loads(blob.decode())
+            vecs.append(vec)
+            ids.append(mid)
+        if not vecs:
+            return []
+
+        if np is not None:
+            dim = vecs[0].shape[1]
+            index = faiss.IndexFlatL2(dim)
+            index.add(np.concatenate(vecs))
+            q = np.array(self.memory._get_embedding(query), dtype=np.float32).reshape(1, -1)
+        else:
+            dim = len(vecs[0])
+            index = faiss.IndexFlatL2(dim)
+            index.add(vecs)
+            q = self.memory._get_embedding(query)
+
+        distances, indices = index.search(q, min(top_k, len(ids)))
+        hist = self.history(session_id)
+        results = []
+        for idx, dist in zip(indices[0], distances[0]):
+            if idx < len(ids) and ids[idx] < len(hist):
+                msg = hist[ids[idx]]
+                results.append(
+                    {
+                        "message_id": ids[idx],
+                        "role": msg.get("role"),
+                        "content": msg.get("content"),
+                        "score": 1 - float(dist),
+                    }
+                )
+        return results
 
     def reset(self, session_id: str) -> None:
         self.conversation_context[session_id] = []
