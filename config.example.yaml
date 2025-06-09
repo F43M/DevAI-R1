@@ -2,6 +2,8 @@ CODE_ROOT: ./app
 API_PORT: 8000
 LOG_DIR: ./logs
 LOG_MONITOR_INTERVAL: 60
+ERROR_LOG_PATH: errors_log.jsonl
+ERROR_LOG_MAX_LINES: 1000
 MODELS:
   default:
     name: deepseek/deepseek-r1-0528:free

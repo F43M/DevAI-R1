@@ -1,5 +1,6 @@
 import asyncio
 import pytest
+from devai.config import config
 from devai.error_handler import (
     with_retry_async,
     friendly_message,
@@ -57,6 +58,7 @@ def test_friendly_unknown():
 
 def test_persist_and_load_errors(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(config, "ERROR_LOG_PATH", str(tmp_path / "errors_log.jsonl"))
     error_memory.clear()
     log_error("unit_test", ValueError("boom"))
     asyncio.run(persist_errors())
