@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -39,10 +40,13 @@ def test_collect_examples_returns_content(tmp_path, monkeypatch):
         }
     )
     monkeypatch.setattr(rlhf.config, "LOG_DIR", str(tmp_path))
+    monkeypatch.setattr(rlhf.config, "RLHF_OUTPUT_DIR", str(tmp_path / "out"))
     tuner = rlhf.RLFineTuner(mem)
     data = tuner.collect_examples()
     assert len(data) == 1
     assert (tmp_path / "rlhf_dataset.json").exists()
+    ds_dir = tmp_path / "out" / "datasets"
+    assert len(list(ds_dir.glob("*.sha256"))) == 1
 
 
 def test_collect_log_examples(tmp_path):
@@ -99,6 +103,35 @@ def test_run_scheduled_rlhf(tmp_path, monkeypatch):
 
     result = asyncio.run(core.run_scheduled_rlhf(mem))
     assert result["status"] == "ok"
+    assert "hash" in result
+    assert result["num_examples"] == 1
     cur = mem.conn.cursor()
-    cur.execute("SELECT type FROM memory WHERE type = 'rlhf_training'")
-    assert cur.fetchone()
+    cur.execute("SELECT metadata FROM memory WHERE type = 'rlhf_training'")
+    meta = json.loads(cur.fetchone()[0])
+    assert meta["hash"] == result["hash"]
+
+
+def test_run_scheduled_rlhf_skips_if_same(tmp_path, monkeypatch):
+    mem = _create_memory(tmp_path)
+    monkeypatch.setattr(core.config, "RLHF_THRESHOLD", 1)
+    monkeypatch.setattr(core.config, "RLHF_OUTPUT_DIR", str(tmp_path / "out"))
+    monkeypatch.setattr(core.config, "LOG_DIR", str(tmp_path))
+    monkeypatch.setattr(core.config, "MODELS", {"default": {"name": "base"}})
+
+    calls: list[str] = []
+
+    async def fake_train(base, out):
+        calls.append(out)
+        Path(out).mkdir(parents=True, exist_ok=True)
+        return {"status": "ok"}
+
+    monkeypatch.setattr(core.rlhf, "train_from_memory", fake_train)
+
+    result1 = asyncio.run(core.run_scheduled_rlhf(mem))
+    assert result1["status"] == "ok"
+
+    result2 = asyncio.run(core.run_scheduled_rlhf(mem))
+    assert result2["status"] == "skipped"
+    assert len(calls) == 1
+    ds_dir = tmp_path / "out" / "datasets"
+    assert len(list(ds_dir.glob("*.sha256"))) == 1

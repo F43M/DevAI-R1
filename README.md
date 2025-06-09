@@ -147,6 +147,10 @@ python -m devai.rlhf <modelo_base> ./model_ft
 
 O comando coleta os exemplos do banco de memória, monta um pequeno dataset supervisionado e chama o `SFTTrainer` da `trl`. Os checkpoints do modelo e o arquivo `metrics.json` são gravados no diretório indicado.
 
+O dataset combinado é salvo em `logs/rlhf_dataset.json` e um arquivo com o hash
+SHA256 é criado em `logs/rlhf_results/datasets/`. O treinamento programado só é
+executado quando esse hash muda.
+
 ### Integração contínua
 
 O repositório inclui um workflow em `.github/workflows/ci.yml` que executa lint, análise de segurança e testes a cada *pull request*. Basta habilitar o GitHub Actions para que as tarefas sejam rodadas automaticamente.
