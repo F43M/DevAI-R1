@@ -57,6 +57,7 @@ def test_requires_approval_remember(monkeypatch, tmp_path):
                 "hash_resultado": "x",
                 "timestamp": "2024-01-01",
                 "remember": True,
+                "expires_at": "9999-01-01T00:00:00",
             }
         ])
     )

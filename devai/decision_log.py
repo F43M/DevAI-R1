@@ -22,6 +22,7 @@ def log_decision(
     score: str | None = None,
     fallback: bool | None = None,
     remember: bool | None = None,
+    expires_at: str | None = None,
 ) -> Tuple[str, str]:
     """Register a decision entry in ``decision_log.yaml`` and ``decision_log.md``."""
     path = Path("decision_log.yaml")
@@ -50,6 +51,8 @@ def log_decision(
         entry["fallback"] = fallback
     if remember is not None:
         entry["remember"] = remember
+    if expires_at is not None:
+        entry["expires_at"] = expires_at
     data.append(entry)
     path.write_text(yaml.safe_dump(data, allow_unicode=True))
 
@@ -80,5 +83,12 @@ def is_remembered(action: str, path: str) -> bool:
             and entry.get("modulo") == path
             and entry.get("remember")
         ):
+            exp = entry.get("expires_at")
+            if exp:
+                try:
+                    if datetime.fromisoformat(exp) < datetime.now():
+                        continue
+                except Exception:
+                    pass
             return True
     return False

@@ -604,6 +604,8 @@ def test_cliui_confirm_records_remember(monkeypatch):
     ui = CLIUI(plain=True)
 
     async def fake_read(prompt=">>> "):
+        if "quantos" in prompt:
+            return "2"
         if "Lembrar" in prompt:
             return "s"
         return "s"
@@ -612,3 +614,4 @@ def test_cliui_confirm_records_remember(monkeypatch):
     result = asyncio.run(ui.confirm("ok?"))
     assert result is True
     assert ui.remember_choice is True
+    assert ui.remember_expires is not None

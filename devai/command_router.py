@@ -3,6 +3,7 @@ import asyncio
 import json
 import re
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
@@ -160,6 +161,7 @@ async def handle_editar(ai, ui, args, *, plain, feedback_db):
             model,
             "ok" if confirm else "nao",
             remember=getattr(ui, "remember_choice", False),
+            expires_at=getattr(ui, "remember_expires", None),
         )
     if not confirm:
         print("Operação cancelada")
@@ -189,6 +191,7 @@ async def handle_novoarq(ai, ui, args, *, plain, feedback_db):
             model,
             "ok" if confirm else "nao",
             remember=getattr(ui, "remember_choice", False),
+            expires_at=getattr(ui, "remember_expires", None),
         )
     if not confirm:
         print("Operação cancelada")
@@ -214,6 +217,7 @@ async def handle_novapasta(ai, ui, args, *, plain, feedback_db):
             model,
             "ok" if confirm else "nao",
             remember=getattr(ui, "remember_choice", False),
+            expires_at=getattr(ui, "remember_expires", None),
         )
     if not confirm:
         print("Operação cancelada")
@@ -239,6 +243,7 @@ async def handle_deletar(ai, ui, args, *, plain, feedback_db):
             model,
             "ok" if confirmed else "nao",
             remember=getattr(ui, "remember_choice", False),
+            expires_at=getattr(ui, "remember_expires", None),
         )
     if not confirmed:
         print("Operação cancelada")
@@ -341,7 +346,25 @@ async def handle_decisoes(ai, ui, args, *, plain, feedback_db):
         if not isinstance(data, list):
             data = []
 
-    # Toggle remembered approvals
+    # Toggle remembered approvals or purge expired
+    if parts and parts[0] == "purge":
+        now = datetime.now()
+        kept = []
+        removed = 0
+        for e in data:
+            exp = e.get("expires_at")
+            if exp:
+                try:
+                    if datetime.fromisoformat(exp) < now:
+                        removed += 1
+                        continue
+                except Exception:
+                    pass
+            kept.append(e)
+        log_path.write_text(yaml.safe_dump(kept, allow_unicode=True))
+        print(f"Expirações removidas: {removed}")
+        return
+
     if len(parts) == 2 and parts[0] in {"lembrar", "esquecer"}:
         target_id = parts[1]
         for e in data:
@@ -376,9 +399,16 @@ async def handle_decisoes(ai, ui, args, *, plain, feedback_db):
 
     for e in entries:
         flag = "*" if e.get("remember") else " "
-        print(
-            f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')}"
-        )
+        exp = e.get("expires_at")
+        if exp:
+            line = (
+                f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')} (até {exp})"
+            )
+        else:
+            line = (
+                f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')}"
+            )
+        print(line)
 
 
 async def handle_plugins(ai, ui, args, *, plain, feedback_db):
@@ -629,12 +659,24 @@ async def handle_default(
                 if success:
                     ui.console.print(f"[green]✅ {f} atualizado[/green]")
                     log_decision(
-                        "patch", f, "apply", model, "ok", remember=ui.remember_choice
+                        "patch",
+                        f,
+                        "apply",
+                        model,
+                        "ok",
+                        remember=ui.remember_choice,
+                        expires_at=getattr(ui, "remember_expires", None),
                     )
                 else:
                     ui.console.print(f"[red]❌ Falha em {f}[/red]")
                     log_decision(
-                        "patch", f, "apply", model, "falha", remember=ui.remember_choice
+                        "patch",
+                        f,
+                        "apply",
+                        model,
+                        "falha",
+                        remember=ui.remember_choice,
+                        expires_at=getattr(ui, "remember_expires", None),
                     )
         else:
             log_decision(
@@ -644,6 +686,7 @@ async def handle_default(
                 model,
                 "nao",
                 remember=ui.remember_choice,
+                expires_at=getattr(ui, "remember_expires", None),
             )
     elif plain:
         print(response)
