@@ -17,6 +17,7 @@ def main():
     parser = argparse.ArgumentParser(description="CodeMemoryAI - Assistente de Código Inteligente")
     parser.add_argument("--api", action="store_true", help="Inicia o servidor API")
     parser.add_argument("--cli", action="store_true", help="Inicia a interface de linha de comando")
+    parser.add_argument("--tui", action="store_true", help="Inicia a interface textual")
     parser.add_argument("--guided", action="store_true", help="Mostra orientações passo a passo")
     parser.add_argument("--plain", action="store_true", help="Interface simples sem Rich")
     parser.add_argument("--no-log", action="store_true", help="Não registra histórico de chat")
@@ -42,8 +43,15 @@ def main():
 
         asyncio.run(run_observer())
         return
-    if args.cli:
-        asyncio.run(cli_main(guided=args.guided, plain=args.plain, log=not args.no_log))
+    if args.cli or args.tui:
+        asyncio.run(
+            cli_main(
+                guided=args.guided,
+                plain=args.plain,
+                log=not args.no_log,
+                tui=args.tui,
+            )
+        )
         return
 
     if args.command:
