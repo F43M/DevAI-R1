@@ -70,6 +70,10 @@ class DummyAI:
     async def generate_response(self, q):
         return "ok"
 
+    async def generate_response_stream(self, q):
+        yield "o"
+        yield "k"
+
 
 def test_cli_exit(monkeypatch, capsys):
     monkeypatch.setattr(cli, "CodeMemoryAI", DummyAI)
@@ -166,6 +170,10 @@ def test_cli_render_diff_plusminus(monkeypatch):
         async def generate_response(self, q, **kw):
             return "-old line\n+new line\n"
 
+        async def generate_response_stream(self, q):
+            for ch in "-old line\n+new line\n":
+                yield ch
+
     monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
     ui_obj = None
 
@@ -179,6 +187,29 @@ def test_cli_render_diff_plusminus(monkeypatch):
     asyncio.run(cli.cli_main())
     assert ui_obj is not None
     assert "-old line\n+new line\n" in ui_obj.outputs
+
+
+def test_cli_stream_output(monkeypatch):
+    class StreamAI(DummyAI):
+        async def generate_response_stream(self, q):
+            for t in ["a", "b", "c"]:
+                yield t
+
+    monkeypatch.setattr(cli, "CodeMemoryAI", StreamAI)
+    ui_obj = None
+
+    def make_ui(*a, **k):
+        nonlocal ui_obj
+        k.pop("commands", None)
+        ui_obj = DummyUI(["hello", "/sair"], **k)
+        return ui_obj
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    assert ui_obj is not None
+    assert "a" in ui_obj.outputs
+    assert "b" in ui_obj.outputs
+    assert "c" in ui_obj.outputs
 
 
 def test_cli_deletar_confirm(monkeypatch, capsys):

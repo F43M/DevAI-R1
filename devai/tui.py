@@ -64,12 +64,18 @@ class TUIApp(App):
         if text.lower() == "/sair":
             await self.action_quit()
             return
+        self.history_panel.write("", scroll_end=False)
+        tokens: list[str] = []
         async with self.cli.loading("Gerando resposta..."):
-            response = await self.ai.generate_response(
-                text, double_check=self.ai.double_check
-            )
+            async for token in self.ai.generate_response_stream(text):
+                tokens.append(token)
+                try:
+                    self.history_panel.write(token, scroll_end=False)
+                except Exception:
+                    self.history_panel.write(token)
+        response = "".join(tokens)
+        self.history_panel.write("")
         self.cli.add_history(response)
-        self.history_panel.write(response)
         is_patch = bool(
             re.search(r"\ndiff --git", response)
             or re.search(r"^[+-](?![+-])", response, re.MULTILINE)
