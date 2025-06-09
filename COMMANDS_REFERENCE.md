@@ -37,6 +37,9 @@ devai ajustar estilo:modo_refatoracao valor:seguro
 ## /rastrear <arquivo|tarefa>
 Exibe o histórico simbólico de decisões e modificações que afetaram o alvo informado.
 
+## /decisoes [lembrar|esquecer <id>]
+Lista decisões registradas e permite marcar ou desmarcar a opção de lembrar aprovações.
+
 ## /memoria tipo:<tag> [filtro:<texto>]
 Busca memórias armazenadas filtrando por tipo e texto. Possui paginação e a flag `--detalhado` para mostrar informações completas.
 

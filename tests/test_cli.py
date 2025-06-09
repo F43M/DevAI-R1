@@ -19,6 +19,7 @@ class DummyUI:
         self.console = types.SimpleNamespace(
             print=lambda *a, **k: self.outputs.append(" ".join(map(str, a)))
         )
+        self.remember_choice = False
 
     async def read_command(self, prompt: str = ">>> ") -> str:
         return self._cmds.pop(0)
@@ -44,6 +45,7 @@ class DummyUI:
 
     async def confirm(self, message: str) -> bool:
         self.outputs.append(message)
+        self.remember_choice = False
         return True
 
     @asynccontextmanager
@@ -253,6 +255,7 @@ def test_cli_deletar_confirm(monkeypatch, capsys):
 
         async def confirm(msg: str) -> bool:
             confirmed.append(msg)
+            ui.remember_choice = False
             return True
 
         ui.confirm = confirm
@@ -420,6 +423,7 @@ def test_cli_historico_cli(monkeypatch, tmp_path, capsys):
 def test_commands_mapping():
     assert "memoria" in cli.COMMANDS
     assert callable(cli.COMMANDS["memoria"])
+    assert "decisoes" in cli.COMMANDS
 
 
 def test_cliui_includes_path_completer(monkeypatch):
@@ -489,6 +493,7 @@ def test_cli_patch_apply_accept(monkeypatch, tmp_path):
         ui = DummyUI(["hello", "/sair"], **k)
 
         async def confirm(msg: str) -> bool:
+            ui.remember_choice = False
             return True
 
         ui.confirm = confirm
@@ -543,6 +548,7 @@ def test_cli_patch_apply_reject(monkeypatch, tmp_path):
         ui = DummyUI(["hello", "/sair"], **k)
 
         async def confirm(msg: str) -> bool:
+            ui.remember_choice = False
             return False
 
         ui.confirm = confirm
@@ -552,3 +558,19 @@ def test_cli_patch_apply_reject(monkeypatch, tmp_path):
     asyncio.run(cli.cli_main())
     assert file.read_text().strip() == "old"
     assert spy == []
+
+
+def test_cliui_confirm_records_remember(monkeypatch):
+    from devai.ui import CLIUI
+
+    ui = CLIUI(plain=True)
+
+    async def fake_read(prompt=">>> "):
+        if "Lembrar" in prompt:
+            return "s"
+        return "s"
+
+    ui.read_command = fake_read  # type: ignore
+    result = asyncio.run(ui.confirm("ok?"))
+    assert result is True
+    assert ui.remember_choice is True
