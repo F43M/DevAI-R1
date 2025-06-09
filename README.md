@@ -108,8 +108,13 @@ Além das tarefas padrão, a CLI permite explorar e modificar o diretório defin
 - `/ls [caminho]` lista arquivos e subpastas.
 - `/abrir <arquivo> [ini] [fim]` exibe linhas específicas de um arquivo.
 - `/editar <arquivo> <linha> <novo>` altera uma linha individual.
+- `/novoarq <arquivo> [conteudo]` cria um novo arquivo.
+- `/novapasta <caminho>` cria uma pasta.
+- `/deletar <caminho>` remove arquivo ou diretório (requer confirmação).
 - `/tarefa auto_refactor <arquivo>` refatora o arquivo informado e executa os testes.
 - `/historia [sessao]` exibe o histórico de conversa da sessão indicada.
+
+Ao usar `/deletar`, a CLI exibe um diálogo de confirmação para evitar remoções acidentais.
 
 ### Histórico de complexidade
 

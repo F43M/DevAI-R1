@@ -34,6 +34,10 @@ class DummyUI:
     def load_history(self, lines: int = 20) -> None:
         pass
 
+    async def confirm(self, message: str) -> bool:
+        self.outputs.append(message)
+        return True
+
     @asynccontextmanager
     async def loading(self, message: str = "..."):
         yield
@@ -44,8 +48,14 @@ class DummyAI:
         async def noop(*a, **k):
             return []
 
+        async def _true(*_a, **_k):
+            return True
+
         self.analyzer = types.SimpleNamespace(
-            deep_scan_app=noop, get_code_graph=lambda: {"nodes": [], "links": []}
+            deep_scan_app=noop,
+            get_code_graph=lambda: {"nodes": [], "links": []},
+            delete_file=_true,
+            delete_directory=_true,
         )
         self.memory = types.SimpleNamespace(search=lambda q, top_k=5: [])
         self.tasks = types.SimpleNamespace(run_task=noop)
@@ -164,6 +174,29 @@ def test_cli_render_diff_plusminus(monkeypatch):
     asyncio.run(cli.cli_main())
     assert ui_obj is not None
     assert "-old line\n+new line\n" in ui_obj.outputs
+
+
+def test_cli_deletar_confirm(monkeypatch, capsys):
+    ai = DummyAI()
+    monkeypatch.setattr(cli, "CodeMemoryAI", lambda: ai)
+    confirmed = []
+
+    def make_ui(*a, **k):
+        k.pop("commands", None)
+        ui = DummyUI(["/deletar x.txt", "/sair"], **k)
+
+        async def confirm(msg: str) -> bool:
+            confirmed.append(msg)
+            return True
+
+        ui.confirm = confirm
+        return ui
+
+    monkeypatch.setattr(cli, "CLIUI", make_ui)
+    asyncio.run(cli.cli_main())
+    out = capsys.readouterr().out
+    assert any("Removido" in line for line in out.splitlines())
+    assert confirmed
 
 
 def test_cli_historia(monkeypatch, capsys):
