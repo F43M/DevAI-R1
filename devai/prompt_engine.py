@@ -134,7 +134,14 @@ def build_dynamic_prompt(
 ) -> str:
     """Return a prompt using only context relevant to the query."""
     q = query.lower()
-    included = []
+    included: list[str] = []
+    reasons: list[str] = []
+
+    def _add(name: str, text: str | None, reason: str) -> None:
+        if text:
+            parts.append(text)
+            included.append(name)
+            reasons.append(f"{name}:{reason}")
 
     prefs = listar_preferencias()
     pref_text = ""
@@ -157,54 +164,42 @@ def build_dynamic_prompt(
 
     memories = context_blocks.get("memories") or []
     mem_text = _format_memories(memories)
-    if mem_text:
-        parts.append(mem_text)
-        included.append("memories")
+    _add("memories", mem_text, "memorias relevantes")
 
     symbolic = context_blocks.get("symbolic_memories") or []
     sym_text = _format_memories(symbolic)
-    if sym_text:
-        parts.append(sym_text)
-        included.append("memorias_simbolicas")
+    _add("memorias_simbolicas", sym_text, "memorias simbolicas")
 
     if intent == "architecture" or any(
         k in q for k in ["arquitetura", "módulo", "modulo", "depend", "grafo"]
     ):
         graph = context_blocks.get("graph")
-        if graph:
-            parts.append(graph)
-            included.append("grafo_simbólico")
+        _add("grafo_simbólico", graph, "pergunta de arquitetura")
 
     if intent == "debug" or any(k in q for k in ["erro", "falha", "log", "stack", "execu"]):
         logs = context_blocks.get("logs")
-        if logs:
-            parts.append(f"Logs recentes:\n{logs}")
-            included.append("logs_recentes")
+        _add("logs_recentes", f"Logs recentes:\n{logs}" if logs else None, "pergunta de erro")
         actions = context_blocks.get("actions")
         if actions:
             acts = "\n".join(f"- {a.get('task')}" for a in actions[-3:])
-            parts.append(f"Ultimas ações:\n{acts}")
-            included.append("ultima_acao")
+            _add("ultima_acao", f"Ultimas ações:\n{acts}", "pergunta de erro")
 
     code = context_blocks.get("code")
     if code and (
         intent in {"edit", "create"}
         or any(k in q for k in ["melhor", "refator", "código", "codigo"])
     ):
-        parts.append(code)
-        included.append("trecho_codigo")
+        _add("trecho_codigo", code, "contexto de codigo")
 
     if len(included) == 0:
         graph = context_blocks.get("graph")
-        if graph:
-            parts.append(graph)
+        _add("grafo_simbólico", graph, "fallback")
         actions = context_blocks.get("actions")
         if actions:
             acts = "\n".join(f"- {a.get('task')}" for a in actions[-3:])
-            parts.append(f"Ultimas ações:\n{acts}")
+            _add("ultima_acao", f"Ultimas ações:\n{acts}", "fallback")
         logs = context_blocks.get("logs")
-        if logs:
-            parts.append(f"Logs recentes:\n{logs}")
+        _add("logs_recentes", f"Logs recentes:\n{logs}" if logs else None, "fallback")
         logger.info(
             "Fallback: prompt completo não foi simplificado por falta de sinal contextual"
         )
@@ -213,12 +208,12 @@ def build_dynamic_prompt(
     prompt += f"\n\nComando do usuário: {query}\n"
 
     keywords = ["por que", "por quê", "analise", "detalhe", "explique", "entenda"]
-    if mode == "deep" or any(k in q for k in keywords):
+    explain_intents = {"debug", "architecture", "review"}
+    if mode == "deep" or intent in explain_intents or any(k in q for k in keywords):
         prompt += "Explique antes de responder." + extra
     else:
         prompt += extra
-
-    logger.info("Prompt dinâmico", included_blocks=included, mode=mode)
+    logger.info("Prompt dinâmico", included_blocks=included, reasons=reasons, mode=mode)
     return prompt
 
 

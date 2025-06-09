@@ -22,3 +22,15 @@ def test_dynamic_prompt_fallback_logged(caplog):
         build_dynamic_prompt("Oi", context, "normal")
     assert any("Fallback" in r.message for r in caplog.records)
 
+
+def test_dynamic_prompt_logs_reasons(caplog):
+    context = {
+        "logs": "trace",
+        "actions": [{"task": "run"}],
+        "graph": "g",
+        "memories": [],
+    }
+    with caplog.at_level(logging.INFO):
+        build_dynamic_prompt("Por que deu erro?", context, "normal", intent="debug")
+    assert any("reasons=" in r.message for r in caplog.records)
+
