@@ -36,3 +36,6 @@ Exibe o histórico simbólico de decisões e modificações que afetaram o alvo 
 
 ## /memoria tipo:<tag> [filtro:<texto>]
 Busca memórias armazenadas filtrando por tipo e texto. Possui paginação e a flag `--detalhado` para mostrar informações completas.
+
+## /historia [sessao]
+Exibe o histórico completo de mensagens trocadas com a IA. Caso nenhum `sessao` seja informado, usa "default".

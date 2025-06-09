@@ -109,6 +109,7 @@ Além das tarefas padrão, a CLI permite explorar e modificar o diretório defin
 - `/abrir <arquivo> [ini] [fim]` exibe linhas específicas de um arquivo.
 - `/editar <arquivo> <linha> <novo>` altera uma linha individual.
 - `/tarefa auto_refactor <arquivo>` refatora o arquivo informado e executa os testes.
+- `/historia [sessao]` exibe o histórico de conversa da sessão indicada.
 
 ### Histórico de complexidade
 
