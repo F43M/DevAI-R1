@@ -57,6 +57,7 @@ async def cli_main(guided: bool = False):
     print("/deletar <caminho> - Remove arquivo ou pasta")
     print("/historico <arquivo> - Mostra histórico de mudanças")
     print("/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo")
+    print("/tests_local - Alterna execução isolada dos testes")
     print("/sair - Encerra")
     try:
         while True:
@@ -283,6 +284,21 @@ async def cli_main(guided: bool = False):
                     else:
                         feedback_db.add(parts[0], parts[1], parts[2])
                         print("Feedback registrado")
+                elif user_input == "/tests_local":
+                    cfg_path = Path("config.yaml")
+                    try:
+                        import yaml  # type: ignore
+                    except Exception:  # pragma: no cover - fallback when PyYAML is missing
+                        from . import yaml_fallback as yaml
+                    data = {}
+                    if cfg_path.exists():
+                        data = yaml.safe_load(cfg_path.read_text()) or {}
+                    new_val = not data.get("TESTS_USE_ISOLATION", config.TESTS_USE_ISOLATION)
+                    data["TESTS_USE_ISOLATION"] = new_val
+                    cfg_path.write_text(yaml.safe_dump(data, allow_unicode=True))
+                    config.TESTS_USE_ISOLATION = new_val
+                    status = "ativada" if new_val else "desativada"
+                    print(f"Execução isolada {status}")
                 else:
                     response = await ai.generate_response(user_input, double_check=ai.double_check)
                     print("\nResposta:")

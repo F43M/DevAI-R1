@@ -1,4 +1,5 @@
 import subprocess
+import shutil
 from typing import List
 
 
@@ -9,6 +10,7 @@ class Sandbox:
         self.image = image
         self.cpus = cpus
         self.memory = memory
+        self.enabled = bool(shutil.which("docker"))
         self._processes: List[subprocess.Popen] = []
 
     def run(self, command: List[str], timeout: int = 30) -> str:

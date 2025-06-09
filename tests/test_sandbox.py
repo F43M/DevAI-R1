@@ -1,9 +1,12 @@
 import subprocess
 import pytest
+import subprocess
+import pytest
 from devai import sandbox
 
 
 def test_run_executes(monkeypatch):
+    monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
     sb = sandbox.Sandbox("img", cpus="2", memory="128m")
 
     captured = {}
@@ -36,6 +39,7 @@ def test_run_executes(monkeypatch):
 
 
 def test_run_timeout(monkeypatch):
+    monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
     sb = sandbox.Sandbox()
 
     class DummyProc:
@@ -56,6 +60,7 @@ def test_run_timeout(monkeypatch):
 
 
 def test_shutdown_terminates_processes(monkeypatch):
+    monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
     sb = sandbox.Sandbox()
 
     class DummyProc:
@@ -67,3 +72,9 @@ def test_shutdown_terminates_processes(monkeypatch):
     sb.shutdown()
     assert captured == [True]
     assert sb._processes == []
+
+
+def test_docker_missing(monkeypatch):
+    monkeypatch.setattr(sandbox.shutil, "which", lambda x: None)
+    sb = sandbox.Sandbox()
+    assert not sb.enabled

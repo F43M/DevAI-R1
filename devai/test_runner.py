@@ -1,5 +1,6 @@
 import subprocess
 import resource
+from datetime import datetime
 from pathlib import Path
 from typing import Tuple
 import re
@@ -41,14 +42,18 @@ def _preexec(cpu: int, mem: int) -> None:
 def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
     """Execute pytest with optional isolation."""
     cwd = Path(path)
-    if config.TESTS_USE_ISOLATION:
-        sb = Sandbox(
-            image="python:3.10-slim",
-            cpus=str(config.TEST_CPU_LIMIT or 1),
-            memory=f"{config.TEST_MEMORY_LIMIT_MB or 512}m",
-        )
+    sb = Sandbox(
+        image="python:3.10-slim",
+        cpus=str(config.TEST_CPU_LIMIT or 1),
+        memory=f"{config.TEST_MEMORY_LIMIT_MB or 512}m",
+    )
+    if config.TESTS_USE_ISOLATION and sb.enabled:
         try:
             out = sb.run(["pytest", "-q"], timeout=timeout)
+            log_dir = Path(config.LOG_DIR)
+            log_dir.mkdir(exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            (log_dir / f"sandbox_{ts}.log").write_text(out)
             return True, _parse_output(out)
         except Exception as e:
             logger.error("Erro na sandbox", error=str(e))
