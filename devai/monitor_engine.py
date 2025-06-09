@@ -68,11 +68,11 @@ async def auto_monitor_cycle(
     hours_since = (now - last_training).total_seconds() / 3600.0
 
     reasons = []
-    if failures >= 3:
+    if failures >= config.AUTO_MONITOR_FAILURES:
         reasons.append(f"{failures} falhas em 24h")
-    if new_files >= 5:
+    if new_files >= config.AUTO_MONITOR_FILES:
         reasons.append(f"{new_files} arquivos modificados")
-    if hours_since > 72:
+    if hours_since > config.AUTO_MONITOR_HOURS:
         reasons.append(f"{int(hours_since)}h sem treinamento")
 
     triggered = bool(reasons)
@@ -144,4 +144,26 @@ async def auto_monitor_cycle(
         "logs": "\n".join(logs),
         "data": result_data,
     }
+    cur = memory.conn.cursor()
+    cur.execute(
+        "INSERT INTO monitoring_history (timestamp, reason, training_executed, new_rules) VALUES (?, ?, ?, ?)",
+        (
+            now.isoformat(),
+            result_data["reason"],
+            int(training_executed),
+            result_data.get("new_rules", 0),
+        ),
+    )
+    memory.conn.commit()
+    memory.save(
+        {
+            "type": "monitor",
+            "memory_type": "monitoring",
+            "content": result["report"],
+            "metadata": {
+                "reason": result_data["reason"],
+                "training_executed": training_executed,
+            },
+        }
+    )
     return result

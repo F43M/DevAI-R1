@@ -141,6 +141,16 @@ class MemoryManager:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS monitoring_history (
+                timestamp TEXT,
+                reason TEXT,
+                training_executed INTEGER,
+                new_rules INTEGER
+            )
+            """
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_feedback ON memory(feedback_score)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_access ON memory(access_count)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_type ON memory(memory_type)")

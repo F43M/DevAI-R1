@@ -56,6 +56,9 @@ class Config:
     TEST_CPU_LIMIT: int = 1  # limite de segundos de CPU por processo de teste
     TEST_MEMORY_LIMIT_MB: int = 512  # memória máxima em MB para testes
     LEARNING_RATE_LIMIT: int = 5
+    AUTO_MONITOR_FAILURES: int = 3
+    AUTO_MONITOR_FILES: int = 5
+    AUTO_MONITOR_HOURS: int = 72
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -103,6 +106,12 @@ class Config:
             raise ValueError("TESTS_USE_ISOLATION must be boolean")
         if not isinstance(self.ENABLE_AI_SUMMARY, bool):
             raise ValueError("ENABLE_AI_SUMMARY must be boolean")
+        if not isinstance(self.AUTO_MONITOR_FAILURES, int):
+            raise ValueError("AUTO_MONITOR_FAILURES must be integer")
+        if not isinstance(self.AUTO_MONITOR_FILES, int):
+            raise ValueError("AUTO_MONITOR_FILES must be integer")
+        if not isinstance(self.AUTO_MONITOR_HOURS, int):
+            raise ValueError("AUTO_MONITOR_HOURS must be integer")
 
     @property
     def model_name(self) -> str:

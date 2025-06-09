@@ -581,6 +581,23 @@ class CodeMemoryAI:
             result = await auto_monitor_cycle(self.analyzer, self.memory, self.ai_model)
             return result
 
+        @self.app.get("/monitor/history")
+        async def monitor_history():
+            cur = self.memory.conn.cursor()
+            cur.execute(
+                "SELECT timestamp, reason, training_executed, new_rules FROM monitoring_history ORDER BY timestamp DESC"
+            )
+            rows = [
+                {
+                    "timestamp": r[0],
+                    "reason": r[1],
+                    "training_executed": bool(r[2]),
+                    "new_rules": r[3],
+                }
+                for r in cur.fetchall()
+            ]
+            return rows
+
         @self.app.post("/memory/optimize")
         async def optimize_memory():
             compressed = self.memory.compress_memory()
