@@ -42,6 +42,7 @@ class Config:
     INDEX_IDS_FILE: str = "faiss_ids.json"
     NOTIFY_EMAIL: str = os.getenv("NOTIFY_EMAIL", "")
     LOCAL_MODEL: str = os.getenv("LOCAL_MODEL", "")
+    MAX_SESSION_TOKENS: int = 1000
     COMPLEXITY_HISTORY: str = "complexity_history.json"
     LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
     DOUBLE_CHECK: bool = False
