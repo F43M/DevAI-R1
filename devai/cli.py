@@ -3,7 +3,7 @@ import json
 
 from .config import config, logger
 from .error_handler import friendly_message, log_error
-from .core import CodeMemoryAI
+from .core import CodeMemoryAI, run_scheduled_rlhf
 from .feedback import FeedbackDB, registrar_preferencia
 from .decision_log import log_decision
 from pathlib import Path
@@ -257,6 +257,9 @@ async def cli_main(guided: bool = False):
                         from .rlhf import train_from_memory
                         result = await train_from_memory(base, out)
                         print(json.dumps(result, indent=2))
+                elif user_input.startswith("/treinar_rlhf_auto"):
+                    result = await run_scheduled_rlhf(ai.memory)
+                    print(json.dumps(result, indent=2))
                 elif user_input.startswith("/feedback "):
                     parts = user_input[len("/feedback "):].split(maxsplit=2)
                     if len(parts) < 3:

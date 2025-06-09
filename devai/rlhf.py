@@ -74,11 +74,26 @@ class RLFineTuner:
         return examples
 
     def collect_examples(self, log_dir: str | None = None) -> list[dict]:
-        """Gather examples from memory and optional log files."""
+        """Gather examples from memory and optional log files, removing duplicates."""
 
         data = self._collect_from_memory()
         data.extend(self._collect_from_logs(log_dir))
-        return data
+
+        deduped: list[dict] = []
+        seen: set[int] = set()
+        for ex in data:
+            key = hash(ex.get("prompt", "") + ex.get("response", ""))
+            if key not in seen:
+                seen.add(key)
+                deduped.append(ex)
+
+        try:
+            path = Path(config.LOG_DIR) / "rlhf_dataset.json"
+            path.write_text(json.dumps(deduped, indent=2))
+        except Exception:
+            pass
+
+        return deduped
 
     async def fine_tune(self, base_model: str, output_dir: str) -> dict:
         """Fine tune the language model with RLHF using the TRL library."""

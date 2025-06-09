@@ -33,11 +33,37 @@ from .ai_model import AIModel
 from .learning_engine import LearningEngine
 from .conversation_handler import ConversationHandler
 from .intent_router import detect_intent
+from . import rlhf
 
 
 def estimate_token_count(text: str) -> int:
     """Estimativa simples do número de tokens baseada em palavras."""
     return len(text.split())
+
+
+async def run_scheduled_rlhf(memory: MemoryManager) -> dict:
+    """Run RLHF fine-tuning if enough new examples are available."""
+
+    dataset_path = Path(config.LOG_DIR) / "rlhf_dataset.json"
+    prev_count = 0
+    if dataset_path.exists():
+        try:
+            prev_count = len(json.loads(dataset_path.read_text()))
+        except Exception:
+            prev_count = 0
+
+    tuner = rlhf.RLFineTuner(memory)
+    data = tuner.collect_examples()
+    new_examples = len(data) - prev_count
+    if new_examples < config.RLHF_THRESHOLD:
+        logger.info("RLHF threshold not reached", new_examples=new_examples)
+        return {"status": "skipped", "new_examples": new_examples}
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_dir = Path(config.RLHF_OUTPUT_DIR) / ts
+    metrics = await rlhf.train_from_memory(config.model_name, str(out_dir))
+    memory.save({"type": "rlhf_training", "metadata": metrics})
+    return metrics
 
 
 class CodeMemoryAI:
@@ -586,6 +612,12 @@ class CodeMemoryAI:
             self.queue_symbolic_training()
             return {"status": "queued"}
 
+        @self.app.post("/train/rlhf")
+        async def train_rlhf(token: str = ""):
+            if not _auth(token):
+                return {"error": "unauthorized"}
+            return await run_scheduled_rlhf(self.memory)
+
         @self.app.get("/auto_monitor")
         async def auto_monitor():
             from .monitor_engine import auto_monitor_cycle
@@ -675,6 +707,8 @@ class CodeMemoryAI:
             from .auto_review import run_autoreview
 
             await run_autoreview(self.analyzer, self.memory)
+        if now.hour == 4:
+            await run_scheduled_rlhf(self.memory)
 
     async def _generate_automatic_insights(self):
         complex_functions = []
