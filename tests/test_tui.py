@@ -45,12 +45,28 @@ async def test_tui_streaming(monkeypatch):
 async def test_tui_render_diff(monkeypatch):
     diff_text = "\n".join(["--- a/x", "+++ b/x", "@@", "-old", "+new"]) + "\n"
     cli = CLIUI(log=False)
-    diff_captured: list[str] = []
+    diff_captured: list[object] = []
     ai = DummyAI(list(diff_text))
     app = TUIApp(ai=ai, cli_ui=cli, log=False)
     async with app.run_test():
-        app.diff_panel.write = lambda msg: diff_captured.append(str(msg))
+        app.diff_panel.write = lambda msg, scroll_end=True: diff_captured.append(msg)
         app.input.value = "show"
         await app.action_submit()
     assert diff_captured
+
+
+@pytest.mark.asyncio
+async def test_tui_render_diff_side_by_side(monkeypatch):
+    diff_text = "\n".join(["--- a/x", "+++ b/x", "@@", "-old", "+new"]) + "\n"
+    cli = CLIUI(log=False)
+    diff_captured: list[object] = []
+    ai = DummyAI(list(diff_text))
+    app = TUIApp(ai=ai, cli_ui=cli, log=False)
+    async with app.run_test():
+        app.diff_panel.write = lambda msg, scroll_end=True: diff_captured.append(msg)
+        app.input.value = "show"
+        await app.action_submit()
+    from rich.table import Table
+    assert diff_captured
+    assert isinstance(diff_captured[0], Table)
 

@@ -77,7 +77,14 @@ class CLIUI:
             except Exception:
                 pass
 
-    def render_diff(self, diff: str, *, side_by_side: bool = False) -> None:
+    def render_diff(
+        self,
+        diff: str,
+        *,
+        side_by_side: bool = False,
+        collapse: bool = True,
+        scroll: bool = True,
+    ) -> None:
         if self.plain:
             print(diff)
             return
@@ -103,7 +110,7 @@ class CLIUI:
                 result.append("...")
             return "\n".join(result)
 
-        collapsed = _collapse(diff)
+        collapsed = _collapse(diff) if collapse else diff
 
         if side_by_side:
             lines = collapsed.splitlines()
@@ -129,7 +136,7 @@ class CLIUI:
         if self.diff_panel is not None:
             try:
                 self.diff_panel.clear()
-                self.diff_panel.write(renderable)
+                self.diff_panel.write(renderable, scroll_end=scroll)
             except Exception:
                 pass
         else:

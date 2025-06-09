@@ -28,7 +28,14 @@ class DummyUI:
     def show_history(self) -> None:
         pass
 
-    def render_diff(self, diff: str) -> None:
+    def render_diff(
+        self,
+        diff: str,
+        *,
+        side_by_side: bool = False,
+        collapse: bool = True,
+        scroll: bool = True,
+    ) -> None:
         self.outputs.append(diff)
 
     def load_history(self, lines: int = 20) -> None:
@@ -146,7 +153,7 @@ def test_cli_render_diff():
     ui = CLIUI()
     captured: list[str] = []
     panel = types.SimpleNamespace(
-        clear=lambda: None, write=lambda t: captured.append(t)
+        clear=lambda: None, write=lambda t, scroll_end=True: captured.append(t)
     )
     ui.diff_panel = panel
 
@@ -171,7 +178,7 @@ def test_cli_render_diff_side_by_side():
 
     ui = CLIUI()
     captured: list[object] = []
-    panel = types.SimpleNamespace(clear=lambda: None, write=lambda t: captured.append(t))
+    panel = types.SimpleNamespace(clear=lambda: None, write=lambda t, scroll_end=True: captured.append(t))
     ui.diff_panel = panel
 
     diff_lines = [
