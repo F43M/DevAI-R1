@@ -72,7 +72,8 @@ executar ações sensíveis. Valores possíveis:
 - `auto_edit` – confirma apenas comandos de shell;
 - `suggest` – confirma alterações de código e comandos externos.
 
-Você pode ajustar no `config.yaml` ou via `--approval-mode` ao iniciar.
+Você pode ajustar no `config.yaml`, via `--approval-mode` ao iniciar
+ou dinamicamente com o comando `/modo`.
 
 O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
 
@@ -135,7 +136,8 @@ Além das tarefas padrão, a CLI permite explorar e modificar o diretório defin
 - `/deletar <caminho>` remove arquivo ou diretório (requer confirmação).
 - `/tarefa auto_refactor <arquivo>` refatora o arquivo informado e executa os testes.
 - `/historia [sessao]` exibe o histórico de conversa da sessão indicada.
-- `/historico_cli [N]` mostra N últimas linhas do log da CLI (ou todo o arquivo).
+- `/historico_cli [N]` mostra N últimas linhas do log da CLI (ou todo o arquivo). 
+- `/modo <suggest|auto_edit|full_auto>` altera o nível de aprovação em tempo real.
 - `/ajuda` exibe a documentação completa de comandos.
 
 Ao usar `/deletar`, a CLI exibe um diálogo de confirmação para evitar remoções acidentais.
