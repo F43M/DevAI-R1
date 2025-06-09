@@ -334,7 +334,13 @@ async def cli_main(guided: bool = False, plain: bool = False):
                     async with ui.loading("Gerando resposta..."):
                         response = await ai.generate_response(user_input, double_check=ai.double_check)
                     print("\nResposta:")
-                    if plain:
+                    is_patch = bool(
+                        re.search(r"\ndiff --git", response)
+                        or re.search(r"^[+-](?![+-])", response, re.MULTILINE)
+                    )
+                    if is_patch:
+                        ui.render_diff(response)
+                    elif plain:
                         print(response)
                     else:
                         ui.console.print(response)
