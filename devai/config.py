@@ -46,6 +46,7 @@ class Config:
     MAX_SESSION_TOKENS: int = 1000
     MAX_PROMPT_TOKENS: int = 1000
     COMPLEXITY_HISTORY: str = "complexity_history.json"
+    COMPLEXITY_TAG_THRESHOLD: int = 10
     LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
     DOUBLE_CHECK: bool = False
     SHOW_REASONING_BY_DEFAULT: bool = False
@@ -124,6 +125,8 @@ class Config:
             raise ValueError("RLHF_OUTPUT_DIR must be string")
         if not isinstance(self.MAX_PROMPT_TOKENS, int):
             raise ValueError("MAX_PROMPT_TOKENS must be integer")
+        if not isinstance(self.COMPLEXITY_TAG_THRESHOLD, int):
+            raise ValueError("COMPLEXITY_TAG_THRESHOLD must be integer")
 
     @property
     def model_name(self) -> str:

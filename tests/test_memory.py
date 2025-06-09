@@ -161,3 +161,16 @@ def test_index_persistence(tmp_path, monkeypatch):
 
     mem2 = MemoryManager(db, "dummy", model=model, index=None)
     assert mem2.indexed_ids == mem1.indexed_ids
+
+
+def test_tag_stats(tmp_path):
+    db = str(tmp_path / "mem.sqlite")
+    mem = MemoryManager(db, "dummy", model=None, index=None)
+    mem.save({"type": "n", "content": "a", "metadata": {}, "tags": ["x", "y"]})
+    mem.save({"type": "n", "content": "b", "metadata": {}, "tags": ["x"]})
+    cur = mem.conn.cursor()
+    a = cur.execute("SELECT count FROM tag_stats WHERE tag='x'").fetchone()[0]
+    b = cur.execute("SELECT count FROM tag_stats WHERE tag='y'").fetchone()[0]
+    assert a == 2
+    assert b == 1
+

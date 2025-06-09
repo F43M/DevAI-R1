@@ -133,6 +133,14 @@ class MemoryManager:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS tag_stats (
+                tag TEXT PRIMARY KEY,
+                count INTEGER
+            )
+            """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS conversation_embeddings (
                 session_id TEXT,
                 message_id INTEGER,
@@ -280,6 +288,16 @@ class MemoryManager:
                 ),
             )
             entry["id"] = cursor.lastrowid
+            for tag in entry.get("tags", []):
+                cursor.execute(
+                    "INSERT OR IGNORE INTO tags (memory_id, tag) VALUES (?, ?)",
+                    (entry["id"], tag),
+                )
+                cursor.execute(
+                    "INSERT INTO tag_stats(tag, count) VALUES (?, 1) "
+                    "ON CONFLICT(tag) DO UPDATE SET count = count + 1",
+                    (tag,),
+                )
             if self.index is not None and embedding_vec is not None:
                 vec = embedding_vec
                 if np is not None:
