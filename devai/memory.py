@@ -205,7 +205,14 @@ class MemoryManager:
             self.embedding_cache.move_to_end(text)
             logger.info("embedding_cache_hit", text=text[:30])
             return self.embedding_cache[text]
-        vec = self.embedding_model.encode(text)
+        try:
+            vec = self.embedding_model.encode(text)
+        except Exception as e:  # pragma: no cover - runtime embedding failure
+            logger.error("embedding_error", error=str(e))
+            self._register_embedding_fallback()
+            self.embedding_model = None
+            self.index = None
+            vec = [0.0]
         self.embedding_cache[text] = vec
         if len(self.embedding_cache) > self.embedding_cache_size:
             self.embedding_cache.popitem(last=False)
@@ -575,3 +582,21 @@ class MemoryManager:
             self.conn.close()
         except Exception:
             pass
+
+    def _register_embedding_fallback(self) -> None:
+        """Record embedding fallback notice in INTERNAL_DOCS."""
+        path = Path("INTERNAL_DOCS.md")
+        try:
+            lines = path.read_text().splitlines() if path.exists() else []
+        except Exception:
+            lines = []
+        header = "## pending_features"
+        if header not in lines:
+            lines.append(header)
+        if "- embedding_fallback" not in lines:
+            idx = lines.index(header) + 1 if header in lines else len(lines)
+            lines.insert(idx, "- embedding_fallback")
+        try:
+            path.write_text("\n".join(lines) + "\n")
+        except Exception as e:  # pragma: no cover - file system issues
+            logger.error("Erro ao registrar fallback", error=str(e))

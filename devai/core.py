@@ -292,6 +292,10 @@ class CodeMemoryAI:
         async def session_history(session_id: str = "default"):
             return self.conv_handler.history(session_id)
 
+        @self.app.get("/history")
+        async def history(session_id: str = "default"):
+            return self.conv_handler.history(session_id)
+
         @self.app.post("/analyze_deep")
         async def analyze_deep(query: str, session_id: str = "default"):
             """Perform a deeper analysis returning plan and answer separately."""
@@ -414,8 +418,8 @@ class CodeMemoryAI:
                 return {"error": str(e)}
             return {"status": "ok" if ok else "error"}
 
-        @self.app.get("/history")
-        async def get_history(file: str, token: str = ""):
+        @self.app.get("/file_history")
+        async def get_file_history(file: str, token: str = ""):
             if not _auth(token):
                 return {"error": "unauthorized"}
             return self.history.history(file)

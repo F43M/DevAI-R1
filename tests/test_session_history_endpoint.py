@@ -45,6 +45,10 @@ def test_session_history_endpoint(monkeypatch, tmp_path):
     assert len(hist) == 2
     assert hist[0]["role"] == "user"
 
+    fn2 = record["/history"]
+    hist2 = asyncio.run(fn2(session_id="s"))
+    assert hist2 == hist
+
 
 def test_session_reset_isolated(monkeypatch, tmp_path):
     ai, record = _setup_ai(monkeypatch, tmp_path)
