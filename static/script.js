@@ -207,6 +207,7 @@ function persistUI(){
   const consoleLines=document.getElementById('console').textContent.split('\n').slice(-20).join('\n');
   saveSession({
     console:consoleLines,
+    planOutput:document.getElementById('planOutput')?document.getElementById('planOutput').innerHTML:'',
     aiOutput:document.getElementById('aiOutput').innerHTML,
     reasoning:document.getElementById('reasoningOutput').innerHTML,
     diffOutput:document.getElementById('diffOutput').innerHTML,
@@ -218,6 +219,8 @@ function clearUIConversation(){
   localStorage.removeItem(SESSION_KEY);
   clearChat();
   document.getElementById('console').textContent='';
+  const plan=document.getElementById('planOutput');
+  if(plan) plan.innerHTML='';
   document.getElementById('aiOutput').innerHTML='';
   document.getElementById('reasoningOutput').innerHTML='';
   document.getElementById('diffOutput').innerHTML='';
@@ -240,6 +243,7 @@ window.addEventListener('load',async()=>{
   const data=loadSession();
   if(data){
     document.getElementById('console').textContent=data.console||'';
+    if('planOutput' in data) document.getElementById('planOutput').innerHTML=data.planOutput||'';
     document.getElementById('aiOutput').innerHTML=data.aiOutput||'';
     document.getElementById('reasoningOutput').innerHTML=data.reasoning||'';
     document.getElementById('diffOutput').innerHTML=data.diffOutput||'';

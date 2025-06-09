@@ -48,6 +48,11 @@ class DummyModelSpaces:
     async def safe_api_call(self, *a, **k):
         return "1. Etapa A\n2. Etapa B\n=== RESPOSTA ===\nConteudo"
 
+class DummyModelLong:
+    async def safe_api_call(self, messages, max_tokens, context="", memory=None, temperature=0.7):
+        long_answer = " ".join(["t"] * (max_tokens + 5))
+        return f"1. Passo\n2. Outro\n===RESPOSTA===\n{long_answer}"
+
 ai_spaces = object.__new__(CodeMemoryAI)
 ai_spaces.analyzer = ai.analyzer
 ai_spaces.memory = ai.memory
@@ -56,12 +61,27 @@ ai_spaces.conv_handler = ai.conv_handler
 ai_spaces.conversation_history = []
 ai_spaces.ai_model = DummyModelSpaces()
 
+ai_long = object.__new__(CodeMemoryAI)
+ai_long.analyzer = ai.analyzer
+ai_long.memory = ai.memory
+ai_long.tasks = ai.tasks
+ai_long.conv_handler = ai.conv_handler
+ai_long.conversation_history = []
+ai_long.ai_model = DummyModelLong()
+
 async def run_spaces():
     return await CodeMemoryAI.generate_response_with_plan(
         ai_spaces, "Explique algo rapidamente"
     )
 
 result_spaces = asyncio.run(run_spaces())
+
+async def run_long():
+    return await CodeMemoryAI.generate_response_with_plan(
+        ai_long, "Explique isso detalhadamente"
+    )
+
+result_long = asyncio.run(run_long())
 
 
 def test_plan_present():
@@ -84,3 +104,9 @@ def test_split_with_spaces():
     assert result_spaces["response"].startswith("Conteudo") or "Conteudo" in result_spaces["response"]
     assert "RESPOSTA" not in result_spaces["plan"]
     assert "RESPOSTA" not in result_spaces["response"]
+
+
+def test_split_when_ignoring_max_tokens():
+    assert result_long["plan"].startswith("1.")
+    assert len(result_long["response"].split()) > 10
+    assert "RESPOSTA" not in result_long["plan"]
