@@ -49,6 +49,7 @@ class Config:
     MAX_PROMPT_TOKENS: int = 1000
     COMPLEXITY_HISTORY: str = "complexity_history.json"
     COMPLEXITY_TAG_THRESHOLD: int = 10
+    AUTO_REVIEW_COMPLEXITY_THRESHOLD: int = 10
     LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
     DOUBLE_CHECK: bool = False
     SHOW_REASONING_BY_DEFAULT: bool = False
@@ -133,6 +134,8 @@ class Config:
             raise ValueError("MAX_PROMPT_TOKENS must be integer")
         if not isinstance(self.COMPLEXITY_TAG_THRESHOLD, int):
             raise ValueError("COMPLEXITY_TAG_THRESHOLD must be integer")
+        if not isinstance(self.AUTO_REVIEW_COMPLEXITY_THRESHOLD, int):
+            raise ValueError("AUTO_REVIEW_COMPLEXITY_THRESHOLD must be integer")
 
     @property
     def model_name(self) -> str:
