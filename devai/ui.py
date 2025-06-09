@@ -12,8 +12,12 @@ from rich.table import Table
 
 try:
     from prompt_toolkit import PromptSession
-    from prompt_toolkit.completion import WordCompleter
+    from prompt_toolkit.completion import WordCompleter, PathCompleter, Completer
     from prompt_toolkit.history import FileHistory
+    try:  # pragma: no cover - optional dependency
+        from prompt_toolkit.completion import merge_completers
+    except Exception:  # pragma: no cover - older versions
+        merge_completers = None  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     PromptSession = None  # type: ignore
 
@@ -37,9 +41,25 @@ class CLIUI:
         self.progress_handler = None
         if not plain and PromptSession is not None:
             history_file = Path.home() / ".devai_history"
-            completer = WordCompleter(list(commands or []), ignore_case=True)
+            cmd_completer = WordCompleter(list(commands or []), ignore_case=True)
+            path_completer = PathCompleter(expanduser=True)
+
+            if merge_completers is not None:
+                completer = merge_completers([cmd_completer, path_completer])
+            else:
+                class _MergedCompleter(Completer):
+                    def __init__(self, comps: list[Completer]):
+                        self.completers = comps
+
+                    def get_completions(self, document, complete_event):
+                        for c in self.completers:
+                            yield from c.get_completions(document, complete_event)
+
+                completer = _MergedCompleter([cmd_completer, path_completer])
+
             self.session = PromptSession(
-                history=FileHistory(str(history_file)), completer=completer
+                history=FileHistory(str(history_file)),
+                completer=completer,
             )
         else:
             self.session = None
