@@ -136,24 +136,29 @@ def test_cli_plain_mode(monkeypatch):
     assert called == []
 
 
-def test_cli_render_diff(monkeypatch):
-    class DiffAI(DummyAI):
-        async def generate_response(self, q, **kw):
-            return "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@\n-old\n+new\n"
+def test_cli_render_diff():
+    from devai.ui import CLIUI
 
-    monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
-    ui_obj = None
+    ui = CLIUI()
+    captured: list[str] = []
+    panel = types.SimpleNamespace(
+        clear=lambda: None, write=lambda t: captured.append(t)
+    )
+    ui.diff_panel = panel
 
-    def make_ui(*a, **k):
-        nonlocal ui_obj
-        k.pop("commands", None)
-        ui_obj = DummyUI(["hi", "/sair"], **k)
-        return ui_obj
+    diff_lines = [
+        "diff --git a/x b/x",
+        "--- a/x",
+        "+++ b/x",
+        "@@",
+    ]
+    diff_lines += [f" line{i}" for i in range(10)]
+    diff_lines += ["-old", "+new"]
+    diff_lines += [f" line{i}" for i in range(10, 20)]
+    ui.render_diff("\n".join(diff_lines))
 
-    monkeypatch.setattr(cli, "CLIUI", make_ui)
-    asyncio.run(cli.cli_main())
-    assert ui_obj is not None
-    assert any("diff --git" in out for out in ui_obj.outputs)
+    assert captured
+    assert any("..." in c for c in captured)
 
 
 def test_cli_render_diff_plusminus(monkeypatch):
