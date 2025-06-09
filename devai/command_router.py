@@ -324,24 +324,24 @@ async def handle_rastrear(ai, ui, args, *, plain, feedback_db):
 
 
 async def handle_decisoes(ai, ui, args, *, plain, feedback_db):
-    """Manage decision log remembered entries."""
+    """Show and manage decision log entries."""
     parts = args.split()
     log_path = Path("decision_log.yaml")
     try:
         import yaml  # type: ignore
-    except Exception:  # pragma: no cover
+    except Exception:  # pragma: no cover - fallback when PyYAML is missing
         from . import yaml_fallback as yaml
+
     data = []
     if log_path.exists():
         try:
             data = yaml.safe_load(log_path.read_text()) or []
         except Exception:
             data = []
-    if not parts:
-        for e in data:
-            flag = "*" if e.get("remember") else " "
-            print(f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')}")
-        return
+        if not isinstance(data, list):
+            data = []
+
+    # Toggle remembered approvals
     if len(parts) == 2 and parts[0] in {"lembrar", "esquecer"}:
         target_id = parts[1]
         for e in data:
@@ -351,6 +351,34 @@ async def handle_decisoes(ai, ui, args, *, plain, feedback_db):
                 print("Atualizado")
                 return
         print("ID não encontrado")
+        return
+
+    # Parse optional filters
+    count = 10
+    if parts and parts[0].isdigit():
+        count = int(parts[0])
+        parts = parts[1:]
+    rest = " ".join(parts)
+    m_action = re.search(r"acao:([^\s]+)", rest)
+    m_file = re.search(r"(?:arquivo|file):([^\s]+)", rest)
+    action_filter = m_action.group(1) if m_action else None
+    file_filter = m_file.group(1) if m_file else None
+
+    entries = []
+    for e in reversed(data):
+        if action_filter and e.get("tipo") != action_filter:
+            continue
+        if file_filter and file_filter not in e.get("modulo", ""):
+            continue
+        entries.append(e)
+        if len(entries) >= count:
+            break
+
+    for e in entries:
+        flag = "*" if e.get("remember") else " "
+        print(
+            f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')}"
+        )
 
 
 async def handle_plugins(ai, ui, args, *, plain, feedback_db):
