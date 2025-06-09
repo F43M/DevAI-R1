@@ -129,3 +129,43 @@ class CLIUI:
                     progress.update(task_id, **kwargs)
 
                 yield _update
+
+    async def confirm(self, message: str) -> bool:
+        """Ask the user to confirm an action."""
+        if not self.plain:
+            try:
+                from textual.app import App, ComposeResult
+                from textual.widgets import Label, Button
+                from textual.containers import Horizontal, Vertical
+
+                class ConfirmApp(App):
+                    CSS = "Screen {align: center middle}"
+
+                    def __init__(self, msg: str) -> None:
+                        super().__init__()
+                        self.msg = msg
+                        self.result: bool | None = None
+
+                    def compose(self) -> ComposeResult:
+                        yield Vertical(
+                            Label(self.msg),
+                            Horizontal(Button("Sim", id="yes"), Button("Não", id="no")),
+                        )
+
+                    async def on_button_pressed(self, event: Button.Pressed) -> None:
+                        self.result = event.button.id == "yes"
+                        await self.action_quit()
+
+                app = ConfirmApp(message)
+                await app.run_async()
+                if app.result is not None:
+                    return app.result
+            except Exception:
+                try:
+                    from rich.prompt import Confirm
+                    return Confirm.ask(Text(message), default=False, console=self.console)
+                except Exception:
+                    pass
+
+        resp = await self.read_command(f"{message} [s/N] ")
+        return resp.strip().lower() in {"s", "sim", "y", "yes"}
