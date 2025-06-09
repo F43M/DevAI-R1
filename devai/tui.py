@@ -32,6 +32,11 @@ class TUIApp(App):
         self.diff_panel: TextLog
         self.progress_panel: TextLog
         self.input: Input
+        self.command_history: list[str] = []
+        self.history_index = 0
+        self.commands: list[str] = []
+        self.completion_matches: list[str] = []
+        self.completion_index = 0
 
     def compose(self) -> ComposeResult:
         self.history_panel = TextLog(highlight=False, name="history")
@@ -51,8 +56,14 @@ class TUIApp(App):
 
     async def on_mount(self) -> None:
         self.cli.load_history()
+        if self.cli.session and getattr(self.cli.session, "completer", None):
+            words = getattr(self.cli.session.completer, "words", [])
+            self.commands = list(words)
         for line in self.cli.history:
             self.history_panel.write(line)
+            if line.startswith(">>> "):
+                self.command_history.append(line[4:])
+        self.history_index = len(self.command_history)
 
     async def action_submit(self) -> None:
         text = self.input.value.strip()
@@ -61,6 +72,8 @@ class TUIApp(App):
         self.input.value = ""
         self.cli.add_history(f">>> {text}")
         self.history_panel.write(f">>> {text}")
+        self.command_history.append(text)
+        self.history_index = len(self.command_history)
         if text.lower() == "/sair":
             await self.action_quit()
             return
@@ -84,3 +97,31 @@ class TUIApp(App):
             self.cli.render_diff(response)
         else:
             self.diff_panel.clear()
+
+    async def on_key(self, event) -> None:
+        if self.focused is not self.input:
+            return
+        key = getattr(event, "key", "")
+        if key == "up":
+            if self.command_history and self.history_index > 0:
+                self.history_index -= 1
+                self.input.value = self.command_history[self.history_index]
+            event.stop()
+        elif key == "down":
+            if self.command_history and self.history_index < len(self.command_history) - 1:
+                self.history_index += 1
+                self.input.value = self.command_history[self.history_index]
+            else:
+                self.history_index = len(self.command_history)
+                self.input.value = ""
+            event.stop()
+        elif key == "tab":
+            prefix = self.input.value
+            if not self.completion_matches or not all(m.startswith(prefix) for m in self.completion_matches):
+                self.completion_matches = [c for c in self.commands if c.startswith(prefix)]
+                self.completion_index = 0
+            if self.completion_matches:
+                self.input.value = self.completion_matches[self.completion_index]
+                self.completion_index = (self.completion_index + 1) % len(self.completion_matches)
+                event.stop()
+
