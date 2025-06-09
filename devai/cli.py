@@ -408,11 +408,17 @@ async def cli_main(
                     status = "ativada" if new_val else "desativada"
                     print(f"Execução isolada {status}")
                 else:
-                    async with ui.loading("Gerando resposta..."):
-                        response = await ai.generate_response(
-                            user_input, double_check=ai.double_check
-                        )
                     print("\nResposta:")
+                    tokens: list[str] = []
+                    async with ui.loading("Gerando resposta..."):
+                        async for token in ai.generate_response_stream(user_input):
+                            tokens.append(token)
+                            if plain:
+                                print(token, end="", flush=True)
+                            else:
+                                ui.console.print(token, end="")
+                    response = "".join(tokens)
+                    print()
                     is_patch = bool(
                         re.search(r"\ndiff --git", response)
                         or re.search(r"^[+-](?![+-])", response, re.MULTILINE)
