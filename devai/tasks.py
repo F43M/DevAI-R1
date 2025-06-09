@@ -19,7 +19,7 @@ from .ai_model import AIModel
 from .plugin_manager import PluginManager
 from .notifier import Notifier
 from .test_runner import run_pytest
-from .approval import requires_approval
+from .approval import requires_approval, request_approval
 from .decision_log import log_decision
 
 
@@ -143,10 +143,15 @@ class TaskManager:
             "auto_refactor": "edit",
         }
         action = action_map.get(task["type"])
-        if action and ui and requires_approval(action):
-            approved = await ui.confirm(f"Executar tarefa {task_name}?")
+        if action and requires_approval(action):
+            if ui:
+                approved = await ui.confirm(f"Executar tarefa {task_name}?")
+                model = "cli"
+            else:
+                approved = await request_approval(f"Executar tarefa {task_name}?")
+                model = "web"
             log_decision(
-                action, task_name, "execucao", "cli", "ok" if approved else "nao"
+                action, task_name, "execucao", model, "ok" if approved else "nao"
             )
             if not approved:
                 return {"canceled": True}
@@ -366,13 +371,18 @@ class TaskManager:
     async def _perform_test_task(
         self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
-        if ui and requires_approval("shell"):
-            approved = await ui.confirm("Executar testes?")
+        if requires_approval("shell"):
+            if ui:
+                approved = await ui.confirm("Executar testes?")
+                model = "cli"
+            else:
+                approved = await request_approval("Executar testes?")
+                model = "web"
             log_decision(
                 "shell",
                 task.get("type", "test"),
                 "execucao",
-                "cli",
+                model,
                 "ok" if approved else "nao",
             )
             if not approved:
@@ -388,13 +398,18 @@ class TaskManager:
     async def _perform_static_analysis_task(
         self, task: Dict, *args, ui=None
     ) -> List[str]:
-        if ui and requires_approval("shell"):
-            approved = await ui.confirm("Executar análise estática?")
+        if requires_approval("shell"):
+            if ui:
+                approved = await ui.confirm("Executar análise estática?")
+                model = "cli"
+            else:
+                approved = await request_approval("Executar análise estática?")
+                model = "web"
             log_decision(
                 "shell",
                 task.get("type", "static"),
                 "execucao",
-                "cli",
+                model,
                 "ok" if approved else "nao",
             )
             if not approved:
@@ -420,13 +435,18 @@ class TaskManager:
     async def _perform_security_analysis_task(
         self, task: Dict, *args, ui=None
     ) -> List[str]:
-        if ui and requires_approval("shell"):
-            approved = await ui.confirm("Executar análise de segurança?")
+        if requires_approval("shell"):
+            if ui:
+                approved = await ui.confirm("Executar análise de segurança?")
+                model = "cli"
+            else:
+                approved = await request_approval("Executar análise de segurança?")
+                model = "web"
             log_decision(
                 "shell",
                 task.get("type", "security"),
                 "execucao",
-                "cli",
+                model,
                 "ok" if approved else "nao",
             )
             if not approved:
@@ -450,13 +470,18 @@ class TaskManager:
             return [f"Erro na análise de segurança: {e}"]
 
     async def _perform_pylint_task(self, task: Dict, *args, ui=None) -> List[str]:
-        if ui and requires_approval("shell"):
-            approved = await ui.confirm("Executar pylint?")
+        if requires_approval("shell"):
+            if ui:
+                approved = await ui.confirm("Executar pylint?")
+                model = "cli"
+            else:
+                approved = await request_approval("Executar pylint?")
+                model = "web"
             log_decision(
                 "shell",
                 task.get("type", "pylint"),
                 "execucao",
-                "cli",
+                model,
                 "ok" if approved else "nao",
             )
             if not approved:
@@ -480,13 +505,18 @@ class TaskManager:
             return [f"Erro no pylint: {e}"]
 
     async def _perform_type_check_task(self, task: Dict, *args, ui=None) -> List[str]:
-        if ui and requires_approval("shell"):
-            approved = await ui.confirm("Executar verificação de tipos?")
+        if requires_approval("shell"):
+            if ui:
+                approved = await ui.confirm("Executar verificação de tipos?")
+                model = "cli"
+            else:
+                approved = await request_approval("Executar verificação de tipos?")
+                model = "web"
             log_decision(
                 "shell",
                 task.get("type", "type_check"),
                 "execucao",
-                "cli",
+                model,
                 "ok" if approved else "nao",
             )
             if not approved:
@@ -512,13 +542,18 @@ class TaskManager:
     async def _perform_coverage_task(
         self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
-        if ui and requires_approval("shell"):
-            approved = await ui.confirm("Executar cobertura de testes?")
+        if requires_approval("shell"):
+            if ui:
+                approved = await ui.confirm("Executar cobertura de testes?")
+                model = "cli"
+            else:
+                approved = await request_approval("Executar cobertura de testes?")
+                model = "web"
             log_decision(
                 "shell",
                 task.get("type", "coverage"),
                 "execucao",
-                "cli",
+                model,
                 "ok" if approved else "nao",
             )
             if not approved:
@@ -589,13 +624,20 @@ class TaskManager:
         def apply(p: Path) -> None:
             p.write_text(suggestion)
 
-        if ui and requires_approval("edit"):
-            approved = await ui.confirm(f"Aplicar refatoração em {file_path}?")
+        if requires_approval("edit"):
+            if ui:
+                approved = await ui.confirm(f"Aplicar refatoração em {file_path}?")
+                model = "cli"
+            else:
+                approved = await request_approval(
+                    f"Aplicar refatoração em {file_path}?"
+                )
+                model = "web"
             log_decision(
                 "edit",
                 task.get("type", "auto_refactor"),
                 "execucao",
-                "cli",
+                model,
                 "ok" if approved else "nao",
             )
             if not approved:
@@ -624,15 +666,22 @@ class TaskManager:
             def apply_retry(p: Path) -> None:
                 p.write_text(suggestion)
 
-            if ui and requires_approval("edit"):
-                approved = await ui.confirm(
-                    f"Aplicar refatoração em {file_path} (retry)?"
-                )
+            if requires_approval("edit"):
+                if ui:
+                    approved = await ui.confirm(
+                        f"Aplicar refatoração em {file_path} (retry)?"
+                    )
+                    model = "cli"
+                else:
+                    approved = await request_approval(
+                        f"Aplicar refatoração em {file_path} (retry)?"
+                    )
+                    model = "web"
                 log_decision(
                     "edit",
                     task.get("type", "auto_refactor"),
                     "retry",
-                    "cli",
+                    model,
                     "ok" if approved else "nao",
                 )
                 if not approved:

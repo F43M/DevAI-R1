@@ -17,7 +17,7 @@ try:
     from .cli import UpdateManager  # type: ignore
 except Exception:  # pragma: no cover - fallback for tests
     from .update_manager import UpdateManager
-from .approval import requires_approval
+from .approval import requires_approval, request_approval
 
 
 def _new_updater():
@@ -147,14 +147,19 @@ async def handle_editar(ai, ui, args, *, plain, feedback_db):
     file, line_no, new_line = parts[0], int(parts[1]), parts[2]
     confirm = True
     if requires_approval("edit", file):
-        confirm = await ui.confirm("Aplicar edição no arquivo?")
+        if ui:
+            confirm = await ui.confirm("Aplicar edição no arquivo?")
+            model = "cli"
+        else:
+            confirm = await request_approval("Aplicar edição no arquivo?")
+            model = "web"
         log_decision(
             "edit",
             file,
             "editar",
-            "cli",
+            model,
             "ok" if confirm else "nao",
-            remember=ui.remember_choice,
+            remember=getattr(ui, "remember_choice", False),
         )
     if not confirm:
         print("Operação cancelada")
@@ -171,14 +176,19 @@ async def handle_novoarq(ai, ui, args, *, plain, feedback_db):
     content = parts[1] if len(parts) > 1 else ""
     confirm = True
     if requires_approval("create", file):
-        confirm = await ui.confirm("Criar novo arquivo?")
+        if ui:
+            confirm = await ui.confirm("Criar novo arquivo?")
+            model = "cli"
+        else:
+            confirm = await request_approval("Criar novo arquivo?")
+            model = "web"
         log_decision(
             "create",
             file,
             "novoarq",
-            "cli",
+            model,
             "ok" if confirm else "nao",
-            remember=ui.remember_choice,
+            remember=getattr(ui, "remember_choice", False),
         )
     if not confirm:
         print("Operação cancelada")
@@ -191,14 +201,19 @@ async def handle_novapasta(ai, ui, args, *, plain, feedback_db):
     path = args.strip()
     confirm = True
     if requires_approval("create", path):
-        confirm = await ui.confirm("Criar nova pasta?")
+        if ui:
+            confirm = await ui.confirm("Criar nova pasta?")
+            model = "cli"
+        else:
+            confirm = await request_approval("Criar nova pasta?")
+            model = "web"
         log_decision(
             "create",
             path,
             "novapasta",
-            "cli",
+            model,
             "ok" if confirm else "nao",
-            remember=ui.remember_choice,
+            remember=getattr(ui, "remember_choice", False),
         )
     if not confirm:
         print("Operação cancelada")
@@ -211,14 +226,19 @@ async def handle_deletar(ai, ui, args, *, plain, feedback_db):
     path = args.strip()
     confirmed = True
     if requires_approval("delete", path):
-        confirmed = await ui.confirm("Tem certeza que deseja remover?")
+        if ui:
+            confirmed = await ui.confirm("Tem certeza que deseja remover?")
+            model = "cli"
+        else:
+            confirmed = await request_approval("Tem certeza que deseja remover?")
+            model = "web"
         log_decision(
             "delete",
             path,
             "deletar",
-            "cli",
+            model,
             "ok" if confirmed else "nao",
-            remember=ui.remember_choice,
+            remember=getattr(ui, "remember_choice", False),
         )
     if not confirmed:
         print("Operação cancelada")
@@ -561,7 +581,14 @@ async def handle_default(
         ui.render_diff(response, side_by_side=side_by_side)
         apply = True
         if requires_approval("patch"):
-            apply = await ui.confirm("Aplicar mudanças?")
+            if ui:
+                apply = await ui.confirm("Aplicar mudanças?")
+                model = "cli"
+            else:
+                apply = await request_approval("Aplicar mudanças?")
+                model = "web"
+        else:
+            model = "cli"
         if apply:
             patches = _split_diff_by_file(response)
             updater = _new_updater()
@@ -573,16 +600,20 @@ async def handle_default(
                 success = updater.safe_apply(f, _apply)
                 if success:
                     ui.console.print(f"[green]✅ {f} atualizado[/green]")
-                    log_decision("patch", f, "apply", "cli", "ok", remember=ui.remember_choice)
+                    log_decision(
+                        "patch", f, "apply", model, "ok", remember=ui.remember_choice
+                    )
                 else:
                     ui.console.print(f"[red]❌ Falha em {f}[/red]")
-                    log_decision("patch", f, "apply", "cli", "falha", remember=ui.remember_choice)
+                    log_decision(
+                        "patch", f, "apply", model, "falha", remember=ui.remember_choice
+                    )
         else:
             log_decision(
                 "patch",
                 "all",
                 "rejeitado",
-                "cli",
+                model,
                 "nao",
                 remember=ui.remember_choice,
             )
