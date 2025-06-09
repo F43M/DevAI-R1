@@ -14,17 +14,29 @@ from .dependency_check import check_dependencies
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CodeMemoryAI - Assistente de Código Inteligente")
+    parser = argparse.ArgumentParser(
+        description="CodeMemoryAI - Assistente de Código Inteligente"
+    )
     parser.add_argument("--api", action="store_true", help="Inicia o servidor API")
-    parser.add_argument("--cli", action="store_true", help="Inicia a interface de linha de comando")
+    parser.add_argument(
+        "--cli", action="store_true", help="Inicia a interface de linha de comando"
+    )
     parser.add_argument("--tui", action="store_true", help="Inicia a interface textual")
-    parser.add_argument("--guided", action="store_true", help="Mostra orientações passo a passo")
-    parser.add_argument("--plain", action="store_true", help="Interface simples sem Rich")
-    parser.add_argument("--no-log", action="store_true", help="Não registra histórico de chat")
-    parser.add_argument("--observer", action="store_true", help="Modo observador passivo")
+    parser.add_argument(
+        "--guided", action="store_true", help="Mostra orientações passo a passo"
+    )
+    parser.add_argument(
+        "--plain", action="store_true", help="Interface simples sem Rich"
+    )
+    parser.add_argument(
+        "--no-log", action="store_true", help="Não registra histórico de chat"
+    )
+    parser.add_argument(
+        "--observer", action="store_true", help="Modo observador passivo"
+    )
     parser.add_argument(
         "--approval-mode",
-        choices=["auto", "suggest", "manual"],
+        choices=["suggest", "auto_edit", "full_auto"],
         default=config.APPROVAL_MODE,
         help="Como lidar com operações sensíveis",
     )
@@ -37,6 +49,7 @@ def main():
             "\u26d4\ufe0f Nenhuma chave OPENROUTER_API_KEY encontrada. Algumas funcionalidades podem não funcionar."
         )
     if args.api:
+
         async def start_api() -> None:
             ai = CodeMemoryAI()
             await ai.run()
@@ -44,6 +57,7 @@ def main():
         asyncio.run(start_api())
         return
     if args.observer:
+
         async def run_observer() -> None:
             ai = CodeMemoryAI()
             await ai._learning_loop()
@@ -67,6 +81,7 @@ def main():
         async def handle_command() -> None:
             ai = CodeMemoryAI()
             from .learning_engine import LearningEngine
+
             engine = LearningEngine(ai.analyzer, ai.memory, ai.ai_model)
 
             if cmd[0] == "aprender":
@@ -94,22 +109,31 @@ def main():
                 return
             elif cmd[0] == "treinamento" and len(cmd) > 1 and cmd[1] == "profundo":
                 from .symbolic_training import run_symbolic_training
-                result = await run_symbolic_training(ai.analyzer, ai.memory, ai.ai_model)
+
+                result = await run_symbolic_training(
+                    ai.analyzer, ai.memory, ai.ai_model
+                )
                 print(json.dumps(result, indent=2))
                 return
             elif cmd[0] == "fine_tune" and len(cmd) > 2:
                 from .rlhf import RLFineTuner
+
                 tuner = RLFineTuner(ai.memory)
                 result = await tuner.fine_tune(cmd[1], cmd[2])
                 print(json.dumps(result, indent=2))
                 return
             elif cmd[0] == "preferencia" and len(cmd) > 1:
                 from .feedback import registrar_preferencia
+
                 registrar_preferencia(" ".join(cmd[1:]))
                 print("Preferência registrada com sucesso")
                 return
             elif cmd[0] == "simular" and len(cmd) > 2:
-                from .shadow_mode import simulate_update, evaluate_change_with_ia, log_simulation
+                from .shadow_mode import (
+                    simulate_update,
+                    evaluate_change_with_ia,
+                    log_simulation,
+                )
 
                 args = cmd[1:]
                 save_patch = False
@@ -130,7 +154,9 @@ def main():
 
                 file_path = args[0]
                 new_code = " ".join(args[1:])
-                diff, tests_ok, test_out, sim_id, patch_path = simulate_update(file_path, new_code)
+                diff, tests_ok, test_out, sim_id, patch_path = simulate_update(
+                    file_path, new_code
+                )
                 patch_hash = hashlib.sha1(diff.encode("utf-8")).hexdigest()
                 evaluation = await evaluate_change_with_ia(diff)
 
@@ -138,7 +164,11 @@ def main():
                     original = Path(file_path).read_text().splitlines()
                     updated = new_code.splitlines()
                     html = difflib.HtmlDiff().make_table(
-                        original, updated, fromdesc="original", todesc="sugerido", context=True
+                        original,
+                        updated,
+                        fromdesc="original",
+                        todesc="sugerido",
+                        context=True,
                     )
                     print(html)
                 else:
@@ -150,11 +180,14 @@ def main():
                 print(evaluation["analysis"])
                 if tests_ok and input("Aplicar? [s/N] ").lower() == "s":
                     from .update_manager import UpdateManager
+
                     success, _ = UpdateManager().safe_apply(
                         file_path, lambda p: p.write_text(new_code), capture_output=True
                     )
                     if not success and rollback:
-                        subprocess.run(["git", "apply", "-R", patch_path], cwd=config.CODE_ROOT)
+                        subprocess.run(
+                            ["git", "apply", "-R", patch_path], cwd=config.CODE_ROOT
+                        )
                     action = "shadow_approved" if success else "shadow_failed"
                 else:
                     action = "shadow_declined" if tests_ok else "shadow_failed"
@@ -170,6 +203,7 @@ def main():
                 return
             elif cmd[0] == "monitorar":
                 from .monitor_engine import auto_monitor_cycle
+
                 result = await auto_monitor_cycle(ai.analyzer, ai.memory, ai.ai_model)
                 print(json.dumps(result, indent=2))
                 return

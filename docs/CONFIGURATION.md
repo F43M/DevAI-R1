@@ -73,7 +73,7 @@ APPROVAL_MODE: suggest
 
 Valores aceitos:
 
-- `auto` – nenhuma confirmação de operações;
-- `suggest` – confirma ações como aplicação de patches ou execução de shell;
-- `manual` – solicita confirmação para qualquer alteração.
+- `full_auto` – nenhuma confirmação de operações;
+- `auto_edit` – confirma somente comandos de shell;
+- `suggest` – confirma ações de escrita ou execução de shell.
 
