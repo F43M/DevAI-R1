@@ -722,14 +722,16 @@ class CodeMemoryAI:
             summary = await self.learning_engine.explain_learning_lessons()
             return {"summary": summary}
 
-        from .approval import wait_for_request, resolve_request
+        from .approval import wait_for_request, resolve_request, verify_token
 
         @self.app.get("/approval_request")
         async def approval_wait():
             return await wait_for_request()
 
         @self.app.post("/approval_request")
-        async def approval_answer(approved: bool):
+        async def approval_answer(approved: bool, token: str):
+            if not verify_token(token):
+                return {"status": "invalid"}
             resolve_request(approved)
             return {"status": "ok"}
 
