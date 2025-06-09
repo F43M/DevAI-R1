@@ -484,6 +484,10 @@ class CodeMemoryAI:
         async def session_context(session_id: str = "default"):
             return self.get_session_context(session_id)
 
+        @self.app.get("/context/search")
+        async def context_search(tag: str, session_id: str = "default"):
+            return self.conv_handler.search_history(session_id, tag)
+
         @self.app.get("/diff")
         async def get_diff(file: str):
             hist = self.history.history(file)

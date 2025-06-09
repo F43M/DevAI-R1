@@ -44,6 +44,7 @@ class Config:
     NOTIFY_EMAIL: str = os.getenv("NOTIFY_EMAIL", "")
     LOCAL_MODEL: str = os.getenv("LOCAL_MODEL", "")
     MAX_SESSION_TOKENS: int = 1000
+    MAX_PROMPT_TOKENS: int = 1000
     COMPLEXITY_HISTORY: str = "complexity_history.json"
     LOG_AGGREGATOR_URL: str = os.getenv("LOG_AGGREGATOR_URL", "")
     DOUBLE_CHECK: bool = False
@@ -121,6 +122,8 @@ class Config:
             raise ValueError("RLHF_THRESHOLD must be integer")
         if not isinstance(self.RLHF_OUTPUT_DIR, str):
             raise ValueError("RLHF_OUTPUT_DIR must be string")
+        if not isinstance(self.MAX_PROMPT_TOKENS, int):
+            raise ValueError("MAX_PROMPT_TOKENS must be integer")
 
     @property
     def model_name(self) -> str:
