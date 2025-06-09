@@ -23,7 +23,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 from .config import logger, config
 from .memory import MemoryManager
@@ -78,6 +78,18 @@ class LearningEngine:
         self.rate_limit = rate_limit
         self._call_times: List[float] = []
         self.call_count = 0
+
+    def register_rule(self, rule: str, source: Dict[str, Any]) -> None:
+        """Store a learned rule and its origin."""
+        self.memory.save(
+            {
+                "type": "learned_rule",
+                "memory_type": "rule",
+                "content": rule,
+                "metadata": source,
+                "tags": ["rule", "learning"],
+            }
+        )
 
     async def _rate_limited_call(self, prompt: str, max_length: int = 800) -> str:
         """Invoke the model while respecting a simple per-minute limit."""
@@ -143,6 +155,14 @@ class LearningEngine:
             return
         # Inspect each log and extract insights when error keywords show up
         for log_file in log_dir.glob("*.log"):
+            meta_file = log_file.with_suffix(log_file.suffix + ".meta")
+            if meta_file.exists():
+                try:
+                    meta = json.loads(meta_file.read_text())
+                    if meta.get("processed"):
+                        continue
+                except Exception:
+                    pass
             try:
                 text = log_file.read_text()[-2000:]
             except Exception:
@@ -167,6 +187,12 @@ class LearningEngine:
                         "content": resp,
                         "metadata": {"file": str(log_file)},
                     }
+                )
+                meta_file.write_text(
+                    json.dumps(
+                        {"processed": True, "processed_at": datetime.now().isoformat()},
+                        indent=2,
+                    )
                 )
         logger.info("Aprendizado de erros concluido")
 

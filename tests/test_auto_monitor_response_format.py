@@ -96,3 +96,4 @@ def test_auto_monitor_rule_origins(tmp_path, monkeypatch):
 
     result = asyncio.run(run())
     assert "logs:" in result["report"]
+    assert result["data"]["rule_sources"]["Use padrões"]["files"]
