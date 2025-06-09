@@ -55,13 +55,43 @@ class ConversationHandler:
         hist = self.history(session_id)
         total = sum(self._estimate_tokens(m.get("content", "")) for m in hist)
         changed = False
+        removed = 0
         while hist and total > max_tokens:
             msg = hist.pop(0)
             total -= self._estimate_tokens(msg.get("content", ""))
             changed = True
+            removed += 1
         if changed:
             self.conversation_context[session_id] = hist
             self._save_session(session_id)
+            if (
+                removed
+                and self.memory
+                and hasattr(self.memory, "conn")
+            ):
+                try:
+                    cur = self.memory.conn.cursor()
+                    cur.execute(
+                        "SELECT message_id FROM conversation_embeddings WHERE session_id = ? ORDER BY message_id ASC LIMIT ?",
+                        (session_id, removed),
+                    )
+                    ids = [r[0] for r in cur.fetchall()]
+                    if ids:
+                        placeholders = ",".join("?" for _ in ids)
+                        cur.execute(
+                            f"DELETE FROM conversation_embeddings WHERE session_id = ? AND message_id IN ({placeholders})",
+                            (session_id, *ids),
+                        )
+                        self.memory.conn.commit()
+                        logger.info(
+                            "conversation_embeddings_removed",
+                            session=session_id,
+                            count=len(ids),
+                        )
+                except Exception:
+                    logger.error(
+                        "failed_to_prune_conv_embeddings", session=session_id
+                    )
 
     def _save_session(self, session_id: str) -> None:
         try:
@@ -231,6 +261,22 @@ class ConversationHandler:
             self._mtimes.pop(session_id, None)
         except Exception:
             pass
+        if self.memory and hasattr(self.memory, "conn"):
+            try:
+                cur = self.memory.conn.cursor()
+                cur.execute(
+                    "DELETE FROM conversation_embeddings WHERE session_id = ?",
+                    (session_id,),
+                )
+                removed = cur.rowcount
+                self.memory.conn.commit()
+                logger.info(
+                    "conversation_embeddings_removed", session=session_id, count=removed
+                )
+            except Exception:
+                logger.error(
+                    "failed_to_delete_conv_embeddings", session=session_id
+                )
         logger.info("messages_cleared", session=session_id)
 
     def clear_session(self, session_id: str = "default") -> None:
@@ -240,5 +286,21 @@ class ConversationHandler:
             self._history_file(session_id).unlink()
         except Exception:
             pass
+        if self.memory and hasattr(self.memory, "conn"):
+            try:
+                cur = self.memory.conn.cursor()
+                cur.execute(
+                    "DELETE FROM conversation_embeddings WHERE session_id = ?",
+                    (session_id,),
+                )
+                removed = cur.rowcount
+                self.memory.conn.commit()
+                logger.info(
+                    "conversation_embeddings_removed", session=session_id, count=removed
+                )
+            except Exception:
+                logger.error(
+                    "failed_to_delete_conv_embeddings", session=session_id
+                )
         self.symbolic_memories = []
         logger.info("session_reset", session=session_id)
