@@ -14,7 +14,7 @@ class PluginManager:
         self.plugins: Dict[str, Any] = {}
         self.plugin_tasks: Dict[str, Set[str]] = {}
         self.plugin_paths: Dict[str, pathlib.Path] = {}
-        self.conn = sqlite3.connect(db_file)
+        self.conn = sqlite3.connect(db_file, check_same_thread=False)
         self._init_db()
         self.load_plugins()
 

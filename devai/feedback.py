@@ -10,7 +10,7 @@ class FeedbackDB:
     """Simple feedback registry."""
 
     def __init__(self, db_file: str = "feedback.db") -> None:
-        self.conn = sqlite3.connect(db_file)
+        self.conn = sqlite3.connect(db_file, check_same_thread=False)
         self._init_db()
 
     def _init_db(self) -> None:
