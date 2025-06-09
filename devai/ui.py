@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.text import Text
+from rich.table import Table
 
 try:
     from prompt_toolkit import PromptSession
@@ -76,7 +77,7 @@ class CLIUI:
             except Exception:
                 pass
 
-    def render_diff(self, diff: str) -> None:
+    def render_diff(self, diff: str, *, side_by_side: bool = False) -> None:
         if self.plain:
             print(diff)
             return
@@ -103,14 +104,36 @@ class CLIUI:
             return "\n".join(result)
 
         collapsed = _collapse(diff)
+
+        if side_by_side:
+            lines = collapsed.splitlines()
+            table = Table.grid(expand=True)
+            table.add_column("Original")
+            table.add_column("Novo")
+            for line in lines:
+                if line == "...":
+                    row = Text("...", style="dim")
+                    table.add_row(row, row)
+                elif line.startswith("-") and not line.startswith("---"):
+                    table.add_row(Text(line[1:], style="red"), Text(""))
+                elif line.startswith("+") and not line.startswith("+++"):
+                    table.add_row(Text(""), Text(line[1:], style="green"))
+                else:
+                    style = "bold" if line.startswith("@@") or line.startswith("diff") or line.startswith("index") or line.startswith("---") or line.startswith("+++") else None
+                    t = Text(line, style=style)
+                    table.add_row(t, t)
+            renderable = table
+        else:
+            renderable = Syntax(collapsed, "diff")
+
         if self.diff_panel is not None:
             try:
                 self.diff_panel.clear()
-                self.diff_panel.write(collapsed)
+                self.diff_panel.write(renderable)
             except Exception:
                 pass
         else:
-            panel = Panel(Syntax(collapsed, "diff"), height=20, title="Diff")
+            panel = Panel(renderable, height=20, title="Diff")
             self.console.print(panel)
 
     @asynccontextmanager

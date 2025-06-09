@@ -58,24 +58,42 @@ except Exception:  # pragma: no cover - fallback for test env
 
     syntax_mod = types.ModuleType('rich.syntax')
     class Syntax(str):
-        def __init__(self, code: str, *_a, **_k):
-            str.__init__(self)
+        def __new__(cls, code: str, *_a, **_k):
+            return str.__new__(cls, code)
     syntax_mod.Syntax = Syntax
 
     text_mod = types.ModuleType('rich.text')
-    text_mod.Text = str
+    class Text(str):
+        def __new__(cls, text: str = "", *_, style=None, **__):
+            return str.__new__(cls, text)
+    text_mod.Text = Text
+
+    table_mod = types.ModuleType('rich.table')
+    class Table:
+        def __init__(self, *a, **k):
+            pass
+        @classmethod
+        def grid(cls, *a, **k):
+            return cls()
+        def add_column(self, *a, **k):
+            pass
+        def add_row(self, *a, **k):
+            pass
+    table_mod.Table = Table
 
     rich_mod = types.ModuleType('rich')
     rich_mod.console = console_mod
     rich_mod.panel = panel_mod
     rich_mod.syntax = syntax_mod
     rich_mod.text = text_mod
+    rich_mod.table = table_mod
 
     sys.modules.setdefault('rich', rich_mod)
     sys.modules.setdefault('rich.console', console_mod)
     sys.modules.setdefault('rich.panel', panel_mod)
     sys.modules.setdefault('rich.syntax', syntax_mod)
     sys.modules.setdefault('rich.text', text_mod)
+    sys.modules.setdefault('rich.table', table_mod)
 
 try:
     from fastapi import FastAPI  # type: ignore  # noqa: F401
