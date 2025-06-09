@@ -22,9 +22,16 @@ def main():
     parser.add_argument("--plain", action="store_true", help="Interface simples sem Rich")
     parser.add_argument("--no-log", action="store_true", help="Não registra histórico de chat")
     parser.add_argument("--observer", action="store_true", help="Modo observador passivo")
+    parser.add_argument(
+        "--approval-mode",
+        choices=["auto", "suggest", "manual"],
+        default=config.APPROVAL_MODE,
+        help="Como lidar com operações sensíveis",
+    )
     parser.add_argument("command", nargs="*", help="Comandos adicionais")
     args = parser.parse_args()
     check_dependencies()
+    config.APPROVAL_MODE = args.approval_mode
     if not config.OPENROUTER_API_KEY:
         print(
             "\u26d4\ufe0f Nenhuma chave OPENROUTER_API_KEY encontrada. Algumas funcionalidades podem não funcionar."

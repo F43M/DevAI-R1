@@ -8,7 +8,11 @@ from .feedback import FeedbackDB, registrar_preferencia
 from pathlib import Path
 
 from .ui import CLIUI
+from .update_manager import UpdateManager
 from .command_router import COMMANDS, handle_default
+from .decision_log import log_decision
+import devai.command_router as command_router_module
+command_router_module.UpdateManager = UpdateManager
 try:
     from .tui import TUIApp
 except Exception:  # pragma: no cover - optional dependency

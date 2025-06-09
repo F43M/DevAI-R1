@@ -19,6 +19,7 @@ from .ai_model import AIModel
 from .plugin_manager import PluginManager
 from .notifier import Notifier
 from .test_runner import run_pytest
+from .approval import requires_approval
 
 
 class TaskManager:
@@ -125,12 +126,27 @@ class TaskManager:
                 "description": "Roda lint, análise e testes em paralelo",
             }
 
-    async def run_task(self, task_name: str, *args, progress=None) -> Any:
+    async def run_task(self, task_name: str, *args, progress=None, ui=None) -> Any:
         if task_name not in self.tasks:
             logger.error("Tarefa não encontrada", task=task_name)
             return {"error": f"Tarefa '{task_name}' não encontrada"}
         task = self.tasks[task_name]
         logger.info("Executando tarefa", task=task_name)
+        action_map = {
+            "test": "shell",
+            "static_analysis": "shell",
+            "security_analysis": "shell",
+            "pylint": "shell",
+            "type_check": "shell",
+            "coverage": "shell",
+            "auto_refactor": "edit",
+        }
+        action = action_map.get(task["type"])
+        if action and ui and requires_approval(action):
+            approved = await ui.confirm(f"Executar tarefa {task_name}?")
+            if not approved:
+                return {"canceled": True}
+
         if task["type"] == "analysis":
             result = await self._perform_analysis_task(task, *args)
         elif task["type"] == "verification":
@@ -140,27 +156,56 @@ class TaskManager:
         elif task["type"] == "lint":
             result = await self._perform_lint_task(task, *args)
         elif task["type"] == "test":
-            result = await self._perform_test_task(task, *args, progress_cb=progress)
+            try:
+                result = await self._perform_test_task(task, *args, progress_cb=progress, ui=ui)
+            except TypeError:
+                result = await self._perform_test_task(task, *args, progress_cb=progress)
         elif task["type"] == "static_analysis":
-            result = await self._perform_static_analysis_task(task, *args)
+            try:
+                result = await self._perform_static_analysis_task(task, *args, ui=ui)
+            except TypeError:
+                result = await self._perform_static_analysis_task(task, *args)
         elif task["type"] == "security_analysis":
-            result = await self._perform_security_analysis_task(task, *args)
+            try:
+                result = await self._perform_security_analysis_task(task, *args, ui=ui)
+            except TypeError:
+                result = await self._perform_security_analysis_task(task, *args)
         elif task["type"] == "pylint":
-            result = await self._perform_pylint_task(task, *args)
+            try:
+                result = await self._perform_pylint_task(task, *args, ui=ui)
+            except TypeError:
+                result = await self._perform_pylint_task(task, *args)
         elif task["type"] == "type_check":
-            result = await self._perform_type_check_task(task, *args)
+            try:
+                result = await self._perform_type_check_task(task, *args, ui=ui)
+            except TypeError:
+                result = await self._perform_type_check_task(task, *args)
         elif task["type"] == "auto_refactor":
-            result = await self._perform_auto_refactor_task(task, *args)
+            try:
+                result = await self._perform_auto_refactor_task(task, *args, ui=ui)
+            except TypeError:
+                result = await self._perform_auto_refactor_task(task, *args)
         elif task["type"] == "quality_suite":
-            result = await self._perform_quality_suite_task(task, *args)
+            try:
+                result = await self._perform_quality_suite_task(task, *args, ui=ui)
+            except TypeError:
+                result = await self._perform_quality_suite_task(task, *args)
         elif task["type"] == "coverage":
-            result = await self._perform_coverage_task(
-                task, *args, progress_cb=progress
-            )
+            try:
+                result = await self._perform_coverage_task(
+                    task, *args, progress_cb=progress, ui=ui
+                )
+            except TypeError:
+                result = await self._perform_coverage_task(
+                    task, *args, progress_cb=progress
+                )
         else:
             handler = getattr(self, f"_perform_{task['type']}_task", None)
             if handler:
-                result = await handler(task, *args)
+                try:
+                    result = await handler(task, *args, ui=ui)
+                except TypeError:
+                    result = await handler(task, *args)
             else:
                 logger.error("Tipo de tarefa inválido", task_type=task["type"])
                 result = {"error": f"Tipo de tarefa '{task['type']}' não suportado"}
@@ -311,8 +356,11 @@ class TaskManager:
         return findings if findings else ["✅ Nenhum TODO encontrado"]
 
     async def _perform_test_task(
-        self, task: Dict, *args, progress_cb=None
+        self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
+        if ui and requires_approval("shell"):
+            if not await ui.confirm("Executar testes?"):
+                return ["cancelado"]
         if progress_cb:
             progress_cb(0, "running tests")
         ok, out = run_pytest(self.code_analyzer.code_root)
@@ -321,7 +369,10 @@ class TaskManager:
         logger.info("Testes executados", success=ok)
         return out.splitlines()
 
-    async def _perform_static_analysis_task(self, task: Dict, *args) -> List[str]:
+    async def _perform_static_analysis_task(self, task: Dict, *args, ui=None) -> List[str]:
+        if ui and requires_approval("shell"):
+            if not await ui.confirm("Executar análise estática?"):
+                return ["cancelado"]
         cmd = ["flake8", str(self.code_analyzer.code_root)]
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -340,7 +391,10 @@ class TaskManager:
             logger.error("Erro na análise estática", error=str(e))
             return [f"Erro na análise estática: {e}"]
 
-    async def _perform_security_analysis_task(self, task: Dict, *args) -> List[str]:
+    async def _perform_security_analysis_task(self, task: Dict, *args, ui=None) -> List[str]:
+        if ui and requires_approval("shell"):
+            if not await ui.confirm("Executar análise de segurança?"):
+                return ["cancelado"]
         cmd = ["bandit", "-r", str(self.code_analyzer.code_root)]
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -359,7 +413,10 @@ class TaskManager:
             logger.error("Erro na análise de segurança", error=str(e))
             return [f"Erro na análise de segurança: {e}"]
 
-    async def _perform_pylint_task(self, task: Dict, *args) -> List[str]:
+    async def _perform_pylint_task(self, task: Dict, *args, ui=None) -> List[str]:
+        if ui and requires_approval("shell"):
+            if not await ui.confirm("Executar pylint?"):
+                return ["cancelado"]
         cmd = ["pylint", str(self.code_analyzer.code_root)]
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -378,7 +435,10 @@ class TaskManager:
             logger.error("Erro no pylint", error=str(e))
             return [f"Erro no pylint: {e}"]
 
-    async def _perform_type_check_task(self, task: Dict, *args) -> List[str]:
+    async def _perform_type_check_task(self, task: Dict, *args, ui=None) -> List[str]:
+        if ui and requires_approval("shell"):
+            if not await ui.confirm("Executar verificação de tipos?"):
+                return ["cancelado"]
         cmd = ["mypy", str(self.code_analyzer.code_root)]
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -398,8 +458,11 @@ class TaskManager:
             return [f"Erro na verificação de tipos: {e}"]
 
     async def _perform_coverage_task(
-        self, task: Dict, *args, progress_cb=None
+        self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
+        if ui and requires_approval("shell"):
+            if not await ui.confirm("Executar cobertura de testes?"):
+                return ["cancelado"]
         cmd = ["coverage", "run", "-m", "pytest", "-q"]
         try:
             if progress_cb:
@@ -431,7 +494,7 @@ class TaskManager:
             logger.error("Erro na cobertura", error=str(e))
             return [f"Erro na cobertura: {e}"]
 
-    async def _perform_auto_refactor_task(self, task: Dict, *args) -> Dict:
+    async def _perform_auto_refactor_task(self, task: Dict, *args, ui=None) -> Dict:
         if not self.ai_model:
             return {"error": "Modelo de IA não configurado"}
         file_path = args[0] if args else None
@@ -466,6 +529,10 @@ class TaskManager:
         def apply(p: Path) -> None:
             p.write_text(suggestion)
 
+        if ui and requires_approval("edit"):
+            if not await ui.confirm(f"Aplicar refatoração em {file_path}?"):
+                return {"canceled": True}
+
         try:
             success, out = updater.safe_apply(file_path, apply, capture_output=True)
         except TypeError:
@@ -489,6 +556,9 @@ class TaskManager:
             def apply_retry(p: Path) -> None:
                 p.write_text(suggestion)
 
+            if ui and requires_approval("edit"):
+                if not await ui.confirm(f"Aplicar refatoração em {file_path} (retry)?"):
+                    return {"canceled": True}
             try:
                 success, _ = updater.safe_apply(
                     file_path, apply_retry, capture_output=True
@@ -498,12 +568,12 @@ class TaskManager:
         return {"success": success, "new_code": suggestion[:200]}
 
     async def _perform_quality_suite_task(
-        self, task: Dict, *args
+        self, task: Dict, *args, ui=None
     ) -> Dict[str, List[str]]:
         lint_t = self._perform_lint_task(self.tasks["lint"])
-        static_t = self._perform_static_analysis_task(self.tasks["static_analysis"])
-        sec_t = self._perform_security_analysis_task(self.tasks["security_analysis"])
-        tests_t = self._perform_test_task(self.tasks["run_tests"])
+        static_t = self._perform_static_analysis_task(self.tasks["static_analysis"], ui=ui)
+        sec_t = self._perform_security_analysis_task(self.tasks["security_analysis"], ui=ui)
+        tests_t = self._perform_test_task(self.tasks["run_tests"], ui=ui)
         results = await asyncio.gather(
             lint_t, static_t, sec_t, tests_t, return_exceptions=True
         )

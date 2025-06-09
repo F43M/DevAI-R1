@@ -63,3 +63,17 @@ NOTIFY_SLACK: ''       # opcional
 
 Quando configurados, ambos os canais serão utilizados.
 
+## Modos de aprovação
+
+Use `APPROVAL_MODE` para definir o nível de confirmação exigido:
+
+```yaml
+APPROVAL_MODE: suggest
+```
+
+Valores aceitos:
+
+- `auto` – nenhuma confirmação de operações;
+- `suggest` – confirma ações como aplicação de patches ou execução de shell;
+- `manual` – solicita confirmação para qualquer alteração.
+

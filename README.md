@@ -65,6 +65,15 @@ TEST_CPU_LIMIT: 1
 TEST_MEMORY_LIMIT_MB: 512
 ```
 
+O parâmetro `APPROVAL_MODE` define quando o DevAI solicita confirmação antes de
+executar ações sensíveis. Valores possíveis:
+
+- `auto` – nenhuma confirmação é pedida;
+- `suggest` – confirma alterações de código e comandos externos;
+- `manual` – sempre pergunta antes de qualquer operação.
+
+Você pode ajustar no `config.yaml` ou via `--approval-mode` ao iniciar.
+
 O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
 
 ## Executando
