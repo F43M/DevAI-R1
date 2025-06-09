@@ -55,6 +55,7 @@ class Config:
     TESTS_USE_ISOLATION: bool = True
     TEST_CPU_LIMIT: int = 1  # limite de segundos de CPU por processo de teste
     TEST_MEMORY_LIMIT_MB: int = 512  # memória máxima em MB para testes
+    LEARNING_RATE_LIMIT: int = 5
 
     def __init__(self, path: str = "config.yaml") -> None:
         defaults: Dict[str, Any] = {}
@@ -96,6 +97,8 @@ class Config:
             raise ValueError("TEST_CPU_LIMIT must be integer")
         if not isinstance(self.TEST_MEMORY_LIMIT_MB, int):
             raise ValueError("TEST_MEMORY_LIMIT_MB must be integer")
+        if not isinstance(self.LEARNING_RATE_LIMIT, int):
+            raise ValueError("LEARNING_RATE_LIMIT must be integer")
         if not isinstance(self.TESTS_USE_ISOLATION, bool):
             raise ValueError("TESTS_USE_ISOLATION must be boolean")
         if not isinstance(self.ENABLE_AI_SUMMARY, bool):

@@ -26,6 +26,17 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 from .config import logger, config
+
+PROGRESS_FILE = Path(config.LOG_DIR) / "learning_progress.json"
+
+
+def _write_progress(progress: float) -> None:
+    """Persist learning progress as a percentage to disk."""
+    try:
+        PROGRESS_FILE.parent.mkdir(exist_ok=True)
+        PROGRESS_FILE.write_text(json.dumps({"progress": int(progress)}, indent=2))
+    except Exception:
+        logger.warning("Nao foi possivel atualizar learning_progress.json")
 from .memory import MemoryManager
 from .ai_model import AIModel
 from .analyzer import CodeAnalyzer
@@ -70,11 +81,13 @@ class LearningEngine:
         analyzer: CodeAnalyzer,
         memory: MemoryManager,
         ai_model: AIModel,
-        rate_limit: int = 5,
+        rate_limit: int | None = None,
     ):
         self.analyzer = analyzer
         self.memory = memory
         self.ai_model = ai_model
+        if rate_limit is None:
+            rate_limit = getattr(config, "LEARNING_RATE_LIMIT", 5)
         self.rate_limit = rate_limit
         self._call_times: List[float] = []
         self.call_count = 0
@@ -133,7 +146,8 @@ class LearningEngine:
         )
         self.memory.conn.commit()
 
-    async def learn_from_codebase(self):
+
+    async def learn_from_codebase(self, block_size: int = 10):
         """Scan analyzed chunks and record explanations and best practices."""
         sem = asyncio.Semaphore(self.rate_limit)
 
@@ -141,58 +155,70 @@ class LearningEngine:
             async with sem:
                 return await self._rate_limited_call(prompt, max_len)
 
-        tasks = []
+        chunks = list(self.analyzer.code_chunks.values())
+        total = len(chunks)
+        processed = 0
+        _write_progress(0.0)
 
-        for chunk in self.analyzer.code_chunks.values():
-            code = chunk.get("code") or ""
-            if not code:
-                continue
-            file_path = chunk.get("file") or ""
-            mtime = Path(file_path).stat().st_mtime if file_path else 0.0
-            state = self._get_processing_state(file_path)
-            if state and (state[0] == chunk.get("hash") or float(state[1]) == mtime):
-                continue
+        for i in range(0, total, block_size):
+            block = chunks[i : i + block_size]
+            tasks: list[asyncio.Task] = []
+            for chunk in block:
+                code = chunk.get("code") or ""
+                if not code:
+                    continue
+                file_path = chunk.get("file") or ""
+                mtime = Path(file_path).stat().st_mtime if file_path else 0.0
+                state = self._get_processing_state(file_path)
+                if state and (state[0] == chunk.get("hash") or float(state[1]) == mtime):
+                    continue
 
-            async def process(c=chunk, mt=mtime):
-                meta = {"function": c["name"], "file": c.get("file")}
-                resp1, resp2, resp3 = await asyncio.gather(
-                    limited_call(f"Explique o que essa funcao faz:\n{c['code']}"),
-                    limited_call(f"Ha algum risco ou ambiguidade?\n{c['code']}"),
-                    limited_call(f"Essa estrutura esta otimizada?\n{c['code']}")
-                )
-                self.memory.save(
-                    {
-                        "type": "learning",
-                        "memory_type": "explicacao",
-                        "content": resp1,
-                        "metadata": meta,
-                    }
-                )
-                self.memory.save(
-                    {
-                        "type": "learning",
-                        "memory_type": "risco_oculto",
-                        "content": resp2,
-                        "metadata": meta,
-                    }
-                )
-                self.memory.save(
-                    {
-                        "type": "learning",
-                        "memory_type": "boas_praticas",
-                        "content": resp3,
-                        "metadata": meta,
-                    }
-                )
-                self._update_processing_state(c.get("file"), c.get("hash", ""), mt)
+                async def process(c=chunk, mt=mtime):
+                    meta = {"function": c["name"], "file": c.get("file")}
+                    resp1, resp2, resp3 = await asyncio.gather(
+                        limited_call(f"Explique o que essa funcao faz:\n{c['code']}") ,
+                        limited_call(f"Ha algum risco ou ambiguidade?\n{c['code']}") ,
+                        limited_call(f"Essa estrutura esta otimizada?\n{c['code']}")
+                    )
+                    self.memory.save(
+                        {
+                            "type": "learning",
+                            "memory_type": "explicacao",
+                            "content": resp1,
+                            "metadata": meta,
+                        }
+                    )
+                    self.memory.save(
+                        {
+                            "type": "learning",
+                            "memory_type": "risco_oculto",
+                            "content": resp2,
+                            "metadata": meta,
+                        }
+                    )
+                    self.memory.save(
+                        {
+                            "type": "learning",
+                            "memory_type": "boas_praticas",
+                            "content": resp3,
+                            "metadata": meta,
+                        }
+                    )
+                    self._update_processing_state(c.get("file"), c.get("hash", ""), mt)
 
-            tasks.append(asyncio.create_task(process()))
+                tasks.append(asyncio.create_task(process()))
 
-        if tasks:
-            await asyncio.gather(*tasks)
+            if tasks:
+                await asyncio.gather(*tasks)
+
+            processed = min(total, i + len(block))
+            progress = processed / total * 100 if total else 100
+            _write_progress(progress)
+            logger.info("Progresso do aprendizado", progress=round(progress, 2))
+
         logger.info("Aprendizado do codigo concluido", calls=self.call_count)
-
     async def learn_from_errors(self):
+
         """Analyze recent log files and capture lessons from failures."""
         log_dir = Path(config.LOG_DIR)
         if not log_dir.exists():
@@ -328,6 +354,28 @@ class LearningEngine:
                 }
             )
         logger.info("Aprendizado de codigo externo concluido", source=str(path_obj))
+
+    async def summarize_patterns(self, limit: int = 20) -> list[str]:
+        """Consolidate recent memories into generic rules."""
+        cursor = self.memory.conn.cursor()
+        cursor.execute("SELECT content FROM memory ORDER BY id DESC LIMIT ?", (limit,))
+        entries = [r[0] for r in cursor.fetchall()]
+        if not entries:
+            return []
+        prompt = "Resuma boas praticas em formato de regras:\n" + "\n".join(entries)
+        resp = await self._rate_limited_call(prompt)
+        rules = [r.strip("- ") for r in resp.splitlines() if r.strip()]
+        for rule in rules:
+            self.memory.save(
+                {
+                    "type": "learned_rule",
+                    "memory_type": "learned_rule",
+                    "content": rule,
+                    "metadata": {"source": "summarize_patterns"},
+                    "tags": ["rule", "learning"],
+                }
+            )
+        return rules
 
     def find_symbolic_correlations(self) -> List[str]:
         """Identify common patterns among learned lessons."""
