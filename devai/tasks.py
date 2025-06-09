@@ -1,4 +1,5 @@
 import os
+
 try:
     import yaml  # type: ignore
 except Exception:  # pragma: no cover - fallback when PyYAML is missing
@@ -21,7 +22,13 @@ from .test_runner import run_pytest
 
 
 class TaskManager:
-    def __init__(self, task_file: str, code_analyzer: CodeAnalyzer, memory: MemoryManager, ai_model: Optional[AIModel] = None):
+    def __init__(
+        self,
+        task_file: str,
+        code_analyzer: CodeAnalyzer,
+        memory: MemoryManager,
+        ai_model: Optional[AIModel] = None,
+    ):
         self.tasks = self._load_tasks(task_file)
         self.code_analyzer = code_analyzer
         self.memory = memory
@@ -118,7 +125,7 @@ class TaskManager:
                 "description": "Roda lint, análise e testes em paralelo",
             }
 
-    async def run_task(self, task_name: str, *args) -> Any:
+    async def run_task(self, task_name: str, *args, progress=None) -> Any:
         if task_name not in self.tasks:
             logger.error("Tarefa não encontrada", task=task_name)
             return {"error": f"Tarefa '{task_name}' não encontrada"}
@@ -133,7 +140,7 @@ class TaskManager:
         elif task["type"] == "lint":
             result = await self._perform_lint_task(task, *args)
         elif task["type"] == "test":
-            result = await self._perform_test_task(task, *args)
+            result = await self._perform_test_task(task, *args, progress_cb=progress)
         elif task["type"] == "static_analysis":
             result = await self._perform_static_analysis_task(task, *args)
         elif task["type"] == "security_analysis":
@@ -146,6 +153,10 @@ class TaskManager:
             result = await self._perform_auto_refactor_task(task, *args)
         elif task["type"] == "quality_suite":
             result = await self._perform_quality_suite_task(task, *args)
+        elif task["type"] == "coverage":
+            result = await self._perform_coverage_task(
+                task, *args, progress_cb=progress
+            )
         else:
             handler = getattr(self, f"_perform_{task['type']}_task", None)
             if handler:
@@ -167,16 +178,17 @@ class TaskManager:
                 "context_level": "short",
             }
         )
-        self.history.append({
-            "task": task_name,
-            "args": args,
-            "result": result,
-            "timestamp": datetime.now().isoformat(),
-        })
-        if hasattr(self.notifier, 'send'):
+        self.history.append(
+            {
+                "task": task_name,
+                "args": args,
+                "result": result,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+        if hasattr(self.notifier, "send"):
             self.notifier.send(
-                f"Tarefa {task_name} concluída",
-                f"Resultado: {str(result)[:200]}"
+                f"Tarefa {task_name} concluída", f"Resultado: {str(result)[:200]}"
             )
         return result
 
@@ -193,7 +205,11 @@ class TaskManager:
                         if dep in self.code_analyzer.code_chunks:
                             chunks.append(self.code_analyzer.code_chunks[dep])
         else:
-            chunks = [self.code_analyzer.code_chunks[target]] if target in self.code_analyzer.code_chunks else []
+            chunks = (
+                [self.code_analyzer.code_chunks[target]]
+                if target in self.code_analyzer.code_chunks
+                else []
+            )
         for chunk in chunks:
             try:
                 analysis = {
@@ -201,28 +217,42 @@ class TaskManager:
                     "file": chunk["file"],
                     "issues": self._check_dependencies(chunk["name"]),
                     "rule_findings": self._apply_learned_rules(chunk),
-                    "custom_findings": self._evaluate_custom_condition(task["condition"], chunk, args),
+                    "custom_findings": self._evaluate_custom_condition(
+                        task["condition"], chunk, args
+                    ),
                 }
                 if self.ai_model:
                     try:
                         from .prompt_utils import build_analysis_prompt
+
                         prompt = build_analysis_prompt(
-                            chunk["code"], analysis["issues"] + analysis["rule_findings"]
+                            chunk["code"],
+                            analysis["issues"] + analysis["rule_findings"],
                         )
-                        suggestion = await self.ai_model.safe_api_call(prompt, 200, prompt, self.memory)
+                        suggestion = await self.ai_model.safe_api_call(
+                            prompt, 200, prompt, self.memory
+                        )
                         analysis["ai_suggestion"] = suggestion.strip()
                     except Exception as e:
-                        logger.error("Erro ao gerar sugestão da IA", chunk=chunk["name"], error=str(e))
+                        logger.error(
+                            "Erro ao gerar sugestão da IA",
+                            chunk=chunk["name"],
+                            error=str(e),
+                        )
                 findings.append(analysis)
             except Exception as e:
                 logger.error("Erro na análise", chunk=chunk["name"], error=str(e))
                 findings.append({"chunk": chunk["name"], "error": str(e)})
         return findings
 
-    def _evaluate_custom_condition(self, condition: str, chunk: Dict, args: Tuple) -> List[str]:
+    def _evaluate_custom_condition(
+        self, condition: str, chunk: Dict, args: Tuple
+    ) -> List[str]:
         findings = []
         try:
-            if self.aeval(condition, chunk=chunk, args=args, graph=self.code_analyzer.code_graph):
+            if self.aeval(
+                condition, chunk=chunk, args=args, graph=self.code_analyzer.code_graph
+            ):
                 findings.append("✅ Condição personalizada atendida")
             else:
                 findings.append("❌ Condição personalizada não atendida")
@@ -236,7 +266,11 @@ class TaskManager:
             chunks = list(self.code_analyzer.code_chunks.values())
         else:
             target = args[0] if args else None
-            chunks = [self.code_analyzer.code_chunks[target]] if target in self.code_analyzer.code_chunks else []
+            chunks = (
+                [self.code_analyzer.code_chunks[target]]
+                if target in self.code_analyzer.code_chunks
+                else []
+            )
         for chunk in chunks:
             issues = self._check_dependencies(chunk["name"])
             rule_findings = self._apply_learned_rules(chunk)
@@ -268,6 +302,7 @@ class TaskManager:
 
     async def _perform_lint_task(self, task: Dict, *args) -> List[Dict]:
         from .lint import Linter
+
         linter = Linter(self.code_analyzer.code_root)
         results = linter.lint_all()
         findings = []
@@ -275,8 +310,14 @@ class TaskManager:
             findings.append({"file": file, "issues": issues})
         return findings if findings else ["✅ Nenhum TODO encontrado"]
 
-    async def _perform_test_task(self, task: Dict, *args) -> List[str]:
+    async def _perform_test_task(
+        self, task: Dict, *args, progress_cb=None
+    ) -> List[str]:
+        if progress_cb:
+            progress_cb(0, "running tests")
         ok, out = run_pytest(self.code_analyzer.code_root)
+        if progress_cb:
+            progress_cb(100, "tests done")
         logger.info("Testes executados", success=ok)
         return out.splitlines()
 
@@ -356,15 +397,21 @@ class TaskManager:
             logger.error("Erro na verificação de tipos", error=str(e))
             return [f"Erro na verificação de tipos: {e}"]
 
-    async def _perform_coverage_task(self, task: Dict, *args) -> List[str]:
+    async def _perform_coverage_task(
+        self, task: Dict, *args, progress_cb=None
+    ) -> List[str]:
         cmd = ["coverage", "run", "-m", "pytest", "-q"]
         try:
+            if progress_cb:
+                progress_cb(0, "running tests")
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
             )
             out, _ = await proc.communicate()
+            if progress_cb:
+                progress_cb(70, "analyzing coverage")
             report_proc = await asyncio.create_subprocess_exec(
                 "coverage",
                 "report",
@@ -373,6 +420,8 @@ class TaskManager:
             )
             rep_out, _ = await report_proc.communicate()
             output = out.decode().splitlines() + rep_out.decode().splitlines()
+            if progress_cb:
+                progress_cb(100, "done")
             logger.info("Cobertura executada", returncode=proc.returncode)
             return output
         except FileNotFoundError:
@@ -397,6 +446,7 @@ class TaskManager:
             return {"error": str(e)}
 
         from .prompt_utils import build_refactor_prompt
+
         prompt = build_refactor_prompt(original, file_path)
         try:
             suggestion = await self.ai_model.safe_api_call(
@@ -410,6 +460,7 @@ class TaskManager:
             return {"error": str(e)}
 
         from .update_manager import UpdateManager
+
         updater = UpdateManager()
 
         def apply(p: Path) -> None:
@@ -422,6 +473,7 @@ class TaskManager:
             out = ""
         if not success:
             from .prompt_engine import build_debug_prompt
+
             debug = build_debug_prompt(out, "", original[:200])
             try:
                 suggestion = await self.ai_model.safe_api_call(
@@ -433,20 +485,28 @@ class TaskManager:
             except Exception as e:
                 logger.error("Erro no fallback de refatoracao", error=str(e))
                 return {"error": str(e)}
+
             def apply_retry(p: Path) -> None:
                 p.write_text(suggestion)
+
             try:
-                success, _ = updater.safe_apply(file_path, apply_retry, capture_output=True)
+                success, _ = updater.safe_apply(
+                    file_path, apply_retry, capture_output=True
+                )
             except TypeError:
                 success = updater.safe_apply(file_path, apply_retry)
         return {"success": success, "new_code": suggestion[:200]}
 
-    async def _perform_quality_suite_task(self, task: Dict, *args) -> Dict[str, List[str]]:
+    async def _perform_quality_suite_task(
+        self, task: Dict, *args
+    ) -> Dict[str, List[str]]:
         lint_t = self._perform_lint_task(self.tasks["lint"])
         static_t = self._perform_static_analysis_task(self.tasks["static_analysis"])
         sec_t = self._perform_security_analysis_task(self.tasks["security_analysis"])
         tests_t = self._perform_test_task(self.tasks["run_tests"])
-        results = await asyncio.gather(lint_t, static_t, sec_t, tests_t, return_exceptions=True)
+        results = await asyncio.gather(
+            lint_t, static_t, sec_t, tests_t, return_exceptions=True
+        )
         names = ["lint", "static", "security", "tests"]
         out: Dict[str, List[str]] = {}
         for name, res in zip(names, results):
@@ -466,15 +526,21 @@ class TaskManager:
             else:
                 chunk = self.code_analyzer.code_chunks[dep]
                 if "last_modified" in chunk:
-                    if (datetime.now() - datetime.fromisoformat(chunk["last_modified"])).days < 7:
-                        issues.append(f"🚩 {chunk_name} depende de {dep} que foi modificado recentemente")
+                    if (
+                        datetime.now() - datetime.fromisoformat(chunk["last_modified"])
+                    ).days < 7:
+                        issues.append(
+                            f"🚩 {chunk_name} depende de {dep} que foi modificado recentemente"
+                        )
         return issues
 
     def _apply_learned_rules(self, chunk: Dict) -> List[str]:
         findings = []
         for rule, condition in self.code_analyzer.learned_rules.items():
             try:
-                if self.aeval(condition, chunk=chunk, graph=self.code_analyzer.code_graph):
+                if self.aeval(
+                    condition, chunk=chunk, graph=self.code_analyzer.code_graph
+                ):
                     findings.append(f"🧠 {rule}")
             except Exception as e:
                 logger.error("Erro ao aplicar regra", rule=rule, error=str(e))

@@ -20,7 +20,13 @@ except Exception:  # pragma: no cover - optional dependency
 class CLIUI:
     """Interactive command line UI using Rich and prompt_toolkit."""
 
-    def __init__(self, plain: bool = False, commands: Iterable[str] | None = None, *, log: bool = True) -> None:
+    def __init__(
+        self,
+        plain: bool = False,
+        commands: Iterable[str] | None = None,
+        *,
+        log: bool = True,
+    ) -> None:
         self.plain = plain
         self.console = Console()
         self.history: List[str] = []
@@ -29,7 +35,9 @@ class CLIUI:
         if not plain and PromptSession is not None:
             history_file = Path.home() / ".devai_history"
             completer = WordCompleter(list(commands or []), ignore_case=True)
-            self.session = PromptSession(history=FileHistory(str(history_file)), completer=completer)
+            self.session = PromptSession(
+                history=FileHistory(str(history_file)), completer=completer
+            )
         else:
             self.session = None
 
@@ -81,3 +89,43 @@ class CLIUI:
             with self.console.status(message):
                 yield
 
+    @asynccontextmanager
+    async def progress(self, message: str = "Processando..."):
+        """Display a progress bar for long running tasks."""
+        if self.plain:
+            print(message)
+
+            def _update(_pct: float | None = None, stage: str | None = None) -> None:
+                if stage:
+                    print(stage)
+
+            yield _update
+        else:
+            from rich.progress import (
+                Progress,
+                SpinnerColumn,
+                BarColumn,
+                TextColumn,
+                TimeElapsedColumn,
+            )
+
+            progress = Progress(
+                SpinnerColumn(),
+                TextColumn("{task.description}"),
+                BarColumn(),
+                TextColumn("{task.percentage:>3.0f}%"),
+                TimeElapsedColumn(),
+                console=self.console,
+            )
+            with progress:
+                task_id = progress.add_task(message, total=100)
+
+                def _update(pct: float | None = None, stage: str | None = None) -> None:
+                    kwargs = {}
+                    if pct is not None:
+                        kwargs["completed"] = pct
+                    if stage:
+                        kwargs["description"] = stage
+                    progress.update(task_id, **kwargs)
+
+                yield _update

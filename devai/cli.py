@@ -101,7 +101,7 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                 if user_input.lower() == "/sair":
                     break
                 elif user_input.lower().startswith("/memoria"):
-                    args = user_input[len("/memoria"):].strip()
+                    args = user_input[len("/memoria") :].strip()
                     detailed = "--detalhado" in args
                     if detailed:
                         args = args.replace("--detalhado", "").strip()
@@ -115,11 +115,13 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                     if memory_type:
                         args = args.replace(m_type.group(0), "").strip()
                     query = args.replace("filtro:", "").strip()
-                    results = ai.memory.search(query or "recent", top_k=5 * page, memory_type=memory_type)
+                    results = ai.memory.search(
+                        query or "recent", top_k=5 * page, memory_type=memory_type
+                    )
                     results = results[(page - 1) * 5 : page * 5]
                     print("\nMemórias relevantes:")
                     for m in results:
-                        text = m['content']
+                        text = m["content"]
                         if query:
                             text = text.replace(query, f"**{query}**")
                         line = f"- [{m['similarity_score']:.2f}] {text[:80]}"
@@ -127,25 +129,38 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                             line += f" (id: {m['id']}, tags: {', '.join(m['tags'])})"
                         print(line)
                 elif user_input.startswith("/tarefa "):
-                    parts = user_input[len("/tarefa "):].split()
+                    parts = user_input[len("/tarefa ") :].split()
                     task_name = parts[0]
                     args = parts[1:] if len(parts) > 1 else []
-                    result = await ai.tasks.run_task(task_name, *args)
+                    if task_name in {"run_tests", "coverage"}:
+                        async with ui.progress("executando tarefa...") as update:
+                            result = await ai.tasks.run_task(
+                                task_name, *args, progress=update
+                            )
+                    else:
+                        result = await ai.tasks.run_task(task_name, *args)
                     print(json.dumps(result, indent=2))
                 elif user_input.startswith("/analisar "):
-                    func = user_input[len("/analisar "):]
+                    func = user_input[len("/analisar ") :]
                     report = await ai.analyze_impact([func])
                     for item in report:
-                        print(f"\nImpacto em {item['target']} (gatilhos: {', '.join(item['triggers'])}):")
+                        print(
+                            f"\nImpacto em {item['target']} (gatilhos: {', '.join(item['triggers'])}):"
+                        )
                         for finding in item["findings"]:
                             if isinstance(finding, dict):
                                 print(f"- {finding.get('chunk')}:")
-                                for issue in finding.get('issues', []):
+                                for issue in finding.get("issues", []):
                                     print(f"  {issue}")
                             else:
                                 print(f"- {finding}")
                 elif user_input == "/verificar":
-                    spec = {"calculate_score": {"expected_inputs": ["data", "weights"], "expected_output": "number"}}
+                    spec = {
+                        "calculate_score": {
+                            "expected_inputs": ["data", "weights"],
+                            "expected_output": "number",
+                        }
+                    }
                     findings = await ai.verify_compliance(spec)
                     for finding in findings:
                         print(finding)
@@ -158,12 +173,12 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                     for link in graph["links"]:
                         print(f"{link['source']} -> {link['target']}")
                 elif user_input.startswith("/ls"):
-                    path = user_input[len("/ls"):].strip()
+                    path = user_input[len("/ls") :].strip()
                     items = await ai.analyzer.list_dir(path)
                     for item in items:
                         print(item)
                 elif user_input.startswith("/abrir "):
-                    parts = user_input[len("/abrir "):].split()
+                    parts = user_input[len("/abrir ") :].split()
                     file = parts[0]
                     start = int(parts[1]) if len(parts) > 1 else 1
                     end = int(parts[2]) if len(parts) > 2 else start
@@ -171,7 +186,7 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                     for i, line in enumerate(lines, start=start):
                         print(f"{i}: {line}")
                 elif user_input.startswith("/editar "):
-                    parts = user_input[len("/editar "):].split(maxsplit=2)
+                    parts = user_input[len("/editar ") :].split(maxsplit=2)
                     if len(parts) < 3:
                         print("Uso: /editar <arquivo> <linha> <novo>")
                     else:
@@ -179,18 +194,20 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                         ok = await ai.analyzer.edit_line(file, line_no, new_line)
                         print("✅ Linha atualizada" if ok else "Falha ao editar")
                 elif user_input.startswith("/novoarq "):
-                    parts = user_input[len("/novoarq "):].split(maxsplit=1)
+                    parts = user_input[len("/novoarq ") :].split(maxsplit=1)
                     file = parts[0]
                     content = parts[1] if len(parts) > 1 else ""
                     ok = await ai.analyzer.create_file(file, content)
                     print("✅ Arquivo criado" if ok else "Falha ao criar")
                 elif user_input.startswith("/novapasta "):
-                    path = user_input[len("/novapasta "):].strip()
+                    path = user_input[len("/novapasta ") :].strip()
                     ok = await ai.analyzer.create_directory(path)
                     print("✅ Pasta criada" if ok else "Falha ao criar pasta")
                 elif user_input.startswith("/deletar "):
-                    path = user_input[len("/deletar "):].strip()
-                    confirm = (await ui.read_command("Tem certeza que deseja remover? [s/N] ")).lower()
+                    path = user_input[len("/deletar ") :].strip()
+                    confirm = (
+                        await ui.read_command("Tem certeza que deseja remover? [s/N] ")
+                    ).lower()
                     if confirm != "s":
                         print("Operação cancelada")
                         continue
@@ -199,27 +216,29 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                         ok = await ai.analyzer.delete_directory(path)
                     print("✅ Removido" if ok else "Falha ao remover")
                 elif user_input.startswith("/lembrar "):
-                    args = user_input[len("/lembrar "):].strip()
+                    args = user_input[len("/lembrar ") :].strip()
                     m_type = re.search(r"tipo:([\w_]+)", args)
                     memory_type = m_type.group(1) if m_type else None
                     if memory_type:
                         args = args.replace(m_type.group(0), "").strip()
-                    ai.memory.save({
-                        "type": "manual",
-                        "content": args,
-                        "metadata": {"source": "cli"},
-                        "tags": [memory_type] if memory_type else [],
-                        "memory_type": memory_type,
-                    })
+                    ai.memory.save(
+                        {
+                            "type": "manual",
+                            "content": args,
+                            "metadata": {"source": "cli"},
+                            "tags": [memory_type] if memory_type else [],
+                            "memory_type": memory_type,
+                        }
+                    )
                     log_decision("comando", "lembrar", args, "cli", "ok")
                     print("✅ Memória registrada")
                 elif user_input.startswith("/esquecer "):
-                    term = user_input[len("/esquecer "):].strip()
+                    term = user_input[len("/esquecer ") :].strip()
                     count = ai.memory.deactivate_memories(term)
                     log_decision("comando", "esquecer", term, "cli", str(count))
                     print(f"Memórias desativadas: {count}")
                 elif user_input.startswith("/ajustar "):
-                    args = user_input[len("/ajustar "):].strip()
+                    args = user_input[len("/ajustar ") :].strip()
                     m_param = re.search(r"estilo:([\w_]+)", args)
                     m_val = re.search(r"valor:([\w_]+)", args)
                     if not (m_param and m_val):
@@ -229,33 +248,45 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                         val = m_val.group(1)
                         prefs = {}
                         if Path("PREFERENCES_STORE.json").exists():
-                            prefs = json.loads(Path("PREFERENCES_STORE.json").read_text())
+                            prefs = json.loads(
+                                Path("PREFERENCES_STORE.json").read_text()
+                            )
                         prefs[param] = val
-                        Path("PREFERENCES_STORE.json").write_text(json.dumps(prefs, indent=2))
-                        log_decision("comando", "ajustar", f"{param}={val}", "cli", "ok")
+                        Path("PREFERENCES_STORE.json").write_text(
+                            json.dumps(prefs, indent=2)
+                        )
+                        log_decision(
+                            "comando", "ajustar", f"{param}={val}", "cli", "ok"
+                        )
                         print("Preferência atualizada")
                 elif user_input.startswith("/preferencia "):
-                    text = user_input[len("/preferencia "):].strip().strip('"')
+                    text = user_input[len("/preferencia ") :].strip().strip('"')
                     registrar_preferencia(text)
                     print("Preferência registrada com sucesso")
                 elif user_input.startswith("/rastrear "):
-                    target = user_input[len("/rastrear "):].strip()
+                    target = user_input[len("/rastrear ") :].strip()
                     print("-- Rastreamento --")
                     hist = await ai.analyzer.get_history(target)
                     for h in hist:
                         print(json.dumps(h, indent=2))
                     for h in ai.tasks.get_history():
-                        if target in h.get("task", "") or target in str(h.get("args", "")):
+                        if target in h.get("task", "") or target in str(
+                            h.get("args", "")
+                        ):
                             print(json.dumps(h, indent=2))
                     log_path = Path("decision_log.yaml")
                     if log_path.exists():
                         try:
                             import yaml  # type: ignore
-                        except Exception:  # pragma: no cover - fallback when PyYAML is missing
+                        except (
+                            Exception
+                        ):  # pragma: no cover - fallback when PyYAML is missing
                             from . import yaml_fallback as yaml
                         data = yaml.safe_load(log_path.read_text()) or []
                         for e in data:
-                            if target in e.get("modulo", "") or target in e.get("motivo", ""):
+                            if target in e.get("modulo", "") or target in e.get(
+                                "motivo", ""
+                            ):
                                 print(json.dumps(e, indent=2))
                     if Path("SELF_REFLECTION.md").exists():
                         for line in Path("SELF_REFLECTION.md").read_text().splitlines():
@@ -274,20 +305,32 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                         name = parts[1]
                         if parts[2] == "on":
                             ok = ai.tasks.plugins.enable_plugin(name)
-                            print("✅ Plugin ativado" if ok else "Plugin não encontrado")
+                            print(
+                                "✅ Plugin ativado" if ok else "Plugin não encontrado"
+                            )
                         else:
                             ok = ai.tasks.plugins.disable_plugin(name)
-                            print("✅ Plugin desativado" if ok else "Plugin não encontrado")
+                            print(
+                                "✅ Plugin desativado"
+                                if ok
+                                else "Plugin não encontrado"
+                            )
                 elif user_input.startswith("/historia"):
-                    session_id = user_input[len("/historia"):].strip() or "default"
+                    session_id = user_input[len("/historia") :].strip() or "default"
                     hist = ai.conv_handler.history(session_id)
                     for m in hist:
                         if plain:
                             print(f"{m.get('role')}: {m.get('content')}")
                         else:
-                            ui.console.print(Panel(m.get("content", ""), title=m.get("role", ""), expand=False))
+                            ui.console.print(
+                                Panel(
+                                    m.get("content", ""),
+                                    title=m.get("role", ""),
+                                    expand=False,
+                                )
+                            )
                 elif user_input.startswith("/historico "):
-                    file = user_input[len("/historico "):].strip()
+                    file = user_input[len("/historico ") :].strip()
                     hist = await ai.analyzer.get_history(file)
                     for h in hist:
                         print(json.dumps(h, indent=2))
@@ -299,13 +342,17 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                         base = parts[1]
                         out = parts[2] if len(parts) > 2 else "./model_ft"
                         from .rlhf import train_from_memory
+
                         result = await train_from_memory(base, out)
                         print(json.dumps(result, indent=2))
                 elif user_input.startswith("/treinar_rlhf_auto"):
                     result = await run_scheduled_rlhf(ai.memory)
                     print(json.dumps(result, indent=2))
                 elif user_input.startswith("/train_intents"):
-                    path = user_input[len("/train_intents"):].strip() or "intent_samples.json"
+                    path = (
+                        user_input[len("/train_intents") :].strip()
+                        or "intent_samples.json"
+                    )
                     file_path = Path(path)
                     if not file_path.exists():
                         print("Arquivo de exemplos não encontrado")
@@ -314,14 +361,17 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                         samples = []
                         for item in data:
                             if isinstance(item, dict):
-                                samples.append((item.get("text", ""), item.get("intent", "")))
+                                samples.append(
+                                    (item.get("text", ""), item.get("intent", ""))
+                                )
                             elif isinstance(item, list) and len(item) == 2:
                                 samples.append((item[0], item[1]))
                         from .intent_classifier import train_intent_model
+
                         train_intent_model(samples)
                         print("Modelo de intenções treinado")
                 elif user_input.startswith("/feedback "):
-                    parts = user_input[len("/feedback "):].split(maxsplit=2)
+                    parts = user_input[len("/feedback ") :].split(maxsplit=2)
                     if len(parts) < 3:
                         print("Uso: /feedback <arquivo> <tag> <motivo>")
                     else:
@@ -331,12 +381,16 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                     cfg_path = Path("config.yaml")
                     try:
                         import yaml  # type: ignore
-                    except Exception:  # pragma: no cover - fallback when PyYAML is missing
+                    except (
+                        Exception
+                    ):  # pragma: no cover - fallback when PyYAML is missing
                         from . import yaml_fallback as yaml
                     data = {}
                     if cfg_path.exists():
                         data = yaml.safe_load(cfg_path.read_text()) or {}
-                    new_val = not data.get("TESTS_USE_ISOLATION", config.TESTS_USE_ISOLATION)
+                    new_val = not data.get(
+                        "TESTS_USE_ISOLATION", config.TESTS_USE_ISOLATION
+                    )
                     data["TESTS_USE_ISOLATION"] = new_val
                     cfg_path.write_text(yaml.safe_dump(data, allow_unicode=True))
                     config.TESTS_USE_ISOLATION = new_val
@@ -344,7 +398,9 @@ async def cli_main(guided: bool = False, plain: bool = False, log: bool = True):
                     print(f"Execução isolada {status}")
                 else:
                     async with ui.loading("Gerando resposta..."):
-                        response = await ai.generate_response(user_input, double_check=ai.double_check)
+                        response = await ai.generate_response(
+                            user_input, double_check=ai.double_check
+                        )
                     print("\nResposta:")
                     is_patch = bool(
                         re.search(r"\ndiff --git", response)
