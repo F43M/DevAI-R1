@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-import json
 import inspect
 from typing import Iterable
 
@@ -11,6 +9,8 @@ from textual.widgets import Input, TextLog
 
 from .core import CodeMemoryAI
 from .ui import CLIUI
+from .feedback import FeedbackDB
+from .command_router import COMMANDS, handle_default
 
 
 class TUIApp(App):
@@ -27,7 +27,9 @@ class TUIApp(App):
     ) -> None:
         super().__init__()
         self.ai = ai or CodeMemoryAI()
-        self.cli = cli_ui or CLIUI(plain=False, commands=None, log=log)
+        cmds = [f"/{c}" for c in COMMANDS]
+        self.cli = cli_ui or CLIUI(plain=False, commands=cmds, log=log)
+        self.feedback_db = FeedbackDB()
         # Reuse the console from Textual
         self.cli.console = self.console
         self.history_panel: TextLog
@@ -36,7 +38,7 @@ class TUIApp(App):
         self.input: Input
         self.command_history: list[str] = []
         self.history_index = 0
-        self.commands: list[str] = []
+        self.commands: list[str] = cmds
         self.completion_matches: list[str] = []
         self.completion_index = 0
 
@@ -79,47 +81,27 @@ class TUIApp(App):
         self.history_panel.write(f">>> {text}")
         self.command_history.append(text)
         self.history_index = len(self.command_history)
-        if text.lower() == "/sair":
-            await self.action_quit()
-            return
         self.history_panel.write("", scroll_end=False)
-        if text.startswith("/tarefa "):
-            parts = text[len("/tarefa ") :].split()
-            task_name = parts[0]
-            args = parts[1:]
-            async with self.cli.progress("executando tarefa...") as update:
-                result = await self.ai.tasks.run_task(task_name, *args, progress=update)
-            out = json.dumps(result, indent=2)
-            self.history_panel.write(out)
-            self.cli.add_history(out)
-            return
-        elif text.startswith("/analisar "):
-            func = text[len("/analisar ") :]
-            async with self.cli.progress("analisando..."):
-                report = await self.ai.analyze_impact([func])
-            for item in report:
-                self.history_panel.write(json.dumps(item, indent=2))
-            self.cli.add_history(json.dumps(report, indent=2))
-            return
-        tokens: list[str] = []
-        async with self.cli.loading("Gerando resposta..."):
-            async for token in self.ai.generate_response_stream(text):
-                tokens.append(token)
-                try:
-                    self.history_panel.write(token, scroll_end=False)
-                except Exception:
-                    self.history_panel.write(token)
-        response = "".join(tokens)
-        self.history_panel.write("")
-        self.cli.add_history(response)
-        is_patch = bool(
-            re.search(r"\ndiff --git", response)
-            or re.search(r"^[+-](?![+-])", response, re.MULTILINE)
+        if text.startswith("/"):
+            parts = text[1:].split(" ", 1)
+            cmd = parts[0].lower()
+            args = parts[1] if len(parts) > 1 else ""
+            handler = COMMANDS.get(cmd)
+            if handler:
+                should_exit = await handler(
+                    self.ai, self.cli, args, plain=False, feedback_db=self.feedback_db
+                )
+                if should_exit:
+                    await self.action_quit()
+                return
+        await handle_default(
+            self.ai,
+            self.cli,
+            text,
+            plain=False,
+            feedback_db=self.feedback_db,
+            side_by_side=True,
         )
-        if is_patch:
-            self.cli.render_diff(response, side_by_side=True, scroll=False)
-        else:
-            self.diff_panel.clear()
 
     async def on_key(self, event) -> None:
         if self.focused is not self.input:
