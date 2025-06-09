@@ -4,6 +4,13 @@ import xml.etree.ElementTree as ET
 from typing import List, Dict
 
 
+PLUGIN_INFO = {
+    "name": "Framework Context",
+    "version": "1.0",
+    "description": "Extrai contexto de frameworks e dependências",
+}
+
+
 def register(task_manager):
     async def _perform_framework_context_task(self, task, *args):
         root = Path(self.code_analyzer.code_root).parent
@@ -40,3 +47,9 @@ def register(task_manager):
         "description": "Lê arquivos de config de frameworks para a memória",
     }
     setattr(task_manager, "_perform_framework_context_task", _perform_framework_context_task.__get__(task_manager))
+
+
+def unregister(task_manager):
+    task_manager.tasks.pop("framework_context", None)
+    if hasattr(task_manager, "_perform_framework_context_task"):
+        delattr(task_manager, "_perform_framework_context_task")

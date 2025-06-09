@@ -226,6 +226,22 @@ async def cli_main(guided: bool = False):
                             if target in line:
                                 print(line.strip())
                     log_decision("comando", "rastrear", target, "cli", "ok")
+                elif user_input == "/plugins":
+                    for p in ai.tasks.plugins.list_plugins():
+                        status = "on" if p["active"] else "off"
+                        print(f"- {p['name']} ({status})")
+                elif user_input.startswith("/plugin "):
+                    parts = user_input.split()
+                    if len(parts) != 3 or parts[2] not in {"on", "off"}:
+                        print("Uso: /plugin <nome> on|off")
+                    else:
+                        name = parts[1]
+                        if parts[2] == "on":
+                            ok = ai.tasks.plugins.enable_plugin(name)
+                            print("✅ Plugin ativado" if ok else "Plugin não encontrado")
+                        else:
+                            ok = ai.tasks.plugins.disable_plugin(name)
+                            print("✅ Plugin desativado" if ok else "Plugin não encontrado")
                 elif user_input.startswith("/historico "):
                     file = user_input[len("/historico "):].strip()
                     hist = await ai.analyzer.get_history(file)
