@@ -1,3 +1,4 @@
+import asyncio
 from devai.dialog_summarizer import DialogSummarizer
 from devai import dialog_summarizer
 from devai.config import config
@@ -13,7 +14,7 @@ def test_dialog_summarizer_basic():
         {"role": "assistant", "content": "beleza"},
     ]
     summarizer = DialogSummarizer()
-    summary = summarizer.summarize_conversation(history)
+    summary = asyncio.run(summarizer.summarize_conversation(history))
     assert any(m["tag"] == "#licao_aprendida" for m in summary)
     assert any(s["content"].endswith("por razões de segurança.") for s in summary)
     tags = {m["tag"] for m in summary}
@@ -45,7 +46,7 @@ def test_dialog_summarizer_ai_fallback(monkeypatch):
             saved.append(item)
 
     summarizer = DialogSummarizer()
-    summarizer.summarize_conversation(history, memory=DummyMemory())
+    asyncio.run(summarizer.summarize_conversation(history, memory=DummyMemory()))
 
     assert DummyModel.called == 1
     assert saved

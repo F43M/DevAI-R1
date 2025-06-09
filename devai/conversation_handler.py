@@ -128,7 +128,7 @@ class ConversationHandler:
             if wait > 0:
                 await asyncio.sleep(wait)
             try:
-                summary = self.summarizer.summarize_conversation(hist, self.memory)
+                summary = await self.summarizer.summarize_conversation(hist, self.memory)
                 if summary and self.memory:
                     for item in summary:
                         try:

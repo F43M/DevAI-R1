@@ -17,7 +17,7 @@ from .memory import MemoryManager
 class DialogSummarizer:
     """Extract symbolic memories from conversation history."""
 
-    def summarize_conversation(
+    async def summarize_conversation(
         self,
         history: List[Dict[str, Any]],
         memory: Optional[MemoryManager] = None,
@@ -91,7 +91,7 @@ class DialogSummarizer:
                         finally:
                             await ai.close()
 
-                    resp = asyncio.run(_call())
+                    resp = await _call()
                     extracted: List[Dict[str, str]] = []
                     for line in resp.splitlines():
                         m = re.match(r"-?\s*(#[\w_]+)[:\-]?\s*(.*)", line.strip())
