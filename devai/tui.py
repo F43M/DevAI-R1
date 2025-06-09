@@ -43,7 +43,7 @@ class TUIApp(App):
         self.progress_panel = TextLog(highlight=False, name="progress", height=3)
         self.input = Input(placeholder="Digite um comando...", name="input")
         left = Vertical(self.history_panel, self.progress_panel, self.input)
-        self.diff_panel = TextLog(highlight=True, name="diff")
+        self.diff_panel = TextLog(highlight=True, name="diff", wrap=False)
         self.cli.diff_panel = self.diff_panel
         self.cli.progress_handler = self._progress_update
         yield Horizontal(left, self.diff_panel)
@@ -94,7 +94,7 @@ class TUIApp(App):
             or re.search(r"^[+-](?![+-])", response, re.MULTILINE)
         )
         if is_patch:
-            self.cli.render_diff(response)
+            self.cli.render_diff(response, side_by_side=True, scroll=False)
         else:
             self.diff_panel.clear()
 
