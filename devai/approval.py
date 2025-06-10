@@ -1,6 +1,7 @@
 from .config import config
 from .decision_log import is_remembered
 import asyncio
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 from .notifier import Notifier
@@ -12,6 +13,9 @@ _approval_token = ""
 
 # Remaining actions allowed without manual approval
 auto_approve_remaining = 0
+
+# Timestamp until which approvals are automatic
+auto_approve_until: datetime | None = None
 
 WRITE_ACTIONS = {"patch", "edit", "create", "delete"}
 
@@ -32,7 +36,10 @@ def match_glob(pattern: str, target: str) -> bool:
 
 def requires_approval(action: str, path: str | None = None) -> bool:
     """Return True if the given action requires confirmation."""
-    global auto_approve_remaining
+    global auto_approve_remaining, auto_approve_until
+    now = datetime.now()
+    if auto_approve_until and now < auto_approve_until:
+        return False
     if auto_approve_remaining > 0:
         auto_approve_remaining -= 1
         return False
