@@ -72,6 +72,7 @@ class Config:
     RLHF_OUTPUT_DIR: str = "./logs/rlhf_results"
     APPROVAL_MODE: str = "suggest"
     DIFF_STYLE: str = "inline"
+    APPROVAL_DIFF_THRESHOLD: int = 50
     AUTO_APPROVAL_RULES: list[dict] = field(default_factory=list)
 
     def __init__(self, path: str = "config.yaml") -> None:
@@ -155,6 +156,8 @@ class Config:
             )
         if self.DIFF_STYLE not in {"inline", "side_by_side"}:
             raise ValueError("DIFF_STYLE must be 'inline' or 'side_by_side'")
+        if not isinstance(self.APPROVAL_DIFF_THRESHOLD, int):
+            raise ValueError("APPROVAL_DIFF_THRESHOLD must be integer")
         if not isinstance(self.AUTO_APPROVAL_RULES, list):
             raise ValueError("AUTO_APPROVAL_RULES must be a list")
         for rule in self.AUTO_APPROVAL_RULES:

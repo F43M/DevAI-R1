@@ -695,13 +695,19 @@ def _split_diff_by_file(diff: str) -> Dict[str, str]:
     return {k: "\n".join(v) for k, v in files.items()}
 
 
-def _apply_patch_to_file(path: Path, diff: str) -> None:
-    """Apply a unified diff chunk to a file."""
+def _diff_change_count(diff: str) -> int:
+    """Return number of added or removed lines in ``diff``."""
+    return sum(1 for l in diff.splitlines() if l.startswith("+") or l.startswith("-"))
+
+
+def _apply_patch_to_file(path: Path, diff: str) -> int:
+    """Apply a unified diff chunk to a file and return change count."""
     lines = path.read_text().splitlines(keepends=True)
     result: list[str] = []
     i = 0
     diff_lines = diff.splitlines()
     idx = 0
+    changes = 0
     while idx < len(diff_lines):
         line = diff_lines[idx]
         if line.startswith("@@"):
@@ -718,8 +724,10 @@ def _apply_patch_to_file(path: Path, diff: str) -> None:
                 if h.startswith("@@"):
                     break
                 if h.startswith("-"):
+                    changes += 1
                     i += 1
                 elif h.startswith("+"):
+                    changes += 1
                     result.append(h[1:] + "\n")
                 else:
                     if i < len(lines):
@@ -730,6 +738,9 @@ def _apply_patch_to_file(path: Path, diff: str) -> None:
         idx += 1
     result.extend(lines[i:])
     path.write_text("".join(result))
+    if changes > config.APPROVAL_DIFF_THRESHOLD and config.APPROVAL_MODE != "suggest":
+        requires_approval("patch")
+    return changes
 
 
 async def handle_default(
@@ -754,8 +765,14 @@ async def handle_default(
         if side_by_side is None:
             side_by_side = config.DIFF_STYLE == "side_by_side"
         ui.render_diff(response, side_by_side=side_by_side)
+        patches = _split_diff_by_file(response)
+        total_changes = sum(_diff_change_count(d) for d in patches.values())
+        force_confirm = (
+            total_changes > config.APPROVAL_DIFF_THRESHOLD
+            and config.APPROVAL_MODE != "suggest"
+        )
         apply = True
-        if requires_approval("patch"):
+        if requires_approval("patch") or force_confirm:
             if ui:
                 apply = await ui.confirm("Aplicar mudanças?")
                 model = "cli"
@@ -768,7 +785,6 @@ async def handle_default(
         else:
             model = "cli"
         if apply:
-            patches = _split_diff_by_file(response)
             updater = _new_updater()
             for f, diff_text in patches.items():
 

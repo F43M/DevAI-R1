@@ -174,3 +174,20 @@ def test_temporary_auto_approval_time(monkeypatch):
 
     current = base + timedelta(seconds=11)
     assert requires_approval("patch")
+
+
+def test_patch_threshold_forces_confirmation(monkeypatch, tmp_path):
+    path = tmp_path / "x.txt"
+    path.write_text("a\nb\nc\n")
+    diff = "@@ -1,3 +1,5 @@\n a\n-b\n-c\n+d\n+e\n+f\n+g"
+    monkeypatch.setattr(command_router.config, "APPROVAL_DIFF_THRESHOLD", 2)
+    monkeypatch.setattr(command_router.config, "APPROVAL_MODE", "auto_edit")
+    called = []
+
+    def fake_req(action, path=None):
+        called.append(action)
+        return True
+
+    monkeypatch.setattr(command_router, "requires_approval", fake_req)
+    command_router._apply_patch_to_file(path, diff)
+    assert called
