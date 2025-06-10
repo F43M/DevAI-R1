@@ -76,6 +76,7 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
         preexec = _limits if resource is not None else None
 
         try:
+            # shell: run pytest
             proc = subprocess.run(
                 ["pytest", "-q"],
                 stdout=subprocess.PIPE,

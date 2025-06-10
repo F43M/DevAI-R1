@@ -135,10 +135,10 @@ class TaskManager:
         logger.info("Executando tarefa", task=task_name)
         action_map = {
             "test": "shell",
-            "static_analysis": "shell",
-            "security_analysis": "shell",
-            "pylint": "shell",
-            "type_check": "shell",
+            "static_analysis": "shell_safe",
+            "security_analysis": "shell_safe",
+            "pylint": "shell_safe",
+            "type_check": "shell_safe",
             "coverage": "shell",
             "auto_refactor": "edit",
         }
@@ -398,7 +398,7 @@ class TaskManager:
     async def _perform_static_analysis_task(
         self, task: Dict, *args, ui=None
     ) -> List[str]:
-        if requires_approval("shell"):
+        if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar análise estática?")
                 model = "cli"
@@ -406,7 +406,7 @@ class TaskManager:
                 approved = await request_approval("Executar análise estática?")
                 model = "web"
             log_decision(
-                "shell",
+                "shell_safe",
                 task.get("type", "static"),
                 "execucao",
                 model,
@@ -435,7 +435,7 @@ class TaskManager:
     async def _perform_security_analysis_task(
         self, task: Dict, *args, ui=None
     ) -> List[str]:
-        if requires_approval("shell"):
+        if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar análise de segurança?")
                 model = "cli"
@@ -443,7 +443,7 @@ class TaskManager:
                 approved = await request_approval("Executar análise de segurança?")
                 model = "web"
             log_decision(
-                "shell",
+                "shell_safe",
                 task.get("type", "security"),
                 "execucao",
                 model,
@@ -470,7 +470,7 @@ class TaskManager:
             return [f"Erro na análise de segurança: {e}"]
 
     async def _perform_pylint_task(self, task: Dict, *args, ui=None) -> List[str]:
-        if requires_approval("shell"):
+        if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar pylint?")
                 model = "cli"
@@ -478,7 +478,7 @@ class TaskManager:
                 approved = await request_approval("Executar pylint?")
                 model = "web"
             log_decision(
-                "shell",
+                "shell_safe",
                 task.get("type", "pylint"),
                 "execucao",
                 model,
@@ -505,7 +505,7 @@ class TaskManager:
             return [f"Erro no pylint: {e}"]
 
     async def _perform_type_check_task(self, task: Dict, *args, ui=None) -> List[str]:
-        if requires_approval("shell"):
+        if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar verificação de tipos?")
                 model = "cli"
@@ -513,7 +513,7 @@ class TaskManager:
                 approved = await request_approval("Executar verificação de tipos?")
                 model = "web"
             log_decision(
-                "shell",
+                "shell_safe",
                 task.get("type", "type_check"),
                 "execucao",
                 model,

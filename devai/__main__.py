@@ -185,6 +185,7 @@ def main():
                         file_path, lambda p: p.write_text(new_code), capture_output=True
                     )
                     if not success and rollback:
+                        # shell: rollback patch
                         subprocess.run(
                             ["git", "apply", "-R", patch_path], cwd=config.CODE_ROOT
                         )

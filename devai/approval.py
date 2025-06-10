@@ -15,6 +15,9 @@ auto_approve_remaining = 0
 
 WRITE_ACTIONS = {"patch", "edit", "create", "delete"}
 
+# Commands that are read-only and safe to run automatically
+SAFE_ACTIONS = {"shell_safe"}
+
 
 def match_glob(pattern: str, target: str) -> bool:
     """Return True if ``target`` matches the glob ``pattern``."""
@@ -41,6 +44,10 @@ def requires_approval(action: str, path: str | None = None) -> bool:
                 return not rule.get("approve", False)
         except Exception:
             continue
+
+    # Actions explicitly marked as safe never require confirmation
+    if action in SAFE_ACTIONS:
+        return False
 
     mode = getattr(config, "APPROVAL_MODE", "suggest").lower()
     if mode == "full_auto":
