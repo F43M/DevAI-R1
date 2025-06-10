@@ -416,6 +416,7 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["flake8", str(self.code_analyzer.code_root)]
         try:
+            # shell_safe: run flake8
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -453,6 +454,7 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["bandit", "-r", str(self.code_analyzer.code_root)]
         try:
+            # shell_safe: run bandit
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -488,6 +490,7 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["pylint", str(self.code_analyzer.code_root)]
         try:
+            # shell_safe: run pylint
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -523,6 +526,7 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["mypy", str(self.code_analyzer.code_root)]
         try:
+            # shell_safe: run mypy
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -562,6 +566,7 @@ class TaskManager:
         try:
             if progress_cb:
                 progress_cb(0, "running tests")
+            # shell: run coverage
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -570,6 +575,7 @@ class TaskManager:
             out, _ = await proc.communicate()
             if progress_cb:
                 progress_cb(70, "analyzing coverage")
+            # shell: coverage report
             report_proc = await asyncio.create_subprocess_exec(
                 "coverage",
                 "report",

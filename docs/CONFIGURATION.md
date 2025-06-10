@@ -78,7 +78,9 @@ Valores aceitos:
 - `suggest` – confirma ações de escrita ou execução de shell.
 
 Comandos classificados como `shell_safe` são aprovados automaticamente,
-mesmo no modo `suggest`.
+mesmo no modo `suggest`. Use essa categoria para operações de leitura, como
+`ls` ou `cat`. Demais execuções devem ser marcadas como `shell` e exigem
+confirmação dependendo do modo configurado.
 
 ### Regras de autoaprovação
 

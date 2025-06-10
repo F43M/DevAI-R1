@@ -15,6 +15,9 @@ auto_approve_remaining = 0
 
 WRITE_ACTIONS = {"patch", "edit", "create", "delete"}
 
+# Shell execution categories
+SHELL_ACTIONS = {"shell", "shell_safe"}
+
 # Commands that are read-only and safe to run automatically
 SAFE_ACTIONS = {"shell_safe"}
 
@@ -54,7 +57,7 @@ def requires_approval(action: str, path: str | None = None) -> bool:
         return False
     if mode == "auto_edit":
         return action == "shell"
-    return action in WRITE_ACTIONS or action == "shell"
+    return action in WRITE_ACTIONS or action in SHELL_ACTIONS
 
 
 async def request_approval(message: str) -> bool:

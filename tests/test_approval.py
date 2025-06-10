@@ -106,6 +106,12 @@ def test_auto_approval_shell_safe(monkeypatch):
     assert not requires_approval("shell_safe", "other/run.sh")
 
 
+def test_shell_safe_constants():
+    assert "shell_safe" in approval.SAFE_ACTIONS
+    assert "shell" in approval.SHELL_ACTIONS
+    assert "shell_safe" in approval.SHELL_ACTIONS
+
+
 def test_temporary_auto_approval(monkeypatch):
     monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
     command_router.approval.auto_approve_remaining = 0
