@@ -3,7 +3,7 @@ import asyncio
 import json
 import re
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict
 
@@ -559,6 +559,19 @@ async def handle_aprovar_proxima(ai, ui, args, *, plain, feedback_db):
     )
 
 
+async def handle_aprovar_durante(ai, ui, args, *, plain, feedback_db):
+    """Ativar aprovações automáticas por um período."""
+    try:
+        seconds = float(args.strip())
+    except ValueError:
+        print("Uso: /aprovar_durante <segundos>")
+        return
+    approval.auto_approve_until = datetime.now() + timedelta(seconds=seconds)
+    print(
+        f"Ações aprovadas automaticamente pelos próximos {int(seconds)} segundos"
+    )
+
+
 async def handle_modo(ai, ui, args, *, plain, feedback_db):
     """Alterar config.APPROVAL_MODE em tempo real."""
     mode = args.strip().lower()
@@ -832,6 +845,7 @@ COMMANDS = {
     "refatorar": handle_refatorar,
     "rever": handle_rever,
     "aprovar_proxima": handle_aprovar_proxima,
+    "aprovar_durante": handle_aprovar_durante,
     "modo": handle_modo,
     "regras": handle_regras,
     "sugerir_regras": handle_sugerir_regras,

@@ -7,6 +7,7 @@ from devai.config import Config, config
 from devai.approval import requires_approval
 import devai.command_router as command_router
 import devai.decision_log as decision_log
+from datetime import datetime, timedelta
 
 
 def _write_cfg(tmp_path, text):
@@ -146,3 +147,28 @@ def test_request_approval_notifies(monkeypatch):
     req, result = asyncio.run(run())
     assert result is True
     assert req["token"] in sent[0]
+
+
+def test_temporary_auto_approval_time(monkeypatch):
+    monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
+    command_router.approval.auto_approve_until = None
+
+    base = datetime(2024, 1, 1, 12, 0, 0)
+    current = base
+
+    class DummyDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return current
+
+    monkeypatch.setattr(approval, "datetime", DummyDateTime)
+    monkeypatch.setattr(command_router, "datetime", DummyDateTime)
+
+    asyncio.run(
+        command_router.handle_aprovar_durante(None, None, "10", plain=True, feedback_db=None)
+    )
+    assert approval.auto_approve_until == base + timedelta(seconds=10)
+    assert not requires_approval("patch")
+
+    current = base + timedelta(seconds=11)
+    assert requires_approval("patch")

@@ -95,6 +95,15 @@ Exemplo:
 devai aprovar_proxima 3
 ```
 
+## /aprovar_durante <segundos>
+Ativa aprovações automáticas por tempo limitado. Durante esse período todas as
+ações são aprovadas automaticamente.
+
+Exemplo:
+```bash
+devai aprovar_durante 60
+```
+
 ## /regras [add <acao> <caminho> <sim|nao>|del <id>]
 Gerencia as `AUTO_APPROVAL_RULES` do `config.yaml`. Sem argumentos apenas lista
 as regras atuais numeradas.
