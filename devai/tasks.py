@@ -376,7 +376,10 @@ class TaskManager:
                 approved = await ui.confirm("Executar testes?")
                 model = "cli"
             else:
-                approved = await request_approval("Executar testes?")
+                approved = await request_approval(
+                    "Executar testes?",
+                    details="pytest -q",
+                )
                 model = "web"
             log_decision(
                 "shell",
@@ -403,7 +406,10 @@ class TaskManager:
                 approved = await ui.confirm("Executar análise estática?")
                 model = "cli"
             else:
-                approved = await request_approval("Executar análise estática?")
+                approved = await request_approval(
+                    "Executar análise estática?",
+                    details="flake8 " + str(self.code_analyzer.code_root),
+                )
                 model = "web"
             log_decision(
                 "shell_safe",
@@ -441,7 +447,10 @@ class TaskManager:
                 approved = await ui.confirm("Executar análise de segurança?")
                 model = "cli"
             else:
-                approved = await request_approval("Executar análise de segurança?")
+                approved = await request_approval(
+                    "Executar análise de segurança?",
+                    details="bandit -r " + str(self.code_analyzer.code_root),
+                )
                 model = "web"
             log_decision(
                 "shell_safe",
@@ -477,7 +486,10 @@ class TaskManager:
                 approved = await ui.confirm("Executar pylint?")
                 model = "cli"
             else:
-                approved = await request_approval("Executar pylint?")
+                approved = await request_approval(
+                    "Executar pylint?",
+                    details="pylint " + str(self.code_analyzer.code_root),
+                )
                 model = "web"
             log_decision(
                 "shell_safe",
@@ -513,7 +525,10 @@ class TaskManager:
                 approved = await ui.confirm("Executar verificação de tipos?")
                 model = "cli"
             else:
-                approved = await request_approval("Executar verificação de tipos?")
+                approved = await request_approval(
+                    "Executar verificação de tipos?",
+                    details="mypy " + str(self.code_analyzer.code_root),
+                )
                 model = "web"
             log_decision(
                 "shell_safe",
@@ -551,7 +566,10 @@ class TaskManager:
                 approved = await ui.confirm("Executar cobertura de testes?")
                 model = "cli"
             else:
-                approved = await request_approval("Executar cobertura de testes?")
+                approved = await request_approval(
+                    "Executar cobertura de testes?",
+                    details="coverage run -m pytest -q",
+                )
                 model = "web"
             log_decision(
                 "shell",
@@ -624,8 +642,18 @@ class TaskManager:
             return {"error": str(e)}
 
         from .update_manager import UpdateManager
+        import difflib
 
         updater = UpdateManager()
+
+        diff_text = "\n".join(
+            difflib.unified_diff(
+                original.splitlines(),
+                suggestion.splitlines(),
+                fromfile=file_path,
+                tofile=file_path,
+            )
+        )
 
         def apply(p: Path) -> None:
             p.write_text(suggestion)
@@ -636,7 +664,8 @@ class TaskManager:
                 model = "cli"
             else:
                 approved = await request_approval(
-                    f"Aplicar refatoração em {file_path}?"
+                    f"Aplicar refatoração em {file_path}?",
+                    details=diff_text,
                 )
                 model = "web"
             log_decision(
@@ -671,6 +700,14 @@ class TaskManager:
 
             def apply_retry(p: Path) -> None:
                 p.write_text(suggestion)
+            diff_text_retry = "\n".join(
+                difflib.unified_diff(
+                    original.splitlines(),
+                    suggestion.splitlines(),
+                    fromfile=file_path,
+                    tofile=file_path,
+                )
+            )
 
             if requires_approval("edit"):
                 if ui:
@@ -680,7 +717,8 @@ class TaskManager:
                     model = "cli"
                 else:
                     approved = await request_approval(
-                        f"Aplicar refatoração em {file_path} (retry)?"
+                        f"Aplicar refatoração em {file_path} (retry)?",
+                        details=diff_text_retry,
                     )
                     model = "web"
                 log_decision(

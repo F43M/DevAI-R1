@@ -6,7 +6,7 @@ Endpoints principais para integração e painel IDE:
 - `GET /file` – obtém conteúdo de um arquivo.
 - `GET /actions` – retorna histórico de decisões do DevAI.
 - `GET /diff?file=<nome>` – mostra diferença da última alteração registrada.
-- `GET /approval_request` – aguarda até que o servidor solicite uma confirmação e retorna `{ "message": "texto", "token": "id" }`.
+- `GET /approval_request` – aguarda até que o servidor solicite uma confirmação e retorna `{ "message": "texto", "details": "info", "token": "id" }`.
 - `POST /approval_request` – envia `{ "approved": true|false, "token": "id" }` para responder à solicitação pendente.
 
 Se `NOTIFY_EMAIL` ou `NOTIFY_SLACK` estiverem configurados, cada pedido de aprovação gera um e-mail ou mensagem com links diretos:

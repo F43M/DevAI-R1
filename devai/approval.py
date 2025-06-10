@@ -9,6 +9,7 @@ from .notifier import Notifier
 _approval_event = asyncio.Event()
 _approval_future: asyncio.Future | None = None
 _approval_message = ""
+_approval_details: str | None = None
 _approval_token = ""
 
 # Remaining actions allowed without manual approval
@@ -67,26 +68,26 @@ def requires_approval(action: str, path: str | None = None) -> bool:
     return action in WRITE_ACTIONS or action in SHELL_ACTIONS
 
 
-async def request_approval(message: str) -> bool:
+async def request_approval(message: str, details: str | None = None) -> bool:
     """Trigger approval flow in web mode and wait for result."""
-    global _approval_future, _approval_message, _approval_token
+    global _approval_future, _approval_message, _approval_details, _approval_token
     if _approval_future is not None:
         raise RuntimeError("Another approval in progress")
     _approval_future = asyncio.get_running_loop().create_future()
     _approval_message = message
+    _approval_details = details
     _approval_token = uuid4().hex
     notifier = Notifier()
     if notifier.enabled:
         base_url = f"http://localhost:{config.API_PORT}"
         approve = f"{base_url}/approval_request?token={_approval_token}&approved=true"
         reject = f"{base_url}/approval_request?token={_approval_token}&approved=false"
-        notifier.send(
-            "Confirmação necessária",
-            f"{message}\nAprovar: {approve}\nRejeitar: {reject}",
-        )
+        body = f"{message}\nAprovar: {approve}\nRejeitar: {reject}"
+        notifier.send("Confirmação necessária", body, details=details)
     _approval_event.set()
     result = await _approval_future
     _approval_future = None
+    _approval_details = None
     return bool(result)
 
 
@@ -94,15 +95,20 @@ async def wait_for_request() -> dict:
     """Wait until a request is available for the frontend."""
     await _approval_event.wait()
     _approval_event.clear()
-    return {"message": _approval_message, "token": _approval_token}
+    return {
+        "message": _approval_message,
+        "token": _approval_token,
+        "details": _approval_details,
+    }
 
 
 def resolve_request(approved: bool) -> None:
     """Resolve the current pending approval request."""
-    global _approval_future, _approval_token
+    global _approval_future, _approval_token, _approval_details
     if _approval_future and not _approval_future.done():
         _approval_future.set_result(bool(approved))
     _approval_token = ""
+    _approval_details = None
 
 
 def verify_token(token: str) -> bool:

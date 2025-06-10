@@ -30,9 +30,12 @@ class Notifier:
         else:
             loop.create_task(coro)
 
-    def send(self, subject: str, body: str) -> None:
+    def send(self, subject: str, body: str, details: str | None = None) -> None:
         if not self.enabled:
             return
+        if details:
+            body = f"{body}\n{details}"
+
         if self.email_enabled:
             try:
                 msg = EmailMessage()
