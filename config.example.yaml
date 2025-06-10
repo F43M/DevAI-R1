@@ -39,6 +39,7 @@ RLHF_OUTPUT_DIR: ./logs/rlhf_results
 MAX_PROMPT_TOKENS: 1000
 APPROVAL_MODE: suggest
 DIFF_STYLE: inline  # options: inline, side_by_side
+APPROVAL_DIFF_THRESHOLD: 50  # número máximo de linhas alteradas sem confirmação
 AUTO_APPROVAL_RULES:
   - action: edit
     path: "docs/**"

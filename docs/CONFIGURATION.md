@@ -113,3 +113,14 @@ DIFF_STYLE: inline  # ou side_by_side
 O valor `inline` exibe o diff como texto único, enquanto `side_by_side`
 separa as linhas em duas colunas.
 
+## Limite automático para patches
+
+Defina `APPROVAL_DIFF_THRESHOLD` para limitar o número de linhas (adições
+mais remoções) que podem ser aplicadas sem confirmação extra. Se um patch
+ultrapassar esse valor e `APPROVAL_MODE` não estiver em `suggest`, o DevAI
+solicitará aprovação manual.
+
+```yaml
+APPROVAL_DIFF_THRESHOLD: 50
+```
+
