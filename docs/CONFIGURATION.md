@@ -28,6 +28,22 @@ TEST_MEMORY_LIMIT_MB: 512  # memória máxima em MB
 
 Quando `TESTS_USE_ISOLATION` for `true`, o DevAI executará `pytest` em um container Docker com os limites configurados.
 
+### Parâmetros do sandbox
+
+Outros comandos isolados utilizam a mesma infraestrutura. O diretório atual é
+montado em `/app` com rede desativada e o diretório de trabalho dentro do
+container também é `/app`.
+
+```yaml
+SANDBOX_IMAGE: python:3.10-slim
+SANDBOX_CPUS: "1"
+SANDBOX_MEMORY: 512m
+```
+
+Em Linux e macOS o Docker é usado quando disponível. No Windows é necessário o
+Docker Desktop; caso ausente, o DevAI tenta rodar via WSL ou executa os comandos
+diretamente exibindo um alerta.
+
 ## Histórico de conversa
 
 O parâmetro `MAX_SESSION_TOKENS` controla a quantidade máxima de tokens mantidos no arquivo de histórico de cada sessão. Ao exceder esse limite, as mensagens mais antigas são removidas (pruning). Defina `0` para desabilitar a limpeza automática.

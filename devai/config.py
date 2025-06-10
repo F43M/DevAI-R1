@@ -70,6 +70,9 @@ class Config:
     AUTO_MONITOR_HOURS: int = 72
     RLHF_THRESHOLD: int = 10
     RLHF_OUTPUT_DIR: str = "./logs/rlhf_results"
+    SANDBOX_IMAGE: str = "python:3.10-slim"
+    SANDBOX_CPUS: str = "1"
+    SANDBOX_MEMORY: str = "512m"
     APPROVAL_MODE: str = "suggest"
     DIFF_STYLE: str = "inline"
     AUTO_APPROVAL_RULES: list[dict] = field(default_factory=list)
@@ -139,6 +142,12 @@ class Config:
             raise ValueError("RLHF_THRESHOLD must be integer")
         if not isinstance(self.RLHF_OUTPUT_DIR, str):
             raise ValueError("RLHF_OUTPUT_DIR must be string")
+        if not isinstance(self.SANDBOX_IMAGE, str):
+            raise ValueError("SANDBOX_IMAGE must be string")
+        if not isinstance(self.SANDBOX_CPUS, (str, int)):
+            raise ValueError("SANDBOX_CPUS must be string or int")
+        if not isinstance(self.SANDBOX_MEMORY, str):
+            raise ValueError("SANDBOX_MEMORY must be string")
         if not isinstance(self.ERROR_LOG_PATH, str):
             raise ValueError("ERROR_LOG_PATH must be string")
         if not isinstance(self.ERROR_LOG_MAX_LINES, int):

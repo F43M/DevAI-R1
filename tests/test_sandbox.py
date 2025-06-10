@@ -1,12 +1,12 @@
 import subprocess
 import pytest
-import subprocess
-import pytest
 from devai import sandbox
 
 
 def test_run_executes(monkeypatch):
     monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
+    monkeypatch.setattr(sandbox.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(sandbox.os, "getcwd", lambda: "/tmp/project")
     sb = sandbox.Sandbox("img", cpus="2", memory="128m")
 
     captured = {}
@@ -21,12 +21,18 @@ def test_run_executes(monkeypatch):
         return DummyProc()
 
     monkeypatch.setattr(sandbox.subprocess, "Popen", fake_popen)
-    out = sb.run(["echo", "hi"], timeout=5)
+    out = sb.run_command(["echo", "hi"], timeout=5)
     assert out == "ok"
     assert captured["cmd"] == [
         "docker",
         "run",
         "--rm",
+        "-v",
+        "/tmp/project:/app",
+        "--workdir",
+        "/app",
+        "--network",
+        "none",
         "--cpus",
         "2",
         "--memory",
@@ -40,6 +46,8 @@ def test_run_executes(monkeypatch):
 
 def test_run_timeout(monkeypatch):
     monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
+    monkeypatch.setattr(sandbox.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(sandbox.os, "getcwd", lambda: "/tmp/project")
     sb = sandbox.Sandbox()
 
     class DummyProc:
@@ -55,12 +63,13 @@ def test_run_timeout(monkeypatch):
 
     monkeypatch.setattr(sandbox.subprocess, "Popen", fake_popen)
     with pytest.raises(TimeoutError):
-        sb.run(["sleep", "2"], timeout=1)
+        sb.run_command(["sleep", "2"], timeout=1)
     assert "killed" in captured
 
 
 def test_shutdown_terminates_processes(monkeypatch):
     monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
+    monkeypatch.setattr(sandbox.platform, "system", lambda: "Linux")
     sb = sandbox.Sandbox()
 
     class DummyProc:
