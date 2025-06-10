@@ -36,12 +36,15 @@ def test_config_invalid_approval(tmp_path, monkeypatch):
 def test_requires_approval(monkeypatch):
     monkeypatch.setattr(config, "APPROVAL_MODE", "full_auto")
     assert not requires_approval("patch")
+    assert not requires_approval("shell_safe")
     monkeypatch.setattr(config, "APPROVAL_MODE", "auto_edit")
     assert requires_approval("shell")
     assert not requires_approval("patch")
+    assert not requires_approval("shell_safe")
     monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
     assert requires_approval("patch")
     assert requires_approval("shell")
+    assert not requires_approval("shell_safe")
     assert not requires_approval("other")
 
 
@@ -90,6 +93,17 @@ def test_auto_approval_rules_force(monkeypatch):
     monkeypatch.setattr(config, "APPROVAL_MODE", "full_auto")
     assert requires_approval("edit", "docs/file.md")
     assert not requires_approval("edit", "src/file.py")
+
+
+def test_auto_approval_shell_safe(monkeypatch):
+    monkeypatch.setattr(
+        config,
+        "AUTO_APPROVAL_RULES",
+        [{"action": "shell_safe", "path": "scripts/**", "approve": False}],
+    )
+    monkeypatch.setattr(config, "APPROVAL_MODE", "suggest")
+    assert requires_approval("shell_safe", "scripts/run.sh")
+    assert not requires_approval("shell_safe", "other/run.sh")
 
 
 def test_temporary_auto_approval(monkeypatch):

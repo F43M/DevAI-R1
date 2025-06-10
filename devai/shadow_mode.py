@@ -42,6 +42,7 @@ def simulate_update(
     patch_file.write(diff.encode("utf-8"))
     patch_file.close()
 
+    # shell_safe: git apply --check only validates the patch
     proc = subprocess.run(
         ["git", "apply", "--check", patch_file.name],
         cwd=project_root,

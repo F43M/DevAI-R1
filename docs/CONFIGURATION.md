@@ -77,6 +77,9 @@ Valores aceitos:
 - `auto_edit` – confirma somente comandos de shell;
 - `suggest` – confirma ações de escrita ou execução de shell.
 
+Comandos classificados como `shell_safe` são aprovados automaticamente,
+mesmo no modo `suggest`.
+
 ### Regras de autoaprovação
 
 O campo `AUTO_APPROVAL_RULES` permite ignorar ou forçar confirmações

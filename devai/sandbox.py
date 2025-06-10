@@ -26,6 +26,7 @@ class Sandbox:
             self.image,
             *command,
         ]
+        # shell: docker run
         proc = subprocess.Popen(
             docker_cmd,
             stdout=subprocess.PIPE,
