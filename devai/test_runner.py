@@ -48,9 +48,13 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
     """Execute pytest with optional isolation."""
     cwd = Path(path)
     sb = Sandbox(
-        image="python:3.10-slim",
-        cpus=str(config.TEST_CPU_LIMIT or 1),
-        memory=f"{config.TEST_MEMORY_LIMIT_MB or 512}m",
+        image=config.SANDBOX_IMAGE,
+        cpus=str(config.TEST_CPU_LIMIT or config.SANDBOX_CPUS),
+        memory=(
+            f"{config.TEST_MEMORY_LIMIT_MB}m"
+            if config.TEST_MEMORY_LIMIT_MB
+            else config.SANDBOX_MEMORY
+        ),
     )
     if config.TESTS_USE_ISOLATION and sb.enabled:
         try:

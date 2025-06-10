@@ -1,32 +1,58 @@
+import os
 import subprocess
 import shutil
+import platform
 from typing import List
+
+from .config import config, logger
 
 
 class Sandbox:
-    """Isolated execution environment using containers."""
+    """Isolated execution environment using containers or local execution."""
 
-    def __init__(self, image: str = "python:3.10-slim", cpus: str = "1", memory: str = "512m"):
-        self.image = image
-        self.cpus = cpus
-        self.memory = memory
-        self.enabled = bool(shutil.which("docker"))
+    def __init__(self, image: str | None = None, cpus: str | None = None, memory: str | None = None) -> None:
+        self.image = image or getattr(config, "SANDBOX_IMAGE", "python:3.10-slim")
+        self.cpus = str(cpus or getattr(config, "SANDBOX_CPUS", "1"))
+        self.memory = memory or getattr(config, "SANDBOX_MEMORY", "512m")
+        docker_path = shutil.which("docker") or shutil.which("docker.exe")
+        system = platform.system()
+        if system in {"Linux", "Darwin"}:
+            self.enabled = bool(docker_path)
+        elif system == "Windows":
+            if docker_path:
+                self.enabled = True
+            else:
+                logger.warning(
+                    "Docker Desktop não encontrado. Comandos rodarão sem isolamento."
+                )
+                self.enabled = False
+        else:
+            self.enabled = bool(docker_path)
         self._processes: List[subprocess.Popen] = []
 
-    def run(self, command: List[str], timeout: int = 30) -> str:
-        """Run a command inside a container using Docker."""
-        docker_cmd = [
-            "docker",
-            "run",
-            "--rm",
-            "--cpus",
-            self.cpus,
-            "--memory",
-            self.memory,
-            self.image,
-            *command,
-        ]
-        # shell: docker run
+    def run_command(self, cmd: List[str], timeout: int = 30) -> str:
+        """Execute ``cmd`` isolated in Docker or directly if disabled."""
+        if self.enabled:
+            docker_cmd = [
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{os.getcwd()}:/app",
+                "--workdir",
+                "/app",
+                "--network",
+                "none",
+                "--cpus",
+                self.cpus,
+                "--memory",
+                self.memory,
+                self.image,
+                *cmd,
+            ]
+        else:
+            docker_cmd = cmd
+
         proc = subprocess.Popen(
             docker_cmd,
             stdout=subprocess.PIPE,
@@ -43,6 +69,10 @@ class Sandbox:
         finally:
             if proc in self._processes:
                 self._processes.remove(proc)
+
+    def run(self, command: List[str], timeout: int = 30) -> str:
+        """Backward compatible wrapper around :func:`run_command`."""
+        return self.run_command(command, timeout)
 
     def shutdown(self) -> None:
         for p in list(self._processes):
