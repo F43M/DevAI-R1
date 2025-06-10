@@ -17,7 +17,7 @@ async def fake_run(*a, **k):
 def test_queue_symbolic_training(monkeypatch):
     sent = []
     class DummyNotifier:
-        def send(self, subj, body):
+        def send(self, subj, body, details=None):
             sent.append(subj)
     monkeypatch.setattr("devai.notifier.Notifier", DummyNotifier)
     monkeypatch.setattr("devai.symbolic_training.run_symbolic_training", fake_run)

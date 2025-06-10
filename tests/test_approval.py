@@ -131,7 +131,9 @@ def test_request_approval_notifies(monkeypatch):
         def __init__(self):
             self.enabled = True
 
-        def send(self, subj, body):
+        def send(self, subj, body, details=None):
+            if details:
+                body = f"{body}\n{details}"
             sent.append(body)
 
     monkeypatch.setattr("devai.approval.Notifier", DummyNotifier)

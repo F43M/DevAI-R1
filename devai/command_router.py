@@ -760,7 +760,10 @@ async def handle_default(
                 apply = await ui.confirm("Aplicar mudanças?")
                 model = "cli"
             else:
-                apply = await request_approval("Aplicar mudanças?")
+                apply = await request_approval(
+                    "Aplicar mudanças?",
+                    details=response,
+                )
                 model = "web"
         else:
             model = "cli"
