@@ -19,6 +19,7 @@ from .ai_model import AIModel
 from .plugin_manager import PluginManager
 from .notifier import Notifier
 from .test_runner import run_pytest
+from .sandbox import run_in_sandbox
 from .approval import requires_approval, request_approval
 from .decision_log import log_decision
 
@@ -422,15 +423,9 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["flake8", str(self.code_analyzer.code_root)]
         try:
-            # shell_safe: run flake8
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await proc.communicate()
-            output = out.decode().splitlines()
-            logger.info("Análise estática executada", returncode=proc.returncode)
+            out = await asyncio.to_thread(run_in_sandbox, cmd, 30)
+            output = out.splitlines()
+            logger.info("Análise estática executada")
             return output or ["✅ Nenhum problema encontrado"]
         except FileNotFoundError:
             logger.error("flake8 não encontrado")
@@ -463,15 +458,9 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["bandit", "-r", str(self.code_analyzer.code_root)]
         try:
-            # shell_safe: run bandit
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await proc.communicate()
-            output = out.decode().splitlines()
-            logger.info("Análise de segurança executada", returncode=proc.returncode)
+            out = await asyncio.to_thread(run_in_sandbox, cmd, 30)
+            output = out.splitlines()
+            logger.info("Análise de segurança executada")
             return output or ["✅ Nenhuma vulnerabilidade encontrada"]
         except FileNotFoundError:
             logger.error("bandit não encontrado")
@@ -502,15 +491,9 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["pylint", str(self.code_analyzer.code_root)]
         try:
-            # shell_safe: run pylint
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await proc.communicate()
-            output = out.decode().splitlines()
-            logger.info("Pylint executado", returncode=proc.returncode)
+            out = await asyncio.to_thread(run_in_sandbox, cmd, 30)
+            output = out.splitlines()
+            logger.info("Pylint executado")
             return output or ["✅ Nenhum problema encontrado"]
         except FileNotFoundError:
             logger.error("pylint não encontrado")
@@ -541,15 +524,9 @@ class TaskManager:
                 return ["cancelado"]
         cmd = ["mypy", str(self.code_analyzer.code_root)]
         try:
-            # shell_safe: run mypy
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await proc.communicate()
-            output = out.decode().splitlines()
-            logger.info("Type check executado", returncode=proc.returncode)
+            out = await asyncio.to_thread(run_in_sandbox, cmd, 30)
+            output = out.splitlines()
+            logger.info("Type check executado")
             return output or ["✅ Tipagem ok"]
         except FileNotFoundError:
             logger.error("mypy não encontrado")
@@ -584,27 +561,14 @@ class TaskManager:
         try:
             if progress_cb:
                 progress_cb(0, "running tests")
-            # shell: run coverage
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await proc.communicate()
+            out = await asyncio.to_thread(run_in_sandbox, cmd, 30)
             if progress_cb:
                 progress_cb(70, "analyzing coverage")
-            # shell: coverage report
-            report_proc = await asyncio.create_subprocess_exec(
-                "coverage",
-                "report",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            rep_out, _ = await report_proc.communicate()
-            output = out.decode().splitlines() + rep_out.decode().splitlines()
+            rep = await asyncio.to_thread(run_in_sandbox, ["coverage", "report"], 30)
+            output = out.splitlines() + rep.splitlines()
             if progress_cb:
                 progress_cb(100, "done")
-            logger.info("Cobertura executada", returncode=proc.returncode)
+            logger.info("Cobertura executada")
             return output
         except FileNotFoundError:
             logger.error("coverage.py não encontrado")

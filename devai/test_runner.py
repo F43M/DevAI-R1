@@ -9,7 +9,7 @@ from typing import Tuple
 import re
 
 from .config import config, logger
-from .sandbox import Sandbox
+from .sandbox import run_in_sandbox
 
 
 def _parse_output(output: str) -> str:
@@ -47,18 +47,9 @@ def _preexec(cpu: int, mem: int) -> None:
 def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
     """Execute pytest with optional isolation."""
     cwd = Path(path)
-    sb = Sandbox(
-        image=config.SANDBOX_IMAGE,
-        cpus=str(config.TEST_CPU_LIMIT or config.SANDBOX_CPUS),
-        memory=(
-            f"{config.TEST_MEMORY_LIMIT_MB}m"
-            if config.TEST_MEMORY_LIMIT_MB
-            else config.SANDBOX_MEMORY
-        ),
-    )
-    if config.TESTS_USE_ISOLATION and sb.enabled:
+    if config.TESTS_USE_ISOLATION:
         try:
-            out = sb.run(["pytest", "-q"], timeout=timeout)
+            out = run_in_sandbox(["pytest", "-q"], timeout)
             log_dir = Path(config.LOG_DIR)
             log_dir.mkdir(exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -67,8 +58,6 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
         except Exception as e:
             logger.error("Erro na sandbox", error=str(e))
             return False, str(e)
-        finally:
-            sb.shutdown()
     else:
 
         def _limits() -> None:
