@@ -23,7 +23,7 @@ class Sandbox:
                 self.enabled = True
             else:
                 logger.warning(
-                    "Docker Desktop não encontrado. Comandos rodarão sem isolamento."
+                    "Docker Desktop/WSL2 não encontrado. Comandos rodarão sem isolamento e sem limites."
                 )
                 self.enabled = False
         else:

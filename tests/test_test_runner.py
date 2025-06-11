@@ -1,6 +1,12 @@
 import time
 from pathlib import Path
+import sys
+import pytest
 import devai.shadow_mode as sm
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="Limites de recursos não suportados"
+)
 
 
 def test_run_test_isolated_success(tmp_path, monkeypatch):
