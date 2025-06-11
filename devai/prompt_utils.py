@@ -33,7 +33,7 @@ def build_analysis_prompt(code: str, issues: Sequence[str]) -> str:
 
 
 def build_refactor_prompt(code: str, file_path: str | None = None) -> str:
-    """Prompt asking for a refactored version of the code."""
+    """Prompt asking for a unified diff patch with the refactoring."""
     lesson_text = ""
     if file_path:
         licoes = listar_licoes_negativas(file_path)
@@ -44,7 +44,9 @@ def build_refactor_prompt(code: str, file_path: str | None = None) -> str:
                 f"{items}\nEvite repetir esses problemas.\n"
             )
     return (
-        f"{SYSTEM_PROMPT_CONTEXT}\n{lesson_text}Refatore o código a seguir mantendo a funcionalidade e melhore o estilo:\n"
-        f"{code}\n### Código refatorado:\nVamos pensar passo a passo antes de responder.\n"
+        f"{SYSTEM_PROMPT_CONTEXT}\n"
+        f"{lesson_text}Refatore o código a seguir mantendo a funcionalidade e melhore o estilo. "
+        "Retorne apenas um patch de diff unificado e envolva-o em um bloco markdown com `diff` para facilitar a detecção:\n"
+        f"{code}\n### Patch:\nVamos pensar passo a passo antes de responder.\n"
     )
 
