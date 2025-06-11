@@ -255,6 +255,11 @@ class CodeMemoryAI:
         if not hasattr(self, "watchers"):
             self.watchers = {}
 
+        mode = getattr(config, "OPERATING_MODE", "standard")
+        if mode == "sandbox":
+            logger.info("Modo sandbox ativo: background tasks desativadas.")
+            return
+
         meta = MetacognitionLoop(memory=self.memory)
         task_coros = [
             ("learning_loop", self._learning_loop()),
@@ -281,9 +286,6 @@ class CodeMemoryAI:
                     auto_monitor_cycle(self.analyzer, self.memory, self.ai_model),
                 )
             )
-        elif mode == "sandbox":
-            logger.info("Modo sandbox ativo: background tasks desativadas.")
-            task_coros = []
         run_scan = False
         run_watch = False
         if config.START_MODE == "full":
