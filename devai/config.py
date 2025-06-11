@@ -73,6 +73,8 @@ class Config:
     SANDBOX_IMAGE: str = "python:3.10-slim"
     SANDBOX_CPUS: str = "1"
     SANDBOX_MEMORY: str = "512m"
+    SANDBOX_NETWORK: str = "none"
+    SANDBOX_ALLOWED_HOSTS: list[str] = field(default_factory=list)
     APPROVAL_MODE: str = "suggest"
     DIFF_STYLE: str = "inline"
     AUTO_APPROVAL_RULES: list[dict] = field(default_factory=list)
@@ -148,6 +150,10 @@ class Config:
             raise ValueError("SANDBOX_CPUS must be string or int")
         if not isinstance(self.SANDBOX_MEMORY, str):
             raise ValueError("SANDBOX_MEMORY must be string")
+        if not isinstance(self.SANDBOX_NETWORK, str):
+            raise ValueError("SANDBOX_NETWORK must be string")
+        if not isinstance(self.SANDBOX_ALLOWED_HOSTS, list):
+            raise ValueError("SANDBOX_ALLOWED_HOSTS must be a list")
         if not isinstance(self.ERROR_LOG_PATH, str):
             raise ValueError("ERROR_LOG_PATH must be string")
         if not isinstance(self.ERROR_LOG_MAX_LINES, int):
