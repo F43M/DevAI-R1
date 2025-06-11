@@ -92,7 +92,15 @@ def test_auto_refactor(monkeypatch, tmp_path):
     test_file.write_text("def foo():\n    return 1\n")
 
     async def fake_generate(self, prompt, max_length=0):
-        return "def foo():\n    return 2\n"
+        return (
+            "--- test.py\n"
+            "+++ test.py\n"
+            "@@\n"
+            "-def foo():\n"
+            "-    return 1\n"
+            "+def foo():\n"
+            "+    return 2\n"
+        )
 
     class DummyUpdater:
         def __init__(self):
@@ -117,8 +125,15 @@ def test_auto_refactor(monkeypatch, tmp_path):
         "AI", (), {"generate": fake_generate, "safe_api_call": fake_safe}
     )()
     import devai.update_manager as upd
+    import devai.patch_utils as patch_utils
 
     monkeypatch.setattr(upd, "UpdateManager", lambda tests_cmd=None: DummyUpdater())
+    monkeypatch.setattr(patch_utils, "split_diff_by_file", lambda diff: {str(test_file): diff})
+    monkeypatch.setattr(
+        patch_utils,
+        "apply_patch_to_file",
+        lambda path, diff: Path(path).write_text("def foo():\n    return 2\n"),
+    )
 
     async def run():
         return await tm.run_task("auto_refactor", str(test_file))

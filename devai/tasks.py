@@ -22,6 +22,8 @@ from .test_runner import run_pytest
 from .sandbox import run_in_sandbox
 from .approval import requires_approval, request_approval
 from .decision_log import log_decision
+from .patch_utils import split_diff_by_file, apply_patch_to_file
+import re
 
 
 class TaskManager:
@@ -606,21 +608,24 @@ class TaskManager:
             return {"error": str(e)}
 
         from .update_manager import UpdateManager
-        import difflib
 
         updater = UpdateManager()
 
-        diff_text = "\n".join(
-            difflib.unified_diff(
-                original.splitlines(),
-                suggestion.splitlines(),
-                fromfile=file_path,
-                tofile=file_path,
-            )
-        )
+        diff_match = re.search(r"```diff\n(.*?)```", suggestion, re.DOTALL)
+        diff_text = diff_match.group(1).strip() if diff_match else suggestion.strip()
 
-        def apply(p: Path) -> None:
-            p.write_text(suggestion)
+        patches = split_diff_by_file(diff_text)
+        patch = (
+            patches.get(file_path)
+            or patches.get(os.path.relpath(file_path))
+            or (next(iter(patches.values())) if len(patches) == 1 else None)
+        )
+        if not patch:
+            logger.error("Patch inválido", file=file_path)
+            return {"error": "Patch inválido"}
+
+        def apply(p: Path, d=patch) -> None:
+            apply_patch_to_file(p, d)
 
         if requires_approval("edit"):
             if ui:
@@ -662,16 +667,22 @@ class TaskManager:
                 logger.error("Erro no fallback de refatoracao", error=str(e))
                 return {"error": str(e)}
 
-            def apply_retry(p: Path) -> None:
-                p.write_text(suggestion)
-            diff_text_retry = "\n".join(
-                difflib.unified_diff(
-                    original.splitlines(),
-                    suggestion.splitlines(),
-                    fromfile=file_path,
-                    tofile=file_path,
-                )
+            diff_match_retry = re.search(r"```diff\n(.*?)```", suggestion, re.DOTALL)
+            diff_text_retry = (
+                diff_match_retry.group(1).strip() if diff_match_retry else suggestion.strip()
             )
+            patches_retry = split_diff_by_file(diff_text_retry)
+            patch_retry = (
+                patches_retry.get(file_path)
+                or patches_retry.get(os.path.relpath(file_path))
+                or (next(iter(patches_retry.values())) if len(patches_retry) == 1 else None)
+            )
+            if not patch_retry:
+                logger.error("Patch inválido", file=file_path)
+                return {"error": "Patch inválido"}
+
+            def apply_retry(p: Path, d=patch_retry) -> None:
+                apply_patch_to_file(p, d)
 
             if requires_approval("edit"):
                 if ui:
@@ -700,7 +711,7 @@ class TaskManager:
                 )
             except TypeError:
                 success = updater.safe_apply(file_path, apply_retry)
-        return {"success": success, "new_code": suggestion[:200]}
+        return {"success": success, "patch": diff_text[:200]}
 
     async def _perform_quality_suite_task(
         self, task: Dict, *args, ui=None
