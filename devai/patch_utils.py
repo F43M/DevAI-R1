@@ -1,7 +1,6 @@
 """Utility functions for patch manipulation."""
 from __future__ import annotations
 
-from io import StringIO
 from pathlib import Path
 from typing import Dict
 
@@ -20,13 +19,24 @@ def split_diff_by_file(diff_text: str) -> Dict[str, str]:
     Dict[str, str]
         Mapping of target file paths to the diff that should be applied to them.
     """
-    from unidiff import PatchSet
-
-    patches = PatchSet(StringIO(diff_text))
     result: Dict[str, str] = {}
-    for patched_file in patches:
-        # ``patched_file.path`` gives the target path relative to repository root
-        result[patched_file.path] = str(patched_file)
+    current_lines: list[str] = []
+    current_file: str | None = None
+    for line in diff_text.splitlines(keepends=True):
+        if line.startswith("diff --git"):
+            if current_file:
+                result[current_file] = "".join(current_lines)
+            current_lines = [line]
+            current_file = None
+        elif line.startswith("+++ "):
+            current_lines.append(line)
+            current_file = line[4:].strip()
+            if current_file.startswith("b/"):
+                current_file = current_file[2:]
+        else:
+            current_lines.append(line)
+    if current_file:
+        result[current_file] = "".join(current_lines)
     return result
 
 
@@ -43,7 +53,7 @@ def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
     from unidiff import PatchSet
 
     file_path = Path(path)
-    patch_set = PatchSet(StringIO(diff_text))
+    patch_set = PatchSet(diff_text)
     if len(patch_set) != 1:
         raise ValueError("Patch must contain exactly one file")
     patched_file = patch_set[0]
