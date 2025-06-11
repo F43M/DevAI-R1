@@ -17,7 +17,7 @@ python-dotenv
 # UI dependencies
 rich
 prompt_toolkit
-textual
+textual<0.31
 unidiff
 # Optional: treinamento RLHF
 trl>=0.7

@@ -16,6 +16,7 @@ python-dotenv = "*"
 trl = "*"
 networkx = "*"
 scikit-learn = "*"
+textual = "<0.31"
 
 [tool.pytest.ini_options]
 addopts = "-q"
