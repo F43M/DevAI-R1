@@ -76,6 +76,11 @@ O parâmetro `DIFF_STYLE` controla como os patches são exibidos na interface. U
 `inline` para o formato tradicional ou `side_by_side` para mostrar as mudanças em
 duas colunas.
 
+Quando a IA responde com um bloco `diff --git`, o DevAI divide o patch por
+arquivo, exibe-o conforme o `DIFF_STYLE` escolhido e, se o `APPROVAL_MODE`
+permitir, aplica automaticamente as alterações antes de rodar os testes
+configurados.
+
 Você pode ajustar no `config.yaml`, via `--approval-mode` ao iniciar
 ou dinamicamente com o comando `/modo`.
 

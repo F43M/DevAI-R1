@@ -144,3 +144,11 @@ DIFF_STYLE: inline  # ou side_by_side
 O valor `inline` exibe o diff como texto único, enquanto `side_by_side`
 separa as linhas em duas colunas.
 
+## Aplicação automática de diffs
+
+Respostas da IA contendo um bloco começando por `diff --git` são tratadas como
+patches. O DevAI divide o diff por arquivo, apresenta-o de acordo com o
+`DIFF_STYLE` configurado e pergunta se deve aplicar as mudanças (dependendo do
+`APPROVAL_MODE`). Se aceito, cada arquivo é atualizado e os testes são executados
+automaticamente.
+
