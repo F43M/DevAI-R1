@@ -84,3 +84,13 @@ class Sandbox:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.shutdown()
+
+
+def run_in_sandbox(command: List[str], timeout: int = 30) -> str:
+    """Execute ``command`` using :class:`Sandbox` with default configuration."""
+    sb = Sandbox()
+    try:
+        return sb.run(command, timeout)
+    finally:
+        sb.shutdown()
+
