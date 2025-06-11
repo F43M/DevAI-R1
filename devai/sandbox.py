@@ -47,13 +47,23 @@ class Sandbox:
         if self.enabled:
             net = self.network
             tmp_net = None
+            chain = None
             if self.allowed_hosts:
                 tmp_net = f"devai_{uuid4().hex}"
                 try:
                     subprocess.run(["docker", "network", "create", tmp_net], check=True)
+                    ipt = shutil.which("iptables")
+                    if ipt:
+                        chain = f"DEVAI_{uuid4().hex}"
+                        subprocess.run([ipt, "-N", chain], check=True)
+                        for host in self.allowed_hosts:
+                            subprocess.run([ipt, "-A", chain, "-d", host, "-j", "ACCEPT"], check=True)
+                        subprocess.run([ipt, "-A", chain, "-j", "DROP"], check=True)
+                        subprocess.run([ipt, "-I", "DOCKER-USER", "-j", chain], check=True)
                 except Exception as e:  # pragma: no cover - network creation may fail
                     logger.warning("Falha ao criar rede temporária", error=str(e))
                     tmp_net = None
+                    chain = None
             docker_cmd = [
                 "docker",
                 "run",
@@ -95,6 +105,15 @@ class Sandbox:
                     subprocess.run(["docker", "network", "rm", tmp_net], check=False)
                 except Exception:
                     pass
+            if self.enabled and 'chain' in locals() and chain:
+                ipt = shutil.which("iptables")
+                if ipt:
+                    try:
+                        subprocess.run([ipt, "-D", "DOCKER-USER", "-j", chain], check=False)
+                        subprocess.run([ipt, "-F", chain], check=False)
+                        subprocess.run([ipt, "-X", chain], check=False)
+                    except Exception:
+                        pass
 
     def run(self, command: List[str], timeout: int = 30) -> str:
         """Backward compatible wrapper around :func:`run_command`."""
