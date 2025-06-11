@@ -15,7 +15,7 @@ from .config import config, logger
 from .test_runner import run_pytest
 
 
-SHADOW_BASE = Path("/tmp/devai_shadow")
+SHADOW_BASE = Path(tempfile.gettempdir()) / "devai_shadow"
 
 
 def simulate_update(
