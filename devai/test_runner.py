@@ -37,6 +37,9 @@ def _parse_output(output: str) -> str:
 def _preexec(cpu: int, mem: int) -> None:
     """Apply resource limits before executing the child process."""
     if resource is None:
+        logger.warning(
+            "Módulo 'resource' indisponível; limites não serão aplicados."
+        )
         return
     if cpu > 0:
         resource.setrlimit(resource.RLIMIT_CPU, (cpu, cpu))
@@ -67,6 +70,10 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
             )
 
         preexec = _limits if resource is not None else None
+        if resource is None:
+            logger.warning(
+                "Limites de CPU e memória desativados; instale o Docker para isolamento"
+            )
 
         try:
             # shell: run pytest

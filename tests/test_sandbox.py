@@ -1,6 +1,11 @@
 import subprocess
 import asyncio
+import sys
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="Sandbox não suportado no Windows"
+)
 from devai import sandbox
 from devai import tasks as tasks_module
 from devai import test_runner

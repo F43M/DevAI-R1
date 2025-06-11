@@ -85,6 +85,15 @@ o arquivo manualmente.
 
 O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
 
+## Windows
+
+O sandbox de testes depende do Docker para isolar os processos. No Windows é
+possível utilizar o [Docker Desktop](https://docs.docker.com/desktop/) ou
+habilitar o suporte a containers no
+[WSL2](https://learn.microsoft.com/windows/wsl/install). Após instalar uma das
+opções, reinicie o terminal e confirme que o comando `docker` está disponível.
+Sem o Docker, os comandos de shell são executados diretamente, sem isolamento.
+
 ## Executando
 
 - **Servidor API**:
