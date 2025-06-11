@@ -40,7 +40,8 @@ SANDBOX_IMAGE: python:3.10-slim
 SANDBOX_CPUS: "1"
 SANDBOX_MEMORY: 512m
 SANDBOX_NETWORK: none
-# SANDBOX_ALLOWED_HOSTS: []
+# SANDBOX_ALLOWED_HOSTS:
+#   - example.com
 MAX_PROMPT_TOKENS: 1000
 APPROVAL_MODE: suggest
 DIFF_STYLE: inline  # options: inline, side_by_side

@@ -78,13 +78,21 @@ def test_network_option(monkeypatch):
 
 
 def test_allowed_hosts_creates_network(monkeypatch):
-    monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
+    def fake_which(cmd):
+        if cmd == "docker":
+            return "/usr/bin/docker"
+        if cmd == "iptables":
+            return "/usr/sbin/iptables"
+        return None
+
+    monkeypatch.setattr(sandbox.shutil, "which", fake_which)
     monkeypatch.setattr(sandbox.platform, "system", lambda: "Linux")
     monkeypatch.setattr(sandbox.os, "getcwd", lambda: "/tmp/project")
     monkeypatch.setattr(sandbox.config, "SANDBOX_NETWORK", "bridge")
     monkeypatch.setattr(sandbox.config, "SANDBOX_ALLOWED_HOSTS", ["example.com"])
     created = []
     removed = []
+    ipt_cmds = []
 
     class DummyProc:
         def communicate(self, timeout=None):
@@ -95,6 +103,8 @@ def test_allowed_hosts_creates_network(monkeypatch):
             created.append(cmd[3])
         elif cmd[:3] == ["docker", "network", "rm"]:
             removed.append(cmd[3])
+        elif "iptables" in cmd[0]:
+            ipt_cmds.append(cmd)
         return subprocess.CompletedProcess(cmd, 0)
 
     def fake_popen(cmd, stdout, stderr, text):
@@ -105,6 +115,7 @@ def test_allowed_hosts_creates_network(monkeypatch):
     sb = sandbox.Sandbox()
     sb.run_command(["echo"], timeout=3)
     assert created and created[0] in removed
+    assert ipt_cmds
 
 
 def test_run_timeout(monkeypatch):
@@ -150,6 +161,20 @@ def test_docker_missing(monkeypatch):
     monkeypatch.setattr(sandbox.shutil, "which", lambda x: None)
     sb = sandbox.Sandbox()
     assert not sb.enabled
+
+
+def test_docker_missing_windows_warning(monkeypatch):
+    monkeypatch.setattr(sandbox.shutil, "which", lambda x: None)
+    monkeypatch.setattr(sandbox.platform, "system", lambda: "Windows")
+    messages = []
+
+    def fake_warn(msg, **kw):
+        messages.append(msg)
+
+    monkeypatch.setattr(sandbox.logger, "warning", fake_warn)
+    sb = sandbox.Sandbox()
+    assert not sb.enabled
+    assert any("Docker Desktop" in m for m in messages)
 
 
 def test_run_in_sandbox_delegates(monkeypatch):

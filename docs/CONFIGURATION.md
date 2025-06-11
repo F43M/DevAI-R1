@@ -43,6 +43,11 @@ SANDBOX_NETWORK: none
 #   - example.com
 ```
 
+`SANDBOX_NETWORK` define o modo de rede passado ao Docker (`bridge`, `host`,
+`none`, etc.). O valor padrão `none` desativa totalmente o acesso. Caso
+`SANDBOX_ALLOWED_HOSTS` contenha uma lista de domínios, uma rede temporária é
+criada e regras de saída permitem conexões apenas para esses hosts.
+
 Em Linux e macOS o Docker é usado quando disponível. No Windows é necessário o
 Docker Desktop; caso ausente, o DevAI tenta rodar via WSL ou executa os comandos
 diretamente exibindo um alerta. Nesse caso os limites de CPU/memória e o
@@ -50,7 +55,9 @@ controle de rede não estarão ativos.
 
 Para rodar o DevAI em um ambiente totalmente isolado é possível criar uma imagem
 Docker personalizada contendo todas as dependências (Git, compiladores, etc.) e
-definir o caminho dessa imagem em `SANDBOX_IMAGE`.
+definir o caminho dessa imagem em `SANDBOX_IMAGE`. Basta criar um `Dockerfile`
+baseado na distribuição de sua preferência, instalar todos os pacotes
+necessários e executar `docker build -t minha/imagem .`.
 
 ## Histórico de conversa
 
