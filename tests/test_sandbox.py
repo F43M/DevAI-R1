@@ -15,6 +15,7 @@ def test_run_executes(monkeypatch):
     monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
     monkeypatch.setattr(sandbox.platform, "system", lambda: "Linux")
     monkeypatch.setattr(sandbox.os, "getcwd", lambda: "/tmp/project")
+    monkeypatch.setattr(sandbox.config, "SANDBOX_NETWORK", "none")
     sb = sandbox.Sandbox("img", cpus="2", memory="128m")
 
     captured = {}
@@ -50,6 +51,60 @@ def test_run_executes(monkeypatch):
         "hi",
     ]
     assert captured["timeout"] == 5
+
+
+def test_network_option(monkeypatch):
+    monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
+    monkeypatch.setattr(sandbox.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(sandbox.os, "getcwd", lambda: "/tmp/project")
+    monkeypatch.setattr(sandbox.config, "SANDBOX_NETWORK", "host")
+    sb = sandbox.Sandbox()
+
+    captured = {}
+
+    class DummyProc:
+        def communicate(self, timeout=None):
+            return ("ok", "")
+
+    def fake_popen(cmd, stdout, stderr, text):
+        captured["cmd"] = cmd
+        return DummyProc()
+
+    monkeypatch.setattr(sandbox.subprocess, "Popen", fake_popen)
+    sb.run_command(["echo"], timeout=3)
+    assert "--network" in captured["cmd"]
+    idx = captured["cmd"].index("--network") + 1
+    assert captured["cmd"][idx] == "host"
+
+
+def test_allowed_hosts_creates_network(monkeypatch):
+    monkeypatch.setattr(sandbox.shutil, "which", lambda x: "/usr/bin/docker")
+    monkeypatch.setattr(sandbox.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(sandbox.os, "getcwd", lambda: "/tmp/project")
+    monkeypatch.setattr(sandbox.config, "SANDBOX_NETWORK", "bridge")
+    monkeypatch.setattr(sandbox.config, "SANDBOX_ALLOWED_HOSTS", ["example.com"])
+    created = []
+    removed = []
+
+    class DummyProc:
+        def communicate(self, timeout=None):
+            return ("ok", "")
+
+    def fake_run(cmd, check=False):
+        if cmd[:3] == ["docker", "network", "create"]:
+            created.append(cmd[3])
+        elif cmd[:3] == ["docker", "network", "rm"]:
+            removed.append(cmd[3])
+        return subprocess.CompletedProcess(cmd, 0)
+
+    def fake_popen(cmd, stdout, stderr, text):
+        return DummyProc()
+
+    monkeypatch.setattr(sandbox.subprocess, "run", fake_run)
+    monkeypatch.setattr(sandbox.subprocess, "Popen", fake_popen)
+    sb = sandbox.Sandbox()
+    sb.run_command(["echo"], timeout=3)
+    assert created and created[0] in removed
 
 
 def test_run_timeout(monkeypatch):

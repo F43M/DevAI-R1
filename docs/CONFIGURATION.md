@@ -38,11 +38,19 @@ container também é `/app`.
 SANDBOX_IMAGE: python:3.10-slim
 SANDBOX_CPUS: "1"
 SANDBOX_MEMORY: 512m
+SANDBOX_NETWORK: none
+# SANDBOX_ALLOWED_HOSTS:
+#   - example.com
 ```
 
 Em Linux e macOS o Docker é usado quando disponível. No Windows é necessário o
 Docker Desktop; caso ausente, o DevAI tenta rodar via WSL ou executa os comandos
-diretamente exibindo um alerta.
+diretamente exibindo um alerta. Nesse caso os limites de CPU/memória e o
+controle de rede não estarão ativos.
+
+Para rodar o DevAI em um ambiente totalmente isolado é possível criar uma imagem
+Docker personalizada contendo todas as dependências (Git, compiladores, etc.) e
+definir o caminho dessa imagem em `SANDBOX_IMAGE`.
 
 ## Histórico de conversa
 

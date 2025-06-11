@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import platform
 from typing import List
+from uuid import uuid4
 
 from .config import config, logger
 
@@ -10,10 +11,21 @@ from .config import config, logger
 class Sandbox:
     """Isolated execution environment using containers or local execution."""
 
-    def __init__(self, image: str | None = None, cpus: str | None = None, memory: str | None = None) -> None:
+    def __init__(
+        self,
+        image: str | None = None,
+        cpus: str | None = None,
+        memory: str | None = None,
+        network: str | None = None,
+        allowed_hosts: list[str] | None = None,
+    ) -> None:
         self.image = image or getattr(config, "SANDBOX_IMAGE", "python:3.10-slim")
         self.cpus = str(cpus or getattr(config, "SANDBOX_CPUS", "1"))
         self.memory = memory or getattr(config, "SANDBOX_MEMORY", "512m")
+        self.network = network or getattr(config, "SANDBOX_NETWORK", "none")
+        self.allowed_hosts = allowed_hosts or list(
+            getattr(config, "SANDBOX_ALLOWED_HOSTS", [])
+        )
         docker_path = shutil.which("docker") or shutil.which("docker.exe")
         system = platform.system()
         if system in {"Linux", "Darwin"}:
@@ -23,7 +35,7 @@ class Sandbox:
                 self.enabled = True
             else:
                 logger.warning(
-                    "Docker Desktop/WSL2 não encontrado. Comandos rodarão sem isolamento e sem limites."
+                    "Docker Desktop/WSL2 não encontrado. Comandos rodarão sem isolamento, limites ou controle de rede."
                 )
                 self.enabled = False
         else:
@@ -33,6 +45,15 @@ class Sandbox:
     def run_command(self, cmd: List[str], timeout: int = 30) -> str:
         """Execute ``cmd`` isolated in Docker or directly if disabled."""
         if self.enabled:
+            net = self.network
+            tmp_net = None
+            if self.allowed_hosts:
+                tmp_net = f"devai_{uuid4().hex}"
+                try:
+                    subprocess.run(["docker", "network", "create", tmp_net], check=True)
+                except Exception as e:  # pragma: no cover - network creation may fail
+                    logger.warning("Falha ao criar rede temporária", error=str(e))
+                    tmp_net = None
             docker_cmd = [
                 "docker",
                 "run",
@@ -42,7 +63,7 @@ class Sandbox:
                 "--workdir",
                 "/app",
                 "--network",
-                "none",
+                tmp_net or net,
                 "--cpus",
                 self.cpus,
                 "--memory",
@@ -69,6 +90,11 @@ class Sandbox:
         finally:
             if proc in self._processes:
                 self._processes.remove(proc)
+            if self.enabled and 'tmp_net' in locals() and tmp_net:
+                try:
+                    subprocess.run(["docker", "network", "rm", tmp_net], check=False)
+                except Exception:
+                    pass
 
     def run(self, command: List[str], timeout: int = 30) -> str:
         """Backward compatible wrapper around :func:`run_command`."""
