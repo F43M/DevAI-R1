@@ -16,6 +16,12 @@ poucos; caso o modelo não ofereça streaming, o texto completo é retornado de 
 única vez. Consulte [limitations.md](limitations.md) para detalhes e para
 entender eventuais variações observadas no endpoint `/analyze_deep`.
 
+Quando a saída é interrompida, cada provedor pode incluir mensagens diferentes,
+como `stop reason: length` ou avisos de "content truncated". O método
+`is_response_incomplete` reconhece essas variações para solicitar uma
+continuação automática e contabiliza o evento em `incomplete_responses` nas
+métricas.
+
 ## Estatísticas de uso
 
 O endpoint `/metrics` agora mostra contadores de chamadas por modelo e a
