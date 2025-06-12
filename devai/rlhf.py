@@ -7,22 +7,9 @@ from datetime import datetime
 
 from .config import logger, config
 
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
-except Exception as exc:  # pragma: no cover - optional heavy dep
-    AutoModelForCausalLM = None
-    AutoTokenizer = None
-    TrainingArguments = None
-    logger.warning(
-        "transformers não encontrado; funções RLHF indisponíveis",
-        error=str(exc),
-    )
-
-try:
-    from trl import SFTTrainer
-except Exception as exc:  # pragma: no cover - optional dep
-    SFTTrainer = None
-    logger.warning("trl não encontrado; funções RLHF indisponíveis", error=str(exc))
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+from trl import SFTTrainer
+from datasets import Dataset
 
 
 class RLFineTuner:
@@ -119,9 +106,6 @@ class RLFineTuner:
         """Fine tune the language model with RLHF using the TRL library."""
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-        if AutoModelForCausalLM is None or SFTTrainer is None:
-            logger.warning("Dependências de RLHF ausentes; pulando treinamento")
-            return {"status": "skipped", "error": "missing_dependencies"}
 
         data = self.collect_examples()
         if not data:
@@ -131,7 +115,9 @@ class RLFineTuner:
         tokenizer = AutoTokenizer.from_pretrained(base_model)
         model = AutoModelForCausalLM.from_pretrained(base_model)
 
-        dataset = [{"text": f"{e['prompt']}\n{e['response']}"} for e in data]
+        dataset = Dataset.from_list(
+            [{"text": f"{e['prompt']}\n{e['response']}"} for e in data]
+        )
 
         args = TrainingArguments(
             output_dir=output_dir,

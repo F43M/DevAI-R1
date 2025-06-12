@@ -6,6 +6,11 @@ import pytest
 
 from devai import rlhf, core
 from devai.memory import MemoryManager
+from transformers import GPT2Config, GPT2LMHeadModel, PreTrainedTokenizerFast
+from tokenizers import Tokenizer
+from tokenizers.models import WordLevel
+from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.trainers import WordLevelTrainer
 
 
 class DummyMemory(MemoryManager):
@@ -25,6 +30,33 @@ def _create_memory(tmp_path: Path) -> DummyMemory:
         }
     )
     return mem
+
+
+def _create_tiny_model(tmp_path: Path) -> str:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    tok = Tokenizer(WordLevel(unk_token="[UNK]"))
+    tok.pre_tokenizer = Whitespace()
+    trainer = WordLevelTrainer(special_tokens=["[UNK]", "[PAD]"])
+    tok.train_from_iterator(["question", "answer"], trainer)
+    tok_path = tmp_path / "tokenizer.json"
+    tok.save(str(tok_path))
+
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_file=str(tok_path), unk_token="[UNK]", pad_token="[PAD]"
+    )
+    config = GPT2Config(
+        vocab_size=tokenizer.vocab_size,
+        n_positions=8,
+        n_ctx=8,
+        n_embd=32,
+        n_layer=1,
+        n_head=2,
+        pad_token_id=tokenizer.pad_token_id,
+    )
+    model = GPT2LMHeadModel(config)
+    model.save_pretrained(tmp_path)
+    tokenizer.save_pretrained(tmp_path)
+    return str(tmp_path)
 
 
 def test_collect_examples_returns_content(tmp_path, monkeypatch):
@@ -60,20 +92,24 @@ def test_collect_log_examples(tmp_path):
 
 def test_fine_tune_creates_output(tmp_path):
     mem = _create_memory(tmp_path)
+    model_dir = tmp_path / "tiny"
+    base = _create_tiny_model(model_dir)
     tuner = rlhf.RLFineTuner(mem)
     out = tmp_path / "model"
-    result = asyncio.run(tuner.fine_tune("base", str(out)))
+    result = asyncio.run(tuner.fine_tune(base, str(out)))
     assert out.exists()
     assert "status" in result
 
 
 def test_cli_main_runs(tmp_path, monkeypatch, capsys):
     _create_memory(tmp_path)
+    model_dir = tmp_path / "tiny"
+    base = _create_tiny_model(model_dir)
     out = tmp_path / "model"
     import devai.memory as memory_module
     monkeypatch.setattr(memory_module, "MemoryManager", DummyMemory)
     monkeypatch.setattr(rlhf.config, "MEMORY_DB", str(tmp_path / "mem.sqlite"))
-    rlhf.main(["base", str(out)])
+    rlhf.main([base, str(out)])
     out_text = capsys.readouterr().out
     assert out.exists()
     assert "status" in out_text
