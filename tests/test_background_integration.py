@@ -1,6 +1,8 @@
 import asyncio
 import types
 from datetime import datetime
+from pathlib import Path
+import pytest
 import devai.metacognition as metacog
 from devai.core import CodeMemoryAI
 from devai.config import config
@@ -90,3 +92,69 @@ def test_background_tasks_shutdown(monkeypatch):
 
     assert not ai.background_tasks
     assert all(ev in events for ev in ['learn_cancel', 'logs_cancel', 'meta_cancel', 'scan_cancel', 'watch_cancel'])
+
+
+def test_start_deep_scan_background(tmp_path, monkeypatch):
+    global events
+    events = []
+    monkeypatch.setattr(config, "LOG_DIR", str(tmp_path))
+
+    ai = object.__new__(CodeMemoryAI)
+    ai.analyzer = DummyAnalyzer()
+    ai.background_tasks = {}
+    ai.task_status = {}
+
+    queued = ai.start_deep_scan()
+    assert queued
+    task = ai.background_tasks["deep_scan_app"]
+
+    async def run():
+        await asyncio.sleep(0.2)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(run())
+
+    assert ai.task_status["deep_scan_app"]["running"] is False
+    assert "scan_cancel" in events
+
+
+def test_queue_symbolic_training_background(tmp_path, monkeypatch):
+    sent = []
+
+    class DummyNotifier:
+        def send(self, subj, body, details=None):
+            sent.append(subj)
+
+    async def fake_run(*a, **k):
+        status = Path(config.LOG_DIR) / "symbolic_training_status.json"
+        status.write_text('{"progress": 0.3}')
+        await asyncio.sleep(0.1)
+        status.write_text('{"progress": 0.6}')
+        await asyncio.sleep(0.1)
+        status.write_text('{"progress": 1.0}')
+        return {"report": "ok"}
+
+    monkeypatch.setattr(config, "LOG_DIR", str(tmp_path))
+    monkeypatch.setattr("devai.notifier.Notifier", DummyNotifier)
+    monkeypatch.setattr("devai.symbolic_training.run_symbolic_training", fake_run)
+
+    ai = object.__new__(CodeMemoryAI)
+    ai.analyzer = DummyAnalyzer()
+    ai.memory = types.SimpleNamespace()
+    ai.ai_model = types.SimpleNamespace()
+    ai.background_tasks = {}
+    ai.task_status = {}
+
+    queued = ai.queue_symbolic_training()
+    assert queued
+    task = ai.background_tasks["symbolic_training"]
+
+    async def run():
+        await task
+
+    asyncio.run(run())
+
+    assert ai.task_status["symbolic_training"]["running"] is False
+    assert sent == ["Treinamento simbólico concluído"]
