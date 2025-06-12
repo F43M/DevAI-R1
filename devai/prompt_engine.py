@@ -231,6 +231,20 @@ def build_dynamic_prompt(
     prompt = "\n\n".join(p for p in parts if p)
     prompt += f"\n\nComando do usuário: {query}\n"
 
+    modify_keywords = [
+        "refator",
+        "modificar",
+        "ajuste",
+        "corrigir",
+        "alterar",
+        "patch",
+        "diff",
+    ]
+    if intent in {"edit", "create"} or any(k in q for k in modify_keywords):
+        prompt += (
+            "Retorne apenas um patch de diff unificado e envolva-o em um bloco markdown com `diff` para facilitar a detecção.\n"
+        )
+
     keywords = ["por que", "por quê", "analise", "detalhe", "explique", "entenda"]
     explain_intents = {"debug", "architecture", "review"}
     if mode == "deep" or intent in explain_intents or any(k in q for k in keywords):

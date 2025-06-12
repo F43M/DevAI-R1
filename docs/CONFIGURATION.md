@@ -144,6 +144,10 @@ DIFF_STYLE: inline  # ou side_by_side
 O valor `inline` exibe o diff como texto único, enquanto `side_by_side`
 separa as linhas em duas colunas.
 
+Quando o usuário solicita alterações de código, o DevAI orienta o modelo a
+retornar apenas um patch de diff unificado dentro de um bloco markdown `diff`.
+Essa convenção facilita a aplicação automática descrita abaixo.
+
 ## Aplicação automática de diffs
 
 Respostas da IA contendo um bloco começando por `diff --git` são tratadas como
