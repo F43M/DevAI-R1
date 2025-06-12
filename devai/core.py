@@ -615,12 +615,22 @@ class CodeMemoryAI:
                 return {"error": "unauthorized"}
 
             from .update_manager import UpdateManager
+            from .patch_utils import split_diff_by_file, apply_patch_to_file
 
             path = Path(req.file_path)
             old_lines = path.read_text().splitlines()
 
-            def apply_func(p: Path) -> None:
-                p.write_text(req.suggested_code)
+            patches = split_diff_by_file(req.diff)
+            patch_text = (
+                patches.get(req.file_path)
+                or patches.get(os.path.relpath(req.file_path))
+                or (next(iter(patches.values())) if len(patches) == 1 else None)
+            )
+            if not patch_text:
+                return {"error": "invalid_patch"}
+
+            def apply_func(p: Path, d=patch_text) -> None:
+                apply_patch_to_file(p, d)
 
             updater = UpdateManager()
             success = updater.safe_apply(path, apply_func, keep_backup=True)
@@ -630,7 +640,7 @@ class CodeMemoryAI:
                     req.file_path,
                     "edit",
                     old=old_lines,
-                    new=req.suggested_code.splitlines(),
+                    new=path.read_text().splitlines(),
                 )
                 self.memory.save(
                     {
