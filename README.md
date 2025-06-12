@@ -55,6 +55,11 @@ API_SECRET: "sua-chave"
 pip install -r requirements.txt
 ```
 
+O índice vetorial utilizado na busca é salvo automaticamente em `faiss.index` e
+`faiss_ids.json`. Mantenha esses arquivos para preservar o histórico de
+consultas entre execuções. Caminhos customizados podem ser definidos no
+`config.yaml` usando `INDEX_FILE` e `INDEX_IDS_FILE`.
+
 4. (Opcional) Descreva comandos de build e testes adicionais em `PROJECT_GUIDE.md`.
 
 Para executar a suíte de testes em ambiente isolado, configure no `config.yaml`:

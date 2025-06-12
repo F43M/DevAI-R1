@@ -19,3 +19,8 @@ Exemplos de tags geradas automaticamente:
   `COMPLEXITY_TAG_THRESHOLD`
 - `@descontinuado` – detectado em docstrings contendo “deprecated” ou
   “obsoleto”
+
+O índice vetorial usado na busca é salvo em `faiss.index` junto com o arquivo
+`faiss_ids.json` contendo os IDs das entradas. Ambos são carregados ao iniciar o
+`MemoryManager`, evitando reindexar todo o banco. Caso deseje, você pode mudar
+esses caminhos no `config.yaml`.
