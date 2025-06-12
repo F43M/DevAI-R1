@@ -195,7 +195,14 @@ Instale as dependências de desenvolvimento e execute:
 pytest
 ```
 
-O projeto inclui um arquivo `pyproject.toml` para facilitar a instalação das dependências e um arquivo `.pre-commit-config.yaml` com linters automáticos. Após instalar o `pre-commit`, execute `pre-commit install` para habilitar as verificações antes de cada commit.
+O projeto inclui um arquivo `pyproject.toml` para facilitar a instalação das dependências e um arquivo `.pre-commit-config.yaml` com linters automáticos. Para habilitar as verificações locais instale e configure o `pre-commit`:
+
+```bash
+pip install pre-commit
+pre-commit install
+# opcional: roda todos os checks de uma vez
+pre-commit run --all-files
+```
 
 ## Plugins
 
