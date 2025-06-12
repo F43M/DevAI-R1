@@ -25,6 +25,17 @@ import json
 SCORE_MAP = Path("devai/meta/score_map.json")
 
 SELF_LOG = Path("devai/logs/self_reflection.md")
+# File that accumulates all reflections chronologically at project root
+GLOBAL_LOG = Path("SELF_LEARNING_LOG.md")
+
+
+def _append_global_log(entry: str) -> None:
+    """Append a reflection entry to the global log."""
+    try:
+        with GLOBAL_LOG.open("a", encoding="utf-8") as fh:
+            fh.write(entry + "\n")
+    except Exception:
+        pass
 
 
 def build_metacognition_prompt(history: Sequence[Dict]) -> str:
@@ -99,8 +110,10 @@ class MetacognitionLoop:
             lines.append(
                 f"- Contexto: {r['contexto']}\n  Ação: {r['acao']}\n  Resultado: {r['resultado']}\n  Alternativa sugerida: {r['alternativa']}"
             )
+        entry = "\n".join(lines)
         SELF_LOG.parent.mkdir(parents=True, exist_ok=True)
-        SELF_LOG.write_text("\n".join(lines))
+        SELF_LOG.write_text(entry)
+        _append_global_log(entry)
 
         if self.memory:
             for f, score in scores.items():
