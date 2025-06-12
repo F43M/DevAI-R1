@@ -388,7 +388,7 @@ class CodeMemoryAI:
             return StreamingResponse(event_gen(), media_type="text/event-stream")
 
         @self.app.post("/reset_conversation")
-        async def reset_conversation(session_id: str = "default"):
+        async def reset_conversation(session_id: str):
             self.conv_handler.reset(session_id)
             if session_id == "default":
                 self.conversation = self.conv_handler.history("default")

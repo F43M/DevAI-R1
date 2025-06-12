@@ -45,6 +45,10 @@ class ConversationHandler:
             try:
                 data = json.loads(file.read_text())
                 self._mtimes[session_id] = file.stat().st_mtime
+                if len(data) > self.max_history:
+                    data = data[-self.max_history:]
+                    file.write_text(json.dumps(data, indent=2))
+                    self._mtimes[session_id] = file.stat().st_mtime
                 return data
             except Exception:
                 return []
@@ -114,6 +118,11 @@ class ConversationHandler:
                 self.conversation_context[session_id] = self._load_session(session_id)
         else:
             self.conversation_context.setdefault(session_id, [])
+
+        hist = self.conversation_context[session_id]
+        if len(hist) > self.max_history:
+            self.conversation_context[session_id] = hist[-self.max_history:]
+            self._save_session(session_id)
         return self.conversation_context[session_id]
 
     def _summarize_and_store(self, session_id: str, hist: List[Dict[str, str]]) -> None:
