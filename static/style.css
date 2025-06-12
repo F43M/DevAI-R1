@@ -146,3 +146,12 @@
   border-radius:4px;
 }
 .modal-content button{margin:0 5px;}
+
+#planPanel pre{
+  margin:0;
+  white-space:pre-wrap;
+}
+
+#planPanel{
+  margin-bottom:8px;
+}

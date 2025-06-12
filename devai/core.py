@@ -34,7 +34,10 @@ from .ai_model import AIModel
 from .learning_engine import LearningEngine
 from .conversation_handler import ConversationHandler
 from .intent_router import detect_intent
-from . import rlhf
+try:
+    from . import rlhf  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    rlhf = None
 
 
 def estimate_token_count(text: str) -> int:
@@ -1040,7 +1043,13 @@ class CodeMemoryAI:
 
             history = self._build_history_messages(session_id) if session_id else []
             plan = await generate_plan_async(self, query, context_blocks, intent=intent)
-            resp = await generate_final_async(self, query, context_blocks, plan, history, intent)
+            resp = await generate_final_async(
+                self, query, context_blocks, plan, history, intent
+            )
+            extra_plan, clean_resp = self._split_plan_response(resp)
+            if extra_plan:
+                plan = f"{plan}\n{extra_plan}".strip()
+            resp = clean_resp
             if session_id:
                 self.conv_handler.append(session_id, "user", query)
                 self.conv_handler.append(session_id, "assistant", resp)

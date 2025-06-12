@@ -110,3 +110,12 @@ def test_split_when_ignoring_max_tokens():
     assert result_long["plan"].startswith("1.")
     assert len(result_long["response"].split()) > 10
     assert "RESPOSTA" not in result_long["plan"]
+
+
+def test_plan_panel_present():
+    with open("static/index.html", encoding="utf-8") as f:
+        html = f.read()
+    assert "id=\"planPanel\"" in html
+    start = html.index("id=\"planPanel\"")
+    subset = html[start: html.find("</div>", start)]
+    assert "id=\"planOutput\"" in subset
