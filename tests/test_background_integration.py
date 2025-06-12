@@ -15,7 +15,7 @@ class DummyAnalyzer:
         self.code_chunks = {}
         self.last_analysis_time = datetime.now()
 
-    async def deep_scan_app(self):
+    async def deep_scan_app(self, progress_cb=None):
         try:
             while True:
                 await asyncio.sleep(0.1)
@@ -86,11 +86,13 @@ def test_background_tasks_shutdown(monkeypatch):
 
     async def run():
         CodeMemoryAI._start_background_tasks(ai)
+        assert ai.watchers
         await asyncio.sleep(0.2)
         await CodeMemoryAI.shutdown(ai)
     asyncio.run(run())
 
     assert not ai.background_tasks
+    assert not ai.watchers
     assert all(ev in events for ev in ['learn_cancel', 'logs_cancel', 'meta_cancel', 'scan_cancel', 'watch_cancel'])
 
 
@@ -104,18 +106,18 @@ def test_start_deep_scan_background(tmp_path, monkeypatch):
     ai.background_tasks = {}
     ai.task_status = {}
 
-    queued = ai.start_deep_scan()
-    assert queued
-    task = ai.background_tasks["deep_scan_app"]
-
     async def run():
+        queued = ai.start_deep_scan()
+        assert queued
+        task = ai.background_tasks["deep_scan_app"]
+        assert "deep_scan_app" in ai.watchers
         await asyncio.sleep(0.2)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+        assert not ai.watchers
 
     asyncio.run(run())
-
     assert ai.task_status["deep_scan_app"]["running"] is False
     assert "scan_cancel" in events
 
@@ -147,14 +149,14 @@ def test_queue_symbolic_training_background(tmp_path, monkeypatch):
     ai.background_tasks = {}
     ai.task_status = {}
 
-    queued = ai.queue_symbolic_training()
-    assert queued
-    task = ai.background_tasks["symbolic_training"]
-
     async def run():
+        queued = ai.queue_symbolic_training()
+        assert queued
+        task = ai.background_tasks["symbolic_training"]
+        assert "symbolic_training" in ai.watchers
         await task
+        assert not ai.watchers
 
     asyncio.run(run())
-
     assert ai.task_status["symbolic_training"]["running"] is False
     assert sent == ["Treinamento simbólico concluído"]
