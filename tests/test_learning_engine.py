@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 from devai.learning_engine import LearningEngine
@@ -100,3 +101,27 @@ def test_concurrent_calls(tmp_path):
     asyncio.run(engine.learn_from_codebase())
     assert observed > 1
     assert observed <= 2
+
+
+def test_register_rule_logs_source(monkeypatch, tmp_path):
+    db = tmp_path / "mem.sqlite"
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    monkeypatch.setattr(config, "LOG_DIR", str(log_dir))
+    mem = MemoryManager(str(db), "dummy", model=None, index=None)
+    analyzer = CodeAnalyzer(str(tmp_path), mem)
+    engine = LearningEngine(analyzer, mem, DummyModel())
+
+    engine.register_rule("nao use print", {"file": "f.py"})
+
+    log_file = log_dir / "learning_log.json"
+    assert log_file.exists()
+    data = json.loads(log_file.read_text())
+    import hashlib
+
+    h = hashlib.sha1("nao use print".encode("utf-8")).hexdigest()
+    assert h in data
+    cur = mem.conn.cursor()
+    cur.execute("SELECT metadata FROM memory WHERE memory_type='rule'")
+    meta = json.loads(cur.fetchone()[0])
+    assert "source" in meta
