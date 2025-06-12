@@ -314,10 +314,8 @@ async def handle_rastrear(ai, ui, args, *, plain, feedback_db):
             print(json.dumps(h, indent=2))
     log_path = Path("decision_log.yaml")
     if log_path.exists():
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover - fallback when PyYAML is missing
-            from . import yaml_fallback as yaml
+        import yaml  # type: ignore
+
         data = yaml.safe_load(log_path.read_text()) or []
         for e in data:
             if target in e.get("modulo", "") or target in e.get("motivo", ""):
@@ -333,10 +331,7 @@ async def handle_decisoes(ai, ui, args, *, plain, feedback_db):
     """Show and manage decision log entries."""
     parts = args.split()
     log_path = Path("decision_log.yaml")
-    try:
-        import yaml  # type: ignore
-    except Exception:  # pragma: no cover - fallback when PyYAML is missing
-        from . import yaml_fallback as yaml
+    import yaml  # type: ignore
 
     data = []
     if log_path.exists():
@@ -402,13 +397,9 @@ async def handle_decisoes(ai, ui, args, *, plain, feedback_db):
         flag = "*" if e.get("remember") else " "
         exp = e.get("expires_at")
         if exp:
-            line = (
-                f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')} (até {exp})"
-            )
+            line = f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')} (até {exp})"
         else:
-            line = (
-                f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')}"
-            )
+            line = f"{flag}[{e.get('id')}] {e.get('tipo')} {e.get('modulo')} - {e.get('motivo')}"
         print(line)
 
 
@@ -530,10 +521,8 @@ async def handle_resetar(ai, ui, args, *, plain, feedback_db):
 
 async def handle_tests_local(ai, ui, args, *, plain, feedback_db):
     cfg_path = Path("config.yaml")
-    try:
-        import yaml  # type: ignore
-    except Exception:  # pragma: no cover - fallback when PyYAML is missing
-        from . import yaml_fallback as yaml
+    import yaml  # type: ignore
+
     data = {}
     if cfg_path.exists():
         data = yaml.safe_load(cfg_path.read_text()) or {}
@@ -554,9 +543,7 @@ async def handle_aprovar_proxima(ai, ui, args, *, plain, feedback_db):
         print("Uso: /aprovar_proxima <n>")
         return
     approval.auto_approve_remaining = max(0, count)
-    print(
-        f"Próximas {approval.auto_approve_remaining} ações aprovadas automaticamente"
-    )
+    print(f"Próximas {approval.auto_approve_remaining} ações aprovadas automaticamente")
 
 
 async def handle_aprovar_durante(ai, ui, args, *, plain, feedback_db):
@@ -567,9 +554,7 @@ async def handle_aprovar_durante(ai, ui, args, *, plain, feedback_db):
         print("Uso: /aprovar_durante <segundos>")
         return
     approval.auto_approve_until = datetime.now() + timedelta(seconds=seconds)
-    print(
-        f"Ações aprovadas automaticamente pelos próximos {int(seconds)} segundos"
-    )
+    print(f"Ações aprovadas automaticamente pelos próximos {int(seconds)} segundos")
 
 
 async def handle_modo(ai, ui, args, *, plain, feedback_db):
@@ -588,10 +573,8 @@ async def handle_regras(ai, ui, args, *, plain, feedback_db):
     """Gerenciar AUTO_APPROVAL_RULES via CLI."""
     parts = args.split()
     cfg_path = Path("config.yaml")
-    try:
-        import yaml  # type: ignore
-    except Exception:  # pragma: no cover - fallback when PyYAML is missing
-        from . import yaml_fallback as yaml
+    import yaml  # type: ignore
+
     data = {}
     if cfg_path.exists():
         data = yaml.safe_load(cfg_path.read_text()) or {}
@@ -656,10 +639,8 @@ async def handle_sugerir_regras(ai, ui, args, *, plain, feedback_db):
         print(f"[{i}] {r['action']} {r['path']} -> sim")
     if save:
         cfg_path = Path("config.yaml")
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover - fallback when PyYAML is missing
-            from . import yaml_fallback as yaml
+        import yaml  # type: ignore
+
         data = {}
         if cfg_path.exists():
             data = yaml.safe_load(cfg_path.read_text()) or {}
@@ -671,8 +652,6 @@ async def handle_sugerir_regras(ai, ui, args, *, plain, feedback_db):
         cfg_path.write_text(yaml.safe_dump(data, allow_unicode=True))
         config.reload(str(cfg_path))
         print("✅ Regras atualizadas")
-
-
 
 
 async def handle_default(

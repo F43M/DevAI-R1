@@ -1,9 +1,5 @@
 import os
-
-try:
-    import yaml  # type: ignore
-except Exception:  # pragma: no cover - fallback when PyYAML is missing
-    from . import yaml_fallback as yaml
+import yaml  # type: ignore
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Optional
 import asyncio
@@ -669,13 +665,19 @@ class TaskManager:
 
             diff_match_retry = re.search(r"```diff\n(.*?)```", suggestion, re.DOTALL)
             diff_text_retry = (
-                diff_match_retry.group(1).strip() if diff_match_retry else suggestion.strip()
+                diff_match_retry.group(1).strip()
+                if diff_match_retry
+                else suggestion.strip()
             )
             patches_retry = split_diff_by_file(diff_text_retry)
             patch_retry = (
                 patches_retry.get(file_path)
                 or patches_retry.get(os.path.relpath(file_path))
-                or (next(iter(patches_retry.values())) if len(patches_retry) == 1 else None)
+                or (
+                    next(iter(patches_retry.values()))
+                    if len(patches_retry) == 1
+                    else None
+                )
             )
             if not patch_retry:
                 logger.error("Patch inválido", file=file_path)

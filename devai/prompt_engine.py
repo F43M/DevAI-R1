@@ -17,10 +17,7 @@ SYSTEM_PROMPT_CONTEXT = (
     "Sempre explique antes de agir e justifique cada modificação. "
     "Estrutura: contexto simbólico -> raciocínio -> código."
 )
-try:
-    import yaml  # type: ignore
-except Exception:  # pragma: no cover - fallback when PyYAML is missing
-    from . import yaml_fallback as yaml
+import yaml  # type: ignore
 
 TEMPLATES: Dict[str, str] = {
     "create": "Crie o código solicitado com comentários e exemplos.",
@@ -111,12 +108,12 @@ def build_cot_prompt(
     identity = SYSTEM_PROMPT_CONTEXT
     proj_text, proj_cfg = _load_project_identity()
     mem_text = _format_memories(memories)
-    acts = "\n".join(
-        f"- {a.get('task')}" for a in list(actions)[-3:]
-    )
+    acts = "\n".join(f"- {a.get('task')}" for a in list(actions)[-3:])
     step_mode = proj_cfg.get("task_mode", "normal") == "step_by_step"
     extra = (
-        "\nPor favor, forneça um plano de execução, checklist e questione informação faltante." if step_mode else ""
+        "\nPor favor, forneça um plano de execução, checklist e questione informação faltante."
+        if step_mode
+        else ""
     )
     prompt = (
         f"{pref_text}{identity}\n{proj_text}\n{mem_text}\n\n{graph_summary}\n\n"
@@ -197,9 +194,15 @@ def build_dynamic_prompt(
         graph = context_blocks.get("graph")
         _add("grafo_simbólico", graph, "pergunta de arquitetura")
 
-    if intent == "debug" or any(k in q for k in ["erro", "falha", "log", "stack", "execu"]):
+    if intent == "debug" or any(
+        k in q for k in ["erro", "falha", "log", "stack", "execu"]
+    ):
         logs = context_blocks.get("logs")
-        _add("logs_recentes", f"Logs recentes:\n{logs}" if logs else None, "pergunta de erro")
+        _add(
+            "logs_recentes",
+            f"Logs recentes:\n{logs}" if logs else None,
+            "pergunta de erro",
+        )
         actions = context_blocks.get("actions")
         if actions:
             acts = "\n".join(f"- {a.get('task')}" for a in actions[-3:])
@@ -245,18 +248,22 @@ async def build_dynamic_prompt_async(
     intent: str | None = None,
 ) -> str:
     """Async wrapper for build_dynamic_prompt."""
-    return await asyncio.to_thread(build_dynamic_prompt, query, context_blocks, mode, intent)
+    return await asyncio.to_thread(
+        build_dynamic_prompt, query, context_blocks, mode, intent
+    )
 
 
 def split_plan_response(text: str) -> tuple[str, str]:
     """Split plan and final answer if both are present."""
     m = re.search(r"===\s*RESPOSTA\s*===", text, re.IGNORECASE)
     if m:
-        return text[: m.start()].strip(), text[m.end():].strip()
+        return text[: m.start()].strip(), text[m.end() :].strip()
     return text.strip(), ""
 
 
-async def gather_context_async(ai: Any, query: str) -> tuple[Dict[str, Any], Sequence[Dict]]:
+async def gather_context_async(
+    ai: Any, query: str
+) -> tuple[Dict[str, Any], Sequence[Dict]]:
     """Collect memories, suggestions, graph summary and logs concurrently."""
     mem_task = asyncio.to_thread(ai.memory.search, query, level="short")
     sugg_task = asyncio.to_thread(ai.memory.search, query, top_k=1)
@@ -322,4 +329,3 @@ async def generate_final_async(
         ai._prefetch_related(query),
     )
     return result.strip()
-

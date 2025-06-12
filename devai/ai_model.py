@@ -12,11 +12,7 @@ SYSTEM_MESSAGE = (
 )
 
 import aiohttp
-try:
-    from aiohttp import ClientError, ClientConnectionError
-except Exception:  # pragma: no cover - fallback for simplified aiohttp
-    ClientError = Exception
-    ClientConnectionError = Exception
+from aiohttp import ClientError, ClientConnectionError
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore
@@ -266,6 +262,7 @@ class AIModel:
 
         model_order = [self.current] + [m for m in self.models if m != self.current]
         if stream:
+
             async def _stream():
                 used = self.current
                 for name in model_order:
@@ -274,6 +271,7 @@ class AIModel:
                         yield token
                     break
                 metrics.record_call(0)
+
             return _stream()
 
         response_text = ""
@@ -371,9 +369,7 @@ class AIModel:
                     prompt, max_length=available, temperature=temperature
                 )
             except Exception:
-                return (
-                    "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
-                )
+                return "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
         except Exception as e:
             if getattr(e, "status", 0) in (408, 504):
                 logger.info("Retry attempt triggered after timeout...")
@@ -384,17 +380,13 @@ class AIModel:
                         prompt, max_length=available, temperature=temperature
                     )
                 except Exception:
-                    return (
-                        "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
-                    )
+                    return "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
             else:
                 log_error("safe_api_call", e)
                 return friendly_message(e)
 
         if "401" in response or "Unauthorized" in response:
-            return (
-                "🚫 A chave de API foi rejeitada. Verifique se está correta no config.OPENROUTER_API_KEY."
-            )
+            return "🚫 A chave de API foi rejeitada. Verifique se está correta no config.OPENROUTER_API_KEY."
         while attempts < 3 and (
             is_response_incomplete(response) or len(response.split()) >= available - 1
         ):
@@ -458,7 +450,9 @@ class AIModel:
         if available <= 0:
             available = max_tokens
         try:
-            async for token in self.generate(prompt, max_length=available, temperature=temperature, stream=True):
+            async for token in self.generate(
+                prompt, max_length=available, temperature=temperature, stream=True
+            ):
                 yield token
         except Exception:
             text = await self.safe_api_call(prompt, max_tokens, "")
