@@ -213,9 +213,14 @@ class CodeMemoryAI:
 
         task = asyncio.create_task(_run(), name="deep_scan_app")
         self.background_tasks["deep_scan_app"] = task
+        if not hasattr(self, "watchers"):
+            self.watchers = {}
+        self.watchers["deep_scan_app"] = task
 
         def _done(_t: asyncio.Task) -> None:
             self.background_tasks.pop("deep_scan_app", None)
+            if hasattr(self, "watchers"):
+                self.watchers.pop("deep_scan_app", None)
             self.task_status["deep_scan_app"] = {"progress": 1.0, "running": False}
 
         task.add_done_callback(_done)
@@ -240,7 +245,7 @@ class CodeMemoryAI:
                 )
             finally:
                 monitor.cancel()
-                with contextlib.suppress(Exception):
+                with contextlib.suppress(Exception, asyncio.CancelledError):
                     await monitor
 
             try:
@@ -264,9 +269,14 @@ class CodeMemoryAI:
         self.task_status["symbolic_training"] = {"progress": 0.0, "running": True}
         task = asyncio.create_task(_run(), name="symbolic_training")
         self.background_tasks["symbolic_training"] = task
+        if not hasattr(self, "watchers"):
+            self.watchers = {}
+        self.watchers["symbolic_training"] = task
 
         def _done(_t: asyncio.Task) -> None:
             self.background_tasks.pop("symbolic_training", None)
+            if hasattr(self, "watchers"):
+                self.watchers.pop("symbolic_training", None)
             self.task_status["symbolic_training"] = {"progress": 1.0, "running": False}
 
         task.add_done_callback(_done)

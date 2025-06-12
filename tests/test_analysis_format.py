@@ -29,8 +29,9 @@ class DummyAnalyzer:
         self.learned_rules = {}
         self.last_analysis_time = datetime.now()
 
-    async def deep_scan_app(self):
-        pass
+    async def deep_scan_app(self, progress_cb=None):
+        if progress_cb:
+            progress_cb(100, "done")
 
     async def summary_by_module(self):
         return {'core.py': {'complex_functions': 0, 'todos': 0, 'score': '✅ Estável'}}
