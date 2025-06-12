@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Dict
 
 
-
 def split_diff_by_file(diff_text: str) -> Dict[str, str]:
     """Split a unified diff into chunks by file path.
 
@@ -40,15 +39,14 @@ def split_diff_by_file(diff_text: str) -> Dict[str, str]:
     return result
 
 
+
 def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
     """Apply a unified diff chunk to a single file.
 
-    Parameters
-    ----------
-    path:
-        Path to the file that should be patched.
-    diff_text:
-        Unified diff affecting only ``path``.
+    Raises
+    ------
+    RuntimeError
+        If the patch context does not match the file contents.
     """
     from unidiff import PatchSet
 
@@ -64,6 +62,12 @@ def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
 
     for hunk in patched_file:
         start = hunk.source_start - 1
+        expected = [l.value for l in hunk if not l.is_added]
+        end = start + len(expected)
+        actual = lines[start:end]
+        if actual != expected:
+            raise RuntimeError("patch context mismatch")
+
         result.extend(lines[idx:start])
         idx = start
         for line in hunk:
@@ -77,4 +81,3 @@ def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
                 idx += 1
     result.extend(lines[idx:])
     file_path.write_text("".join(result))
-
