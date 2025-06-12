@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Sequence
+import re
 import asyncio
 
 from .config import config, logger
@@ -245,4 +246,80 @@ async def build_dynamic_prompt_async(
 ) -> str:
     """Async wrapper for build_dynamic_prompt."""
     return await asyncio.to_thread(build_dynamic_prompt, query, context_blocks, mode, intent)
+
+
+def split_plan_response(text: str) -> tuple[str, str]:
+    """Split plan and final answer if both are present."""
+    m = re.search(r"===\s*RESPOSTA\s*===", text, re.IGNORECASE)
+    if m:
+        return text[: m.start()].strip(), text[m.end():].strip()
+    return text.strip(), ""
+
+
+async def gather_context_async(ai: Any, query: str) -> tuple[Dict[str, Any], Sequence[Dict]]:
+    """Collect memories, suggestions, graph summary and logs concurrently."""
+    mem_task = asyncio.to_thread(ai.memory.search, query, level="short")
+    sugg_task = asyncio.to_thread(ai.memory.search, query, top_k=1)
+    graph_fn = getattr(ai.analyzer, "graph_summary_async", None)
+    graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
+    logs_task = collect_recent_logs_async()
+    actions = ai.tasks.last_actions()
+    mems, suggestions, graph_summary, logs = await asyncio.gather(
+        mem_task, sugg_task, graph_task, logs_task
+    )
+    context_blocks = {
+        "memories": mems,
+        "graph": graph_summary,
+        "actions": actions,
+        "logs": logs,
+    }
+    return context_blocks, suggestions
+
+
+async def generate_plan_async(
+    ai: Any,
+    query: str,
+    context_blocks: Dict[str, Any],
+    intent: str | None = None,
+) -> str:
+    """Generate a reasoning plan for the given query and context."""
+    prompt = build_dynamic_prompt(query, context_blocks, "deep", intent=intent)
+    system_msg = (
+        "Você é um assistente especialista em análise de código. "
+        "Elabore um plano de ação passo a passo para atender ao pedido do usuário."
+    )
+    messages = [
+        {"role": "system", "content": system_msg},
+        {"role": "user", "content": prompt},
+    ]
+    raw = await ai.ai_model.safe_api_call(
+        messages, 4096, prompt, ai.memory, temperature=0.2
+    )
+    plan, _ = split_plan_response(raw)
+    return plan
+
+
+async def generate_final_async(
+    ai: Any,
+    query: str,
+    context_blocks: Dict[str, Any],
+    plan: str,
+    history: Sequence[Dict] | None = None,
+    intent: str | None = None,
+) -> str:
+    """Generate the final answer using a pre-computed plan."""
+    prompt = build_dynamic_prompt(query, context_blocks, "deep", intent=intent)
+    prompt = f"{plan}\n{prompt}"
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT_CONTEXT},
+        *(history or []),
+        {"role": "user", "content": prompt},
+    ]
+    result, _ = await asyncio.gather(
+        ai.ai_model.safe_api_call(
+            messages, config.MAX_CONTEXT_LENGTH, prompt, ai.memory
+        ),
+        ai._prefetch_related(query),
+    )
+    return result.strip()
 

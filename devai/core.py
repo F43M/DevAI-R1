@@ -884,19 +884,13 @@ class CodeMemoryAI:
             intent = detect_intent(query)
             from .prompt_engine import (
                 build_dynamic_prompt,
-                collect_recent_logs_async,
+                gather_context_async,
+                generate_plan_async,
+                generate_final_async,
                 SYSTEM_PROMPT_CONTEXT,
             )
 
-            mem_task = asyncio.to_thread(self.memory.search, query, level="short")
-            sugg_task = asyncio.to_thread(self.memory.search, query, top_k=1)
-            graph_fn = getattr(self.analyzer, "graph_summary_async", None)
-            graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
-            logs_task = collect_recent_logs_async()
-            actions = self.tasks.last_actions()
-            contextual_memories, suggestions, graph_summary, logs = (
-                await asyncio.gather(mem_task, sugg_task, graph_task, logs_task)
-            )
+            context_blocks, suggestions = await gather_context_async(self, query)
             self.reason_stack = []
             self.reason_stack.append("Memórias coletadas")
             mode = getattr(config, "MODE", "")
@@ -904,12 +898,6 @@ class CodeMemoryAI:
                 query += "\nExplique antes de responder."
             elif mode:
                 logger.info("Modo %s não reconhecido", mode)
-            context_blocks = {
-                "memories": contextual_memories,
-                "graph": graph_summary,
-                "actions": actions,
-                "logs": logs,
-            }
             self.last_context = {
                 "history": (
                     self._build_history_messages(session_id) if session_id else []
@@ -923,11 +911,8 @@ class CodeMemoryAI:
                 intent=intent,
             )
             if double_check:
-                plan = await self.ai_model.safe_api_call(
-                    f"{SYSTEM_PROMPT_CONTEXT}\nElabore um plano de ação para: {query}",
-                    config.MAX_CONTEXT_LENGTH,
-                    query,
-                    self.memory,
+                plan = await generate_plan_async(
+                    self, query, context_blocks, intent=intent
                 )
                 review = await self.ai_model.safe_api_call(
                     f"{SYSTEM_PROMPT_CONTEXT}\nRevise o plano a seguir e sugira ajustes se necessário:\n{plan}",
@@ -950,11 +935,9 @@ class CodeMemoryAI:
                 *history,
                 {"role": "user", "content": prompt},
             ]
-            prefetch = asyncio.create_task(self._prefetch_related(query))
-            result = await self.ai_model.safe_api_call(
-                messages, config.MAX_CONTEXT_LENGTH, prompt, self.memory
+            result = await generate_final_async(
+                self, query, context_blocks, plan if double_check else "", history, intent
             )
-            prefetch.cancel()
             if session_id:
                 self.conv_handler.append(session_id, "user", query)
                 self.conv_handler.append(session_id, "assistant", result)
@@ -976,26 +959,12 @@ class CodeMemoryAI:
         intent = detect_intent(query)
         from .prompt_engine import (
             build_dynamic_prompt_async,
-            collect_recent_logs_async,
+            gather_context_async,
             SYSTEM_PROMPT_CONTEXT,
         )
 
-        mem_task = asyncio.to_thread(self.memory.search, query, level="short")
-        graph_fn = getattr(self.analyzer, "graph_summary_async", None)
-        graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
-        logs_task = collect_recent_logs_async()
         history = self._build_history_messages(session_id) if session_id else []
-        suggestions_task = asyncio.to_thread(self.memory.search, query, top_k=1)
-        actions = self.tasks.last_actions()
-        mems, suggestions, graph_summary, logs = await asyncio.gather(
-            mem_task, suggestions_task, graph_task, logs_task
-        )
-        context_blocks = {
-            "memories": mems,
-            "graph": graph_summary,
-            "actions": actions,
-            "logs": logs,
-        }
+        context_blocks, suggestions = await gather_context_async(self, query)
         prompt = await build_dynamic_prompt_async(
             query, context_blocks, "normal", intent=intent
         )
@@ -1051,24 +1020,14 @@ class CodeMemoryAI:
                 }
 
             intent = detect_intent(query)
-            from .prompt_engine import build_dynamic_prompt, collect_recent_logs_async
-
-            mem_task = asyncio.to_thread(self.memory.search, query, level="short")
-            sugg_task = asyncio.to_thread(self.memory.search, query, top_k=1)
-            graph_fn = getattr(self.analyzer, "graph_summary_async", None)
-            graph_task = graph_fn() if graph_fn else asyncio.sleep(0, result="")
-            logs_task = collect_recent_logs_async()
-            actions = self.tasks.last_actions()
-            contextual_memories, suggestions, graph_summary, logs = (
-                await asyncio.gather(mem_task, sugg_task, graph_task, logs_task)
+            from .prompt_engine import (
+                build_dynamic_prompt,
+                gather_context_async,
+                generate_plan_async,
+                generate_final_async,
             )
 
-            context_blocks = {
-                "memories": contextual_memories,
-                "graph": graph_summary,
-                "actions": actions,
-                "logs": logs,
-            }
+            context_blocks, suggestions = await gather_context_async(self, query)
             self.last_context = {
                 "history": (
                     self._build_history_messages(session_id) if session_id else []
@@ -1079,35 +1038,15 @@ class CodeMemoryAI:
             if suggestions:
                 prompt += f"\nSugestao relacionada: {suggestions[0]['content'][:80]}"
 
-            system_msg = (
-                "Você é um assistente especialista em análise de código. "
-                "Sua tarefa é resolver o pedido do usuário em duas etapas:\n"
-                "1. Primeiro, liste seu plano de raciocínio passo a passo, numerando cada etapa.\n"
-                "2. Depois, forneça a resposta final ao pedido do usuário com base nesse plano.\n"
-                "Separe o plano da resposta com a marcação ===RESPOSTA===."
-            )
             history = self._build_history_messages(session_id) if session_id else []
-            messages = [
-                {"role": "system", "content": system_msg},
-                *history,
-                {"role": "user", "content": prompt},
-            ]
-            prefetch = asyncio.create_task(self._prefetch_related(query))
-            raw = await self.ai_model.safe_api_call(
-                messages,
-                4096,
-                prompt,
-                self.memory,
-                temperature=0.2,
-            )
-            prefetch.cancel()
-            plan, resp = self._split_plan_response(raw)
+            plan = await generate_plan_async(self, query, context_blocks, intent=intent)
+            resp = await generate_final_async(self, query, context_blocks, plan, history, intent)
             if session_id:
                 self.conv_handler.append(session_id, "user", query)
                 self.conv_handler.append(session_id, "assistant", resp)
             else:
                 logger.info("multi_turn_fallback", session=session_id)
-            trace = f"\ud83d\udca1 Detalhes t\u00e9cnicos: A IA consultou {len(contextual_memories)} m\u00e9morias anteriores, analisou depend\u00eancias e gerou a resposta abaixo com base no padr\u00e3o simb\u00f3lico aprendido."
+            trace = f"\ud83d\udca1 Detalhes t\u00e9cnicos: A IA consultou {len(context_blocks['memories'])} m\u00e9morias anteriores, analisou depend\u00eancias e gerou a resposta abaixo com base no padr\u00e3o simb\u00f3lico aprendido."
             result = {
                 "plan": plan,
                 "response": resp,
