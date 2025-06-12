@@ -57,10 +57,7 @@ class MetacognitionLoop:
         """Score recent decisions and log concise reflections."""
         if not self.history_file.exists():
             return
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover - fallback when PyYAML is missing
-            from . import yaml_fallback as yaml
+        import yaml  # type: ignore
 
         try:
             data: List[Dict] = yaml.safe_load(self.history_file.read_text()) or []

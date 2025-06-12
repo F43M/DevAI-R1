@@ -93,7 +93,7 @@ Para manipular regras específicas de autoaprovação utilize `/regras`. O coman
 permite listar, adicionar e remover entradas em `AUTO_APPROVAL_RULES` sem editar
 o arquivo manualmente.
 
-O DevAI traz versões simplificadas de algumas bibliotecas (como `aiohttp` e `fastapi`) usadas apenas em testes offline. O módulo `dependency_check` avisará caso essas versões estejam ativas, recomendando a instalação dos pacotes reais.
+O módulo `dependency_check` alerta caso alguma dependência principal esteja ausente.
 
 ## Windows
 
@@ -268,7 +268,7 @@ Melhorias em andamento:
 
 - Expansão dos módulos existentes
 - Cobertura de testes ampliada
-- Dependências opcionais com fallback *(implementado)*
+- Dependências opcionais
 - Exemplos de configuração prontos para uso
 - Automação incremental do projeto
 - Cache de memória para acelerar consultas
@@ -300,7 +300,7 @@ Cada arquivo em `devai/` possui uma responsabilidade específica:
 - `conversation_handler.py` – gerenciamento de múltiplas sessões de conversa.
 - `core.py` – orquestrador principal e servidor FastAPI.
 - `decision_log.py` – armazenamento de decisões aprovadas.
-- `dependency_check.py` – alerta sobre dependências simplificadas.
+ - `dependency_check.py` – verificação de dependências obrigatórias.
 - `dialog_summarizer.py` – sumarização de diálogos longos.
 - `error_handler.py` – persistência de erros.
 - `feedback.py` – registro de feedback para RLHF.
@@ -316,7 +316,6 @@ Cada arquivo em `devai/` possui uma responsabilidade específica:
 - `notifier.py` – envio opcional de notificações.
 - `patch_utils.py` – utilidades para aplicar patches.
 - `plugin_manager.py` – carregamento de plugins externos.
-- `pydantic_fallback.py` – versão reduzida do Pydantic para testes.
 - `prompt_engine.py` – construção dinâmica de prompts.
 - `prompt_utils.py` – funções auxiliares para prompts.
 - `rlhf.py` – rotina de fine‑tuning por feedback.
@@ -330,4 +329,3 @@ Cada arquivo em `devai/` possui uma responsabilidade específica:
 - `tui.py` – interface textual opcional.
 - `ui.py` – pequena interface web.
 - `update_manager.py` – aplicação de mudanças com rollback.
-- `yaml_fallback.py` – leitor simples de YAML quando PyYAML não está instalado.

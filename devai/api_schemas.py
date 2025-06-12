@@ -1,9 +1,6 @@
 from pathlib import Path
 
-try:
-    from pydantic import BaseModel, Field, validator
-except Exception:  # pragma: no cover - fallback when pydantic is missing
-    from .pydantic_fallback import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator
 
 from .config import config
 

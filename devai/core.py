@@ -34,6 +34,7 @@ from .ai_model import AIModel
 from .learning_engine import LearningEngine
 from .conversation_handler import ConversationHandler
 from .intent_router import detect_intent
+
 try:
     from . import rlhf  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
@@ -551,10 +552,8 @@ class CodeMemoryAI:
 
             path = Path("decision_log.yaml")
             if path.exists():
-                try:
-                    import yaml  # type: ignore
-                except Exception:  # pragma: no cover - fallback when PyYAML is missing
-                    from . import yaml_fallback as yaml
+                import yaml  # type: ignore
+
                 return yaml.safe_load(path.read_text())
             return []
 
@@ -944,7 +943,12 @@ class CodeMemoryAI:
                 {"role": "user", "content": prompt},
             ]
             result = await generate_final_async(
-                self, query, context_blocks, plan if double_check else "", history, intent
+                self,
+                query,
+                context_blocks,
+                plan if double_check else "",
+                history,
+                intent,
             )
             if session_id:
                 self.conv_handler.append(session_id, "user", query)

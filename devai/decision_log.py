@@ -5,10 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Tuple, List, Dict
 
-try:
-    import yaml  # type: ignore
-except Exception:  # pragma: no cover - fallback when PyYAML is missing
-    from . import yaml_fallback as yaml
+import yaml  # type: ignore
 
 from .config import logger
 
