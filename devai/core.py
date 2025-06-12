@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Any, AsyncGenerator
 import re
 from pathlib import Path
 import ast
+import contextlib
 
 import networkx as nx
 import uvicorn
@@ -203,7 +204,14 @@ class CodeMemoryAI:
         if "deep_scan_app" in self.background_tasks:
             return False
         self.task_status["deep_scan_app"] = {"progress": 0.0, "running": True}
-        task = asyncio.create_task(self.analyzer.deep_scan_app(), name="deep_scan_app")
+
+        async def _run():
+            def _update(p: float, _msg: str) -> None:
+                self.task_status["deep_scan_app"]["progress"] = round(p / 100, 2)
+
+            await self.analyzer.deep_scan_app(progress_cb=_update)
+
+        task = asyncio.create_task(_run(), name="deep_scan_app")
         self.background_tasks["deep_scan_app"] = task
 
         def _done(_t: asyncio.Task) -> None:
@@ -225,9 +233,16 @@ class CodeMemoryAI:
         async def _run():
             from .symbolic_training import run_symbolic_training
 
-            result = await run_symbolic_training(
-                self.analyzer, self.memory, self.ai_model
-            )
+            monitor = asyncio.create_task(_monitor(), name="symbolic_training_progress")
+            try:
+                result = await run_symbolic_training(
+                    self.analyzer, self.memory, self.ai_model
+                )
+            finally:
+                monitor.cancel()
+                with contextlib.suppress(Exception):
+                    await monitor
+
             try:
                 from .notifier import Notifier
 
@@ -237,6 +252,14 @@ class CodeMemoryAI:
             except Exception:
                 pass
             return result
+
+        async def _monitor() -> None:
+            while True:
+                await asyncio.sleep(0.1)
+                self.task_status["symbolic_training"]["progress"] = round(
+                    self._symbolic_training_progress(),
+                    2,
+                )
 
         self.task_status["symbolic_training"] = {"progress": 0.0, "running": True}
         task = asyncio.create_task(_run(), name="symbolic_training")
