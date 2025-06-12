@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any
@@ -37,6 +38,28 @@ def _write_progress(progress: float) -> None:
         PROGRESS_FILE.write_text(json.dumps({"progress": int(progress)}, indent=2))
     except Exception:
         logger.warning("Nao foi possivel atualizar learning_progress.json")
+
+def _learning_log_file() -> Path:
+    return Path(config.LOG_DIR) / "learning_log.json"
+
+
+def _load_learning_log() -> Dict[str, str]:
+    file = _learning_log_file()
+    try:
+        if file.exists():
+            return json.loads(file.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def _save_learning_log(data: Dict[str, str]) -> None:
+    file = _learning_log_file()
+    try:
+        file.parent.mkdir(exist_ok=True)
+        file.write_text(json.dumps(data, indent=2))
+    except Exception:
+        logger.warning("Nao foi possivel atualizar learning_log")
 from .memory import MemoryManager
 from .ai_model import AIModel
 from .analyzer import CodeAnalyzer
@@ -93,6 +116,7 @@ class LearningEngine:
         self.call_count = 0
         self.score_map = Path("devai/meta/score_map.json")
         self.priority_files: list[str] = []
+        self.learning_log: Dict[str, str] = _load_learning_log()
         cur = self.memory.conn.cursor()
         cur.execute(
             """
@@ -131,15 +155,19 @@ class LearningEngine:
 
     def register_rule(self, rule: str, source: Dict[str, Any]) -> None:
         """Store a learned rule and its origin."""
+        metadata = {"source": source}
         self.memory.save(
             {
                 "type": "learned_rule",
                 "memory_type": "rule",
                 "content": rule,
-                "metadata": source,
+                "metadata": metadata,
                 "tags": ["rule", "learning"],
             }
         )
+        h = hashlib.sha1(rule.encode("utf-8")).hexdigest()
+        self.learning_log[h] = datetime.now().isoformat()
+        _save_learning_log(self.learning_log)
 
     async def _rate_limited_call(self, prompt: str, max_length: int = 800) -> str:
         """Invoke the model while respecting a simple per-minute limit."""
@@ -396,15 +424,7 @@ class LearningEngine:
         resp = await self._rate_limited_call(prompt)
         rules = [r.strip("- ") for r in resp.splitlines() if r.strip()]
         for rule in rules:
-            self.memory.save(
-                {
-                    "type": "learned_rule",
-                    "memory_type": "learned_rule",
-                    "content": rule,
-                    "metadata": {"source": "summarize_patterns"},
-                    "tags": ["rule", "learning"],
-                }
-            )
+            self.register_rule(rule, "summarize_patterns")
         return rules
 
     def find_symbolic_correlations(self) -> List[str]:
