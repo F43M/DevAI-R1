@@ -8,7 +8,16 @@ from .intent_classifier import predict_intent
 INTENT_KEYWORDS: Dict[str, list[str]] = {
     "debug": ["erro", "stack", "bug", "falha"],
     "create": ["crie", "novo", "gerar"],
-    "edit": ["edite", "modificar", "ajuste"],
+    "edit": [
+        "edite",
+        "modificar",
+        "ajuste",
+        "refator",
+        "corrigir",
+        "alterar",
+        "patch",
+        "diff",
+    ],
     "tests": ["teste", "pytest"],
     "review": ["revisao", "revise", "avaliar"],
     "architecture": ["arquitetura", "modulo", "depend"],

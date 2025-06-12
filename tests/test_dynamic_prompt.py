@@ -34,3 +34,9 @@ def test_dynamic_prompt_logs_reasons(caplog):
         build_dynamic_prompt("Por que deu erro?", context, "normal", intent="debug")
     assert any("reasons=" in r.message for r in caplog.records)
 
+
+def test_dynamic_prompt_requests_diff_when_editing():
+    context = {"logs": "", "actions": [], "graph": "", "memories": []}
+    prompt = build_dynamic_prompt("Refatore a funcao", context, "normal", intent="edit")
+    assert "patch de diff unificado" in prompt
+
