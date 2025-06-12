@@ -21,7 +21,7 @@ class FileEditRequest(BaseModel):
 
     _file_validator = validator("file", allow_reuse=True)(_validate_path)
 
-    @validator("content")
+    @validator("content", allow_reuse=True)
     def _content_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Conteúdo vazio não permitido.")
@@ -53,7 +53,7 @@ class ApplyRefactorRequest(BaseModel):
 
     _file_validator = validator("file_path", allow_reuse=True)(_validate_path)
 
-    @validator("diff")
+    @validator("diff", allow_reuse=True)
     def _diff_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Patch vazio não permitido.")

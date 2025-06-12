@@ -7,9 +7,16 @@ from datetime import datetime
 
 from .config import logger, config
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
-from trl import SFTTrainer
-from datasets import Dataset
+try:  # heavy deps for fine-tuning
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+    from trl import SFTTrainer
+    from datasets import Dataset
+except Exception:  # pragma: no cover - optional
+    AutoModelForCausalLM = None
+    AutoTokenizer = None
+    TrainingArguments = None
+    SFTTrainer = None
+    Dataset = None
 
 
 class RLFineTuner:
@@ -105,6 +112,10 @@ class RLFineTuner:
     async def fine_tune(self, base_model: str, output_dir: str) -> dict:
         """Fine tune the language model with RLHF using the TRL library."""
         Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+        if not (AutoTokenizer and AutoModelForCausalLM and SFTTrainer and Dataset and TrainingArguments):
+            logger.warning("Dependências de treino RLHF ausentes")
+            return {"status": "unavailable"}
 
 
         data = self.collect_examples()
