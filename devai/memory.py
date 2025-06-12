@@ -50,6 +50,8 @@ class MemoryManager:
         model: Optional[Any] = None,
         index: Optional[Any] = None,
         cache_size: int = 128,
+        index_file: str | None = None,
+        ids_file: str | None = None,
     ):
         self.conn = sqlite3.connect(db_file, check_same_thread=False)
         self.feedback_db = FeedbackDB()
@@ -75,6 +77,9 @@ class MemoryManager:
         self.indexed_ids: List[int] = []
         self.embedding_cache: "OrderedDict[str, Any]" = OrderedDict()
         self.embedding_cache_size = cache_size
+
+        self.index_file = index_file or config.INDEX_FILE
+        self.ids_file = ids_file or config.INDEX_IDS_FILE
 
         # Attempt to load an existing index from disk before creating a new one
         self.load_index()
@@ -172,8 +177,8 @@ class MemoryManager:
     def _load_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
         if not faiss:
             return
-        index_file = index_file or config.INDEX_FILE
-        ids_file = ids_file or config.INDEX_IDS_FILE
+        index_file = index_file or self.index_file
+        ids_file = ids_file or self.ids_file
         if not (os.path.exists(index_file) and os.path.exists(ids_file)):
             return
         self.index = faiss.read_index(index_file)
@@ -197,8 +202,8 @@ class MemoryManager:
     def _persist_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
         if not faiss or self.index is None:
             return
-        index_file = index_file or config.INDEX_FILE
-        ids_file = ids_file or config.INDEX_IDS_FILE
+        index_file = index_file or self.index_file
+        ids_file = ids_file or self.ids_file
         self._write_index_file(index_file)
         self._write_ids_file(ids_file)
 
