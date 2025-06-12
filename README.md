@@ -175,13 +175,16 @@ Caso escolha lembrar uma decisão, será solicitado por quantos dias ela deve pe
 ### Histórico de complexidade
 
 Com o servidor API rodando é possível consultar `/complexity/history` para obter
-o histórico de variações de complexidade salvas em `complexity_history.json`.
-O endpoint retorna uma lista de registros e a tendência média recente:
+o histórico de variações de complexidade salvas em `complexity_history.json` e
+a evolução da tendência gravada em `complexity_trend.json`.
+O endpoint retorna uma lista de registros, a tendência média recente e os dados
+agregados de tendência:
 
 ```json
 {
   "history": [{"timestamp": "2024-01-01T12:00:00", "average_complexity": 3.2}],
-  "trend": -0.1
+  "trend": -0.1,
+  "trend_history": [{"timestamp": "2024-01-01T12:00:00", "trend": -0.1}]
 }
 ```
 

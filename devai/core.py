@@ -729,8 +729,13 @@ class CodeMemoryAI:
         @self.app.get("/complexity/history")
         async def complexity_history(limit: int = 100, window: int = 5):
             history = self.complexity_tracker.get_history()[-limit:]
+            trend_history = self.complexity_tracker.get_trend_history()[-limit:]
             trend = self.complexity_tracker.summarize_trend(window)
-            return {"history": history, "trend": trend}
+            return {
+                "history": history,
+                "trend": trend,
+                "trend_history": trend_history,
+            }
 
         @self.app.get("/metacognition/summary")
         async def metacognition_summary():
