@@ -182,7 +182,9 @@ def test_cli_render_diff_side_by_side():
 
     ui = CLIUI()
     captured: list[object] = []
-    panel = types.SimpleNamespace(clear=lambda: None, write=lambda t, scroll_end=True: captured.append(t))
+    panel = types.SimpleNamespace(
+        clear=lambda: None, write=lambda t, scroll_end=True: captured.append(t)
+    )
     ui.diff_panel = panel
 
     diff_lines = [
@@ -217,21 +219,34 @@ def test_cli_diff_style_config(monkeypatch):
 
     monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
     monkeypatch.setattr(command_router, "requires_approval", lambda *_a, **_k: False)
-    monkeypatch.setattr(command_router, "_new_updater", lambda: types.SimpleNamespace(safe_apply=lambda *a, **k: True))
+    monkeypatch.setattr(
+        command_router,
+        "_new_updater",
+        lambda: types.SimpleNamespace(safe_apply=lambda *a, **k: True),
+    )
     monkeypatch.setattr(command_router.config, "DIFF_STYLE", "side_by_side")
     ui = cli.CLIUI()
+
     @asynccontextmanager
     async def dummy_loading(self, message: str = "..."):
         yield
+
     monkeypatch.setattr(cli.CLIUI, "loading", dummy_loading, raising=False)
     monkeypatch.setattr(cli.CLIUI, "show_history", lambda self: None, raising=False)
-    monkeypatch.setattr(cli.CLIUI, "add_history", lambda self, line: None, raising=False)
+    monkeypatch.setattr(
+        cli.CLIUI, "add_history", lambda self, line: None, raising=False
+    )
     captured: list[object] = []
-    panel = types.SimpleNamespace(clear=lambda: None, write=lambda t, scroll_end=True: captured.append(t))
+    panel = types.SimpleNamespace(
+        clear=lambda: None, write=lambda t, scroll_end=True: captured.append(t)
+    )
     ui.diff_panel = panel
     ai = DiffAI()
-    asyncio.run(command_router.handle_default(ai, ui, "hi", plain=False, feedback_db=None))
+    asyncio.run(
+        command_router.handle_default(ai, ui, "hi", plain=False, feedback_db=None)
+    )
     from rich.table import Table
+
     assert captured and isinstance(captured[0], Table)
 
 
@@ -518,13 +533,11 @@ def test_cli_patch_apply_accept(monkeypatch, tmp_path):
 
     applied = []
 
-    class DummyUpd:
-        def safe_apply(self, path, func, *a, **k):
-            func(Path(path))
-            applied.append(path)
-            return True
+    def fake_apply_patch(diff):
+        applied.append(diff)
+        command_router.apply_patch(diff)
 
-    monkeypatch.setattr(cli, "UpdateManager", lambda: DummyUpd())
+    monkeypatch.setattr(command_router, "apply_patch", fake_apply_patch)
 
     def make_ui(*a, **k):
         k.pop("commands", None)
@@ -567,19 +580,13 @@ def test_cli_patch_apply_reject(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(cli, "log_decision", lambda *a, **k: None)
 
-    class DummyUpd:
-        def safe_apply(self, path, func, *a, **k):
-            func(Path(path))
-            return True
-
-    dummy_upd = DummyUpd()
     spy = []
 
-    def record_apply(path, func, *a, **k):
-        spy.append(path)
-        return dummy_upd.safe_apply(path, func, *a, **k)
+    def fake_apply_patch(diff):
+        spy.append(diff)
+        command_router.apply_patch(diff)
 
-    monkeypatch.setattr(cli, "UpdateManager", lambda: types.SimpleNamespace(safe_apply=record_apply))
+    monkeypatch.setattr(command_router, "apply_patch", fake_apply_patch)
 
     def make_ui(*a, **k):
         k.pop("commands", None)

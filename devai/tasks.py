@@ -18,7 +18,7 @@ from .test_runner import run_pytest
 from .sandbox import run_in_sandbox
 from .approval import requires_approval, request_approval
 from .decision_log import log_decision
-from .patch_utils import split_diff_by_file, apply_patch_to_file
+from .patch_utils import split_diff_by_file, apply_patch
 import re
 
 
@@ -621,7 +621,7 @@ class TaskManager:
             return {"error": "Patch inválido"}
 
         def apply(p: Path, d=patch) -> None:
-            apply_patch_to_file(p, d)
+            apply_patch(d)
 
         if requires_approval("edit"):
             if ui:
@@ -684,7 +684,7 @@ class TaskManager:
                 return {"error": "Patch inválido"}
 
             def apply_retry(p: Path, d=patch_retry) -> None:
-                apply_patch_to_file(p, d)
+                apply_patch(d)
 
             if requires_approval("edit"):
                 if ui:

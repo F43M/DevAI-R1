@@ -5,7 +5,7 @@ import re
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from .patch_utils import apply_patch_to_file, split_diff_by_file
+from .patch_utils import split_diff_by_file, apply_patch
 
 from rich.panel import Panel
 
@@ -691,14 +691,9 @@ async def handle_default(
             model = "cli"
         if apply:
             patches = split_diff_by_file(response)
-            updater = _new_updater()
-            for f, diff_text in patches.items():
-
-                def _apply(p: Path, d=diff_text) -> None:
-                    apply_patch_to_file(p, d)
-
-                success = updater.safe_apply(f, _apply)
-                if success:
+            try:
+                apply_patch(response)
+                for f in patches:
                     ui.console.print(f"[green]✅ {f} atualizado[/green]")
                     log_decision(
                         "patch",
@@ -709,7 +704,8 @@ async def handle_default(
                         remember=ui.remember_choice,
                         expires_at=getattr(ui, "remember_expires", None),
                     )
-                else:
+            except Exception:
+                for f in patches:
                     ui.console.print(f"[red]❌ Falha em {f}[/red]")
                     log_decision(
                         "patch",

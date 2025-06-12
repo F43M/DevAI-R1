@@ -615,7 +615,7 @@ class CodeMemoryAI:
                 return {"error": "unauthorized"}
 
             from .update_manager import UpdateManager
-            from .patch_utils import split_diff_by_file, apply_patch_to_file
+            from .patch_utils import split_diff_by_file, apply_patch
 
             path = Path(req.file_path)
             old_lines = path.read_text().splitlines()
@@ -630,7 +630,7 @@ class CodeMemoryAI:
                 return {"error": "invalid_patch"}
 
             def apply_func(p: Path, d=patch_text) -> None:
-                apply_patch_to_file(p, d)
+                apply_patch(d)
 
             updater = UpdateManager()
             success = updater.safe_apply(path, apply_func, keep_backup=True)
