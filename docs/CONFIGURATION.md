@@ -156,3 +156,21 @@ patches. O DevAI divide o diff por arquivo, apresenta-o de acordo com o
 `APPROVAL_MODE`). Se aceito, cada arquivo é atualizado e os testes são executados
 automaticamente.
 
+### Formato e aprovação
+
+Respostas voltadas a modificações devem trazer apenas um patch unificado iniciado por `diff --git` dentro de um bloco de código `diff`. O DevAI emprega o helper `split_diff_by_file` para dividir diffs com múltiplos arquivos e o `apply_patch_to_file` (baseado no módulo `unidiff`) para aplicá-los com validação de contexto.
+
+O processo segue as regras de `APPROVAL_MODE` e `AUTO_APPROVAL_RULES`: o diff é mostrado conforme `DIFF_STYLE` e pode ser aplicado automaticamente ou mediante confirmação.
+
+Exemplo simplificado:
+
+```diff
+diff --git a/app/exemplo.py b/app/exemplo.py
+--- a/app/exemplo.py
++++ b/app/exemplo.py
+@@
+-print("oi")
++print("olá mundo")
+```
+
+Após aprovar, o arquivo é atualizado e os testes configurados são executados.
