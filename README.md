@@ -208,8 +208,8 @@ python -m devai --cli
 
 ## Treinamento RLHF
 
-Depois de registrar feedback positivo via API ou CLI, é possível refinar o modelo base utilizando a biblioteca [`trl`](https://github.com/huggingface/trl).
-Instale as dependências opcionais `transformers` e `trl` e execute:
+Depois de registrar feedback positivo via API ou CLI, é possível refinar o modelo base utilizando a biblioteca [`trl`](https://github.com/huggingface/trl) e o `SFTTrainer`.
+Instale `transformers` e `trl` via `pip` e execute:
 
 ```bash
 python -m devai.rlhf <modelo_base> ./model_ft

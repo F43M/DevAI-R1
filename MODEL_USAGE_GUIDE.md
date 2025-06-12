@@ -23,3 +23,15 @@ porcentagem de respostas incompletas detectadas.  Use `model_usage` para
 avaliar a frequência de cada provedor configurado.  Os campos
 `error_percent` e `incomplete_percent` indicam, respectivamente, a taxa de
 falhas de API e de respostas que precisaram de recuperação por corte.
+
+## Fine-tuning RLHF
+
+O módulo `devai.rlhf` utiliza o `SFTTrainer` para ajustar o modelo com o
+feedback positivo registrado. Para executar, instale `transformers` e `trl` e
+rode:
+
+```bash
+python -m devai.rlhf <modelo_base> ./model_ft
+```
+
+Os artefatos de treinamento são gravados em `logs/rlhf_results`.
