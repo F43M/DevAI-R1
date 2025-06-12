@@ -128,11 +128,13 @@ def test_auto_refactor(monkeypatch, tmp_path):
     import devai.patch_utils as patch_utils
 
     monkeypatch.setattr(upd, "UpdateManager", lambda tests_cmd=None: DummyUpdater())
-    monkeypatch.setattr(patch_utils, "split_diff_by_file", lambda diff: {str(test_file): diff})
+    monkeypatch.setattr(
+        patch_utils, "split_diff_by_file", lambda diff: {str(test_file): diff}
+    )
     monkeypatch.setattr(
         patch_utils,
-        "apply_patch_to_file",
-        lambda path, diff: Path(path).write_text("def foo():\n    return 2\n"),
+        "apply_patch",
+        lambda diff: test_file.write_text("def foo():\n    return 2\n"),
     )
 
     async def run():
@@ -142,6 +144,7 @@ def test_auto_refactor(monkeypatch, tmp_path):
     assert res["success"] is True
     assert test_file.read_text() == "def foo():\n    return 2\n"
 
+
 def test_auto_refactor_apply_patch_success(monkeypatch, tmp_path):
     analyzer = DummyAnalyzer()
     mem = DummyMemory()
@@ -150,15 +153,20 @@ def test_auto_refactor_apply_patch_success(monkeypatch, tmp_path):
     test_file = tmp_path / "code.py"
     test_file.write_text("def foo():\n    return 1\n")
 
-    diff = "\n".join([
-        f"--- a/{test_file.name}",
-        f"+++ b/{test_file.name}",
-        "@@",
-        "-def foo():",
-        "-    return 1",
-        "+def foo():",
-        "+    return 2",
-    ]) + "\n"
+    diff = (
+        "\n".join(
+            [
+                f"--- a/{test_file.name}",
+                f"+++ b/{test_file.name}",
+                "@@",
+                "-def foo():",
+                "-    return 1",
+                "+def foo():",
+                "+    return 2",
+            ]
+        )
+        + "\n"
+    )
 
     async def fake_safe(self, prompt, max_tokens, context="", memory=None):
         return diff
@@ -168,6 +176,7 @@ def test_auto_refactor_apply_patch_success(monkeypatch, tmp_path):
     class DummyUpd:
         def __init__(self):
             self.called = False
+
         def safe_apply(self, path, func, *a, **k):
             func(Path(path))
             self.called = True
@@ -175,10 +184,18 @@ def test_auto_refactor_apply_patch_success(monkeypatch, tmp_path):
 
     upd_inst = DummyUpd()
     import devai.update_manager as upd_mod
+
     monkeypatch.setattr(upd_mod, "UpdateManager", lambda tests_cmd=None: upd_inst)
-    monkeypatch.setattr(tasks_module, "split_diff_by_file", lambda d: {str(test_file): d})
-    monkeypatch.setattr(tasks_module, "apply_patch_to_file", lambda p, d: Path(p).write_text("def foo():\n    return 2\n"))
+    monkeypatch.setattr(
+        tasks_module, "split_diff_by_file", lambda d: {str(test_file): d}
+    )
+    monkeypatch.setattr(
+        tasks_module,
+        "apply_patch",
+        lambda p, d: Path(p).write_text("def foo():\n    return 2\n"),
+    )
     from devai.config import config
+
     monkeypatch.setattr(config, "APPROVAL_MODE", "full_auto")
 
     res = asyncio.run(tm._perform_auto_refactor_task({}, str(test_file)))

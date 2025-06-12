@@ -1,4 +1,5 @@
 """Utility functions for patch manipulation."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -37,7 +38,6 @@ def split_diff_by_file(diff_text: str) -> Dict[str, str]:
     if current_file:
         result[current_file] = "".join(current_lines)
     return result
-
 
 
 def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
@@ -81,3 +81,30 @@ def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
                 idx += 1
     result.extend(lines[idx:])
     file_path.write_text("".join(result))
+
+
+def apply_patch(diff_text: str) -> None:
+    """Apply a unified diff affecting multiple files atomically.
+
+    The diff is split by target file and each chunk is applied sequentially.
+    If any patch fails, previously patched files are restored to their
+    original state and the error is re-raised.
+    """
+    patches = split_diff_by_file(diff_text)
+    backups: dict[Path, str | None] = {}
+    applied: list[Path] = []
+
+    try:
+        for path_str, patch in patches.items():
+            path = Path(path_str)
+            backups[path] = path.read_text() if path.exists() else None
+            apply_patch_to_file(path, patch)
+            applied.append(path)
+    except Exception:
+        for p in applied:
+            original = backups.get(p)
+            if original is None:
+                p.unlink(missing_ok=True)
+            else:
+                p.write_text(original)
+        raise
