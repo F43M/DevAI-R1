@@ -34,6 +34,8 @@ def is_response_incomplete(response: str) -> bool:
         return True
     if text.endswith("..."):
         return True
+    if re.search(r"(truncat|cortad|stop reason)", text, re.IGNORECASE):
+        return True
     if re.search(
         r"\b(portanto|logo|entao|isso significa que|ou seja|em conclusao)$",
         text,
