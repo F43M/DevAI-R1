@@ -49,12 +49,12 @@ class DirRequest(BaseModel):
 
 class ApplyRefactorRequest(BaseModel):
     file_path: str
-    suggested_code: str
+    diff: str
 
     _file_validator = validator("file_path", allow_reuse=True)(_validate_path)
 
-    @validator("suggested_code")
-    def _code_not_empty(cls, v: str) -> str:
+    @validator("diff")
+    def _diff_not_empty(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError("Código sugerido vazio.")
+            raise ValueError("Patch vazio não permitido.")
         return v
