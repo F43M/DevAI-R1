@@ -95,6 +95,23 @@ o arquivo manualmente.
 
 O módulo `dependency_check` alerta caso alguma dependência principal esteja ausente.
 
+### Respostas em diff e aplicação de patches
+
+Para alterações de código o modelo deve responder com um bloco `diff` iniciando por `diff --git`. O DevAI utiliza o novo helper `split_diff_by_file` para quebrar cada arquivo do patch e aplica as mudanças com `apply_patch_to_file`, que por sua vez depende do pequeno parser `unidiff` para validar o contexto.
+
+O fluxo de aprovação respeita o `APPROVAL_MODE` e as regras em `AUTO_APPROVAL_RULES`. Caso o patch não esteja pré-aprovado, a interface mostra o diff formatado conforme `DIFF_STYLE` e solicita confirmação antes de rodar os testes definidos. Exemplo de resposta esperada:
+
+```diff
+diff --git a/app/exemplo.py b/app/exemplo.py
+--- a/app/exemplo.py
++++ b/app/exemplo.py
+@@
+-print("oi")
++print("olá mundo")
+```
+
+Após a aprovação, o arquivo é atualizado e os testes são executados automaticamente.
+
 ## Windows
 
 O sandbox de testes depende do Docker para isolar os processos. No Windows é
@@ -315,6 +332,7 @@ Cada arquivo em `devai/` possui uma responsabilidade específica:
 - `monitor_engine.py` – ciclo de monitoramento automático.
 - `notifier.py` – envio opcional de notificações.
 - `patch_utils.py` – utilidades para aplicar patches.
+- `unidiff/` – parser minimalista para patches unificados.
 - `plugin_manager.py` – carregamento de plugins externos.
 - `prompt_engine.py` – construção dinâmica de prompts.
 - `prompt_utils.py` – funções auxiliares para prompts.
