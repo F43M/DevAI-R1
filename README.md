@@ -272,3 +272,52 @@ Melhorias em andamento:
 - (adicione novas ideias aqui)
 
 Uma versão resumida deste documento está disponível em `README_en.md` para facilitar contribuições internacionais.
+
+## Arquitetura
+
+Cada arquivo em `devai/` possui uma responsabilidade específica:
+- `__init__.py` – inicialização do pacote.
+- `__main__.py` – ponto de entrada para `python -m devai`.
+- `ai_model.py` – comunicação segura com o modelo de linguagem.
+- `analyzer.py` – análise do código do projeto e grafo de dependências.
+- `api_schemas.py` – modelos Pydantic usados pela API.
+- `approval.py` – fila de solicitações de aprovação.
+- `auto_review.py` – geração de revisões automáticas.
+- `cli.py` – interface de linha de comando baseada em Rich.
+- `command_router.py` – roteamento dos comandos da CLI.
+- `complexity_tracker.py` – registro histórico da complexidade do projeto.
+- `config.py` – carregamento de configuração e logger.
+- `conversation_handler.py` – gerenciamento de múltiplas sessões de conversa.
+- `core.py` – orquestrador principal e servidor FastAPI.
+- `decision_log.py` – armazenamento de decisões aprovadas.
+- `dependency_check.py` – alerta sobre dependências simplificadas.
+- `dialog_summarizer.py` – sumarização de diálogos longos.
+- `error_handler.py` – persistência de erros.
+- `feedback.py` – registro de feedback para RLHF.
+- `file_history.py` – controle de histórico de arquivos editados.
+- `intent_classifier.py` – classificador de intenções do usuário.
+- `intent_router.py` – despacho de comandos conforme a intenção.
+- `learning_engine.py` – consolidação de lições aprendidas.
+- `lint.py` – verificação rápida de TODOs e afins.
+- `log_monitor.py` – monitoramento de logs de execução.
+- `memory.py` – base vetorial de memórias e busca.
+- `metacognition.py` – avaliação contínua de desempenho.
+- `monitor_engine.py` – ciclo de monitoramento automático.
+- `notifier.py` – envio opcional de notificações.
+- `patch_utils.py` – utilidades para aplicar patches.
+- `plugin_manager.py` – carregamento de plugins externos.
+- `pydantic_fallback.py` – versão reduzida do Pydantic para testes.
+- `prompt_engine.py` – construção dinâmica de prompts.
+- `prompt_utils.py` – funções auxiliares para prompts.
+- `rlhf.py` – rotina de fine‑tuning por feedback.
+- `sandbox.py` – execução isolada de comandos.
+- `shadow_mode.py` – simulação de alterações sem aplicar.
+- `symbolic_memory_tagger.py` – marcação simbólica de memórias.
+- `symbolic_training.py` – treinamento a partir de regras simbólicas.
+- `symbolic_verification.py` – verificação de invariantes simbólicos.
+- `tasks.py` – gerenciador de tarefas automatizadas.
+- `test_runner.py` – executor de testes do projeto.
+- `tui.py` – interface textual opcional.
+- `ui.py` – pequena interface web.
+- `update_manager.py` – aplicação de mudanças com rollback.
+- `yaml_fallback.py` – leitor simples de YAML quando PyYAML não está instalado.
