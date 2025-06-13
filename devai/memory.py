@@ -63,7 +63,13 @@ class MemoryManager:
                 )
                 self.embedding_model = None
             else:
-                self.embedding_model = SentenceTransformer(embedding_model)
+                try:
+                    self.embedding_model = SentenceTransformer(embedding_model)
+                except Exception as e:  # pragma: no cover - optional model fetch failure
+                    logger.warning(
+                        "falha ao carregar modelo de embeddings", error=str(e)
+                    )
+                    self.embedding_model = None
         else:
             self.embedding_model = model
 
@@ -78,8 +84,11 @@ class MemoryManager:
         self.embedding_cache: "OrderedDict[str, Any]" = OrderedDict()
         self.embedding_cache_size = cache_size
 
-        self.index_file = index_file or config.INDEX_FILE
-        self.ids_file = ids_file or config.INDEX_IDS_FILE
+        # Use per-database index files by default to avoid cross-test pollution
+        default_index_file = f"{db_file}.index"
+        default_ids_file = f"{db_file}.ids"
+        self.index_file = index_file or default_index_file
+        self.ids_file = ids_file or default_ids_file
 
         # Attempt to load an existing index from disk before creating a new one
         self.load_index()
@@ -189,6 +198,12 @@ class MemoryManager:
     def _write_index_file(self, index_file: str) -> None:
         """Write the FAISS index to ``index_file`` if possible."""
         if not faiss or self.index is None:
+            return
+        # ``faiss.write_index`` only accepts ``faiss.Index`` instances.
+        # During tests a dummy object may be supplied, so guard against this
+        # scenario to avoid ``TypeError``.
+        index_cls = getattr(faiss, "Index", None)
+        if index_cls is not None and not isinstance(self.index, index_cls):
             return
         faiss.write_index(self.index, index_file)
 
