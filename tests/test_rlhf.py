@@ -5,6 +5,12 @@ from pathlib import Path
 import pytest
 
 from devai import rlhf, core
+import importlib
+import types
+
+if isinstance(rlhf, types.SimpleNamespace):
+    rlhf = importlib.reload(importlib.import_module("devai.rlhf"))
+    core = importlib.reload(importlib.import_module("devai.core"))
 from devai.memory import MemoryManager
 from transformers import GPT2Config, GPT2LMHeadModel, PreTrainedTokenizerFast
 from tokenizers import Tokenizer

@@ -7,8 +7,62 @@ from datetime import datetime
 
 from .config import logger, config
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    TrainingArguments,
+    TopKLogitsWarper,
+    TopPLogitsWarper,
+)
+import transformers
+
+if not hasattr(transformers, "top_k_top_p_filtering"):
+    def top_k_top_p_filtering(
+        logits,
+        top_k: int = 0,
+        top_p: float = 1.0,
+        filter_value: float = float("-inf"),
+        min_tokens_to_keep: int = 1,
+    ):
+        """Approximate top-k/top-p filtering using logits warpers."""
+
+        warpers = []
+        if top_k > 0:
+            warpers.append(TopKLogitsWarper(top_k=top_k))
+        if top_p < 1.0:
+            warpers.append(TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=min_tokens_to_keep))
+        for warper in warpers:
+            logits = warper(None, logits)
+        logits[logits != logits] = filter_value  # handle NaNs
+        return logits
+
+    transformers.top_k_top_p_filtering = top_k_top_p_filtering
+
 from trl import SFTTrainer
+
+import transformers
+
+if not hasattr(transformers, "top_k_top_p_filtering"):
+    def top_k_top_p_filtering(
+        logits,
+        top_k: int = 0,
+        top_p: float = 1.0,
+        filter_value: float = float("-inf"),
+        min_tokens_to_keep: int = 1,
+    ):
+        """Approximate top-k/top-p filtering using logits warpers."""
+
+        warpers = []
+        if top_k > 0:
+            warpers.append(TopKLogitsWarper(top_k=top_k))
+        if top_p < 1.0:
+            warpers.append(TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=min_tokens_to_keep))
+        for warper in warpers:
+            logits = warper(None, logits)
+        logits[logits != logits] = filter_value  # handle NaNs
+        return logits
+
+    transformers.top_k_top_p_filtering = top_k_top_p_filtering
 from datasets import Dataset
 
 
