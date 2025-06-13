@@ -97,6 +97,12 @@ def apply_patch(diff_text: str) -> None:
     try:
         for path_str, patch in patches.items():
             path = Path(path_str)
+            if not path.exists():
+                matches = list(Path.cwd().rglob(path_str))
+                if len(matches) == 1:
+                    path = matches[0]
+                elif not matches:
+                    raise FileNotFoundError(path_str)
             backups[path] = path.read_text() if path.exists() else None
             apply_patch_to_file(path, patch)
             applied.append(path)

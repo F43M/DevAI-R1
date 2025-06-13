@@ -7,7 +7,6 @@ from typing import Iterable, List
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.text import Text
 from rich.table import Table
 
@@ -171,7 +170,7 @@ class CLIUI:
                     table.add_row(t, t)
             renderable = table
         else:
-            renderable = Syntax(collapsed, "diff")
+            renderable = collapsed
 
         if self.diff_panel is not None:
             try:
