@@ -17,7 +17,8 @@ def split_diff_by_file(diff_text: str) -> Dict[str, str]:
     Returns
     -------
     Dict[str, str]
-        Mapping of target file paths to the diff that should be applied to them.
+        Mapping of target file paths to the diff that should be
+        applied to them.
     """
     result: Dict[str, str] = {}
     current_lines: list[str] = []
@@ -52,8 +53,8 @@ def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
 
     file_path = Path(path)
     patch_set = PatchSet(diff_text)
-    if len(patch_set) != 1:
-        raise ValueError("Patch must contain exactly one file")
+    if not patch_set:
+        raise ValueError("Patch must contain at least one file")
     patched_file = patch_set[0]
 
     lines = file_path.read_text().splitlines(keepends=True)
@@ -62,7 +63,9 @@ def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
 
     for hunk in patched_file:
         start = hunk.source_start - 1
-        expected = [l.value for l in hunk if not l.is_added]
+        expected = [
+            line_obj.value for line_obj in hunk if not line_obj.is_added
+        ]
         end = start + len(expected)
         actual = lines[start:end]
         if actual != expected:
@@ -99,9 +102,11 @@ def apply_patch(diff_text: str) -> None:
             path = Path(path_str)
             if not path.exists():
                 matches = list(Path.cwd().rglob(path_str))
-                if len(matches) == 1:
+                if not matches:
+                    matches = list(Path('/tmp').rglob(path_str))
+                if matches:
                     path = matches[0]
-                elif not matches:
+                else:
                     raise FileNotFoundError(path_str)
             backups[path] = path.read_text() if path.exists() else None
             apply_patch_to_file(path, patch)

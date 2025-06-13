@@ -8,6 +8,12 @@ from datetime import datetime
 from .config import logger, config
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+import transformers
+if not hasattr(transformers, "top_k_top_p_filtering"):
+    from transformers.generation.logits_process import (
+        top_k_top_p_filtering as _top_k_top_p_filtering,
+    )
+    transformers.top_k_top_p_filtering = _top_k_top_p_filtering
 from trl import SFTTrainer
 from datasets import Dataset
 
@@ -39,7 +45,11 @@ class RLFineTuner:
                 meta = {}
             prompt = meta.get("prompt")
             if prompt:
-                examples.append({"prompt": prompt, "response": content, "score": score})
+                examples.append({
+                    "prompt": prompt,
+                    "response": content,
+                    "score": score,
+                })
         return examples
 
     def _collect_from_logs(self, log_dir: str | None = None) -> list[dict]:
@@ -55,19 +65,27 @@ class RLFineTuner:
                 continue
             lines = text.splitlines()
             for i in range(len(lines) - 1):
-                if lines[i].startswith("User:") and lines[i + 1].startswith("Assistant:"):
+                if (
+                    lines[i].startswith("User:")
+                    and lines[i + 1].startswith("Assistant:")
+                ):
                     q = lines[i].split("User:", 1)[1].strip()
                     a = lines[i + 1].split("Assistant:", 1)[1].strip()
                     if q and a:
-                        examples.append({"prompt": q, "response": a, "score": 1})
+                        examples.append({
+                            "prompt": q,
+                            "response": a,
+                            "score": 1,
+                        })
         return examples
 
     def collect_examples(
         self, log_dir: str | None = None, *, with_hash: bool = False
     ) -> list[dict] | tuple[list[dict], str]:
-        """Gather examples from memory and optional log files, removing duplicates.
+        """Gather examples from memory and optional log files.
 
-        If ``with_hash`` is True, return a tuple ``(data, sha256)``.
+        Removes duplicate entries. If ``with_hash`` is True, return a
+        tuple ``(data, sha256)``.
         """
 
         data = self._collect_from_memory()
@@ -105,7 +123,6 @@ class RLFineTuner:
     async def fine_tune(self, base_model: str, output_dir: str) -> dict:
         """Fine tune the language model with RLHF using the TRL library."""
         Path(output_dir).mkdir(parents=True, exist_ok=True)
-
 
         data = self.collect_examples()
         if not data:
@@ -146,12 +163,20 @@ class RLFineTuner:
 
 
 async def train_from_memory(
-    base_model: str, output_dir: str, db: str | None = None, log_dir: str | None = None
+    base_model: str,
+    output_dir: str,
+    db: str | None = None,
+    log_dir: str | None = None,
 ) -> dict:
     """Collect examples and fine tune if possible."""
     from .memory import MemoryManager
 
-    mem = MemoryManager(db or config.MEMORY_DB, config.EMBEDDING_MODEL, model=None, index=None)
+    mem = MemoryManager(
+        db or config.MEMORY_DB,
+        config.EMBEDDING_MODEL,
+        model=None,
+        index=None,
+    )
     tuner = RLFineTuner(mem)
     if not tuner.collect_examples(log_dir):
         logger.warning("Sem exemplos para treinamento RLHF")
@@ -163,8 +188,6 @@ def main(argv: list[str] | None = None) -> None:
     """CLI entrypoint for running the fine-tuning procedure."""
     import argparse
     import asyncio
-
-    from .memory import MemoryManager
 
     parser = argparse.ArgumentParser(description="Run RLHF fine-tuning")
     parser.add_argument("base_model")
