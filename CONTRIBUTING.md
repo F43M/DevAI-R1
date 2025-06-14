@@ -23,4 +23,12 @@ Obrigado por querer contribuir! Siga estas etapas para propor melhorias:
   /tarefa run_tests
   ```
 
+## Verificações de desenvolvimento
+
+Execute todos os linters e testes de uma vez com o script abaixo:
+
+```bash
+./scripts/dev_checks.sh
+```
+
 Feedback e sugestões são sempre bem-vindos.
