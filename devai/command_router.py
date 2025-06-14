@@ -452,6 +452,34 @@ async def handle_historico_cli(ai, ui, args, *, plain, feedback_db):
         print(line)
 
 
+async def handle_erros(ai, ui, args, *, plain, feedback_db):
+    """Exibir últimas mensagens de log via endpoint /logs/recent."""
+    try:
+        limit = int(args.strip()) if args.strip().isdigit() else 20
+    except Exception:
+        limit = 20
+    url = f"http://localhost:{config.API_PORT}/logs/recent?limit={limit}"
+    import aiohttp
+
+    try:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=10)
+        ) as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                else:
+                    print(f"Erro {resp.status} ao consultar logs")
+                    return
+    except Exception as e:
+        print(f"Falha ao acessar API: {e}")
+        return
+    for entry in data:
+        ts = entry.get("created_at", "")
+        msg = entry.get("content", "")
+        print(f"[{ts}] {msg}")
+
+
 async def handle_treinar_rlhf(ai, ui, args, *, plain, feedback_db):
     parts = ["/treinar_rlhf"] + args.split()
     if len(parts) < 2:
@@ -759,6 +787,7 @@ COMMANDS = {
     "historia": handle_historia,
     "historico": handle_historico,
     "historico_cli": handle_historico_cli,
+    "erros": handle_erros,
     "treinar_rlhf": handle_treinar_rlhf,
     "treinar_rlhf_auto": handle_treinar_rlhf_auto,
     "train_intents": handle_train_intents,

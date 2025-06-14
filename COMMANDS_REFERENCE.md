@@ -78,6 +78,15 @@ Exemplo:
 devai historico_cli 50
 ```
 
+## /erros [N]
+Consulta o endpoint `/logs/recent` para exibir as últimas mensagens de log.
+`N` define a quantidade de registros (padrão `20`).
+
+Exemplo:
+```bash
+devai erros 10
+```
+
 ## /modo <suggest|auto_edit|full_auto>
 Define rapidamente o `APPROVAL_MODE` sem editar arquivos.
 
