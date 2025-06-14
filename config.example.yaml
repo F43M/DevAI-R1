@@ -39,9 +39,9 @@ RLHF_OUTPUT_DIR: ./logs/rlhf_results
 SANDBOX_IMAGE: python:3.10-slim
 SANDBOX_CPUS: "1"
 SANDBOX_MEMORY: 512m
-SANDBOX_NETWORK: none
-# SANDBOX_ALLOWED_HOSTS:
-#   - example.com
+SANDBOX_NETWORK: bridge        # or "host"
+SANDBOX_ALLOWED_HOSTS:
+  - huggingface.co
 MAX_PROMPT_TOKENS: 1000
 APPROVAL_MODE: suggest
 DIFF_STYLE: inline  # options: inline, side_by_side
