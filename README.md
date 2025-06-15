@@ -2,6 +2,9 @@
 
 Assistente de desenvolvimento baseado em IA com suporte a contextos de até **160k tokens** via OpenRouter. Agora inclui validação de configuração e autenticação com tokens JWT.
 
+Para um guia rápido de configuração, veja [docs/QUICKSTART.md](docs/QUICKSTART.md).
+
+
 ## Principais recursos
 
 - **Memória persistente** com busca vetorial (FAISS)
