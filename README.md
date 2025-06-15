@@ -222,6 +222,10 @@ Em seguida execute:
 pytest
 ```
 
+Se estiver sem acesso à internet, defina `HUGGINGFACE_HUB_OFFLINE=1` e garanta
+que os modelos necessários já estejam em cache (use `transformers-cli` ou
+`AutoModel.from_pretrained` com rede habilitada uma vez).
+
 O projeto inclui um arquivo `pyproject.toml` para facilitar a instalação das dependências e um arquivo `.pre-commit-config.yaml` com linters automáticos. Para habilitar as verificações locais instale e configure o `pre-commit`:
 
 ```bash
