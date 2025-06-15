@@ -27,3 +27,6 @@ def register(tm):
     }
     setattr(tm, '_perform_todo_counter_task', _perform_todo_counter_task.__get__(tm))
 ```
+
+Para iniciar um plugin do zero, copie `plugin_template.py` e ajuste o nome,
+descrição e lógica da tarefa conforme necessidade.

@@ -80,3 +80,48 @@ graph TD
 ```
 
 As interfaces consomem os mesmos serviços internos, garantindo comportamento consistente independentemente do ponto de acesso.
+
+## Arquitetura de plugins
+
+O arquivo `plugin_manager.py` gerencia extensões opcionais localizadas em `plugins/`.
+Cada módulo deve expor um dicionário `PLUGIN_INFO` e uma função
+`register(task_manager)` que recebe a instância do `TaskManager`.
+Ao iniciar o `TaskManager`, o gerenciador percorre o diretório,
+carrega os plugins ativos registrados no banco `plugins.sqlite` e
+chama `register` para adicionar novas tarefas ou métodos.
+Plugins podem ser habilitados ou desabilitados em tempo de execução pela CLI.
+
+Exemplo simplificado (`plugins/todo_counter.py`):
+
+```python
+from pathlib import Path
+
+PLUGIN_INFO = {"name": "Todo Counter", "version": "1.0"}
+
+def register(task_manager):
+    async def _perform_todo_counter_task(self, task, *args):
+        count = 0
+        for path in Path(self.code_analyzer.code_root).rglob('*.py'):
+            try:
+                for line in path.read_text().splitlines():
+                    if 'TODO' in line:
+                        count += 1
+            except Exception:
+                continue
+        return [f'TODOs encontrados: {count}']
+
+    task_manager.tasks['todo_counter'] = {
+        'name': 'Contar TODOs',
+        'type': 'todo_counter',
+        'description': 'Conta marcações TODO no código',
+    }
+    setattr(
+        task_manager,
+        '_perform_todo_counter_task',
+        _perform_todo_counter_task.__get__(task_manager),
+    )
+```
+
+Esse registro adiciona a tarefa `todo_counter` ao gerenciador e vincula um método
+assíncrono. Caso o plugin seja desativado, o `PluginManager` remove a tarefa e
+chama `unregister()` se definido.

@@ -244,8 +244,17 @@ pre-commit run --all-files
 ## Plugins
 
 Coloque scripts Python em `plugins/` para adicionar novas tarefas ao sistema.
-Cada plugin deve implementar uma função `register(task_manager)`.
+Cada plugin deve implementar uma função `register(task_manager)` e, opcionalmente,
+`unregister(task_manager)`.
 Veja `plugins/todo_counter.py` como exemplo.
+
+### Habilitando ou desabilitando plugins
+
+1. Inicie a CLI com `python -m devai --cli`.
+2. Execute `/plugins` para listar o status de cada plugin.
+3. Use `/plugin <nome> on` para ativar o plugin desejado.
+4. Use `/plugin <nome> off` para desativá‑lo.
+5. O estado fica salvo em `plugins.sqlite` e é carregado automaticamente.
 
 Você também pode rodar os testes e a análise estática pelo gerenciador de tarefas:
 
