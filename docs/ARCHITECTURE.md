@@ -1,6 +1,7 @@
 # Arquitetura do DevAI
 
 Este documento resume a função de cada módulo do diretório `devai/` e como a API, a CLI e o gerenciador de tarefas se integram.
+Para uma visão geral rápida consulte também a seção [Arquitetura](../README.md#arquitetura) do `README.md`.
 
 ## Visão geral
 
@@ -52,6 +53,7 @@ O núcleo da aplicação é a classe `CodeMemoryAI` em `core.py`. Ela coordena a
 - `tui.py` – interface textual opcional.
 - `ui.py` – pequena interface web.
 - `update_manager.py` – aplicação de mudanças com rollback.
+- `meta/` – diretório com `score_map.json`, usado por `LearningEngine` e `Metacognition` para rastrear penalidades.
 
 ### Integração entre API, CLI e tarefas
 
