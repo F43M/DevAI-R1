@@ -8,6 +8,8 @@ Este guia resume os passos iniciais para rodar o DevAI-R1.
    cd DevAI-R1
    ```
 2. **Instale as dependências**
+   Os utilitários de desenvolvimento (`flake8`, `pylint`, `mypy`, `bandit` e
+   `pre-commit`) estão listados em `requirements-dev.txt`.
    ```bash
    pip install -r requirements.txt
    pip install -r requirements-dev.txt
@@ -24,5 +26,6 @@ Este guia resume os passos iniciais para rodar o DevAI-R1.
 5. **Execute as verificações básicas**
    ```bash
    pre-commit install
+   # opcional: ./scripts/dev_checks.sh para rodar linters e testes
    pytest
    ```
