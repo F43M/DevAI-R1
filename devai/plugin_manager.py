@@ -34,8 +34,7 @@ class PluginManager:
         cur = self.conn.cursor()
         cur.execute("SELECT name, version, active FROM plugins")
         return [
-            {"name": n, "version": v, "active": bool(a)}
-            for n, v, a in cur.fetchall()
+            {"name": n, "version": v, "active": bool(a)} for n, v, a in cur.fetchall()
         ]
 
     def _register_module(self, name: str, module: Any) -> None:
@@ -61,9 +60,7 @@ class PluginManager:
                 spec.loader.exec_module(module)
             except Exception as e:
                 # pragma: no cover - plugin errors should not crash
-                logger.error(
-                    "Erro ao carregar plugin", plugin=str(file), error=str(e)
-                )
+                logger.error("Erro ao carregar plugin", plugin=str(file), error=str(e))
                 continue
             info = getattr(
                 module,
@@ -78,8 +75,7 @@ class PluginManager:
             row = cur.fetchone()
             if row is None:
                 cur.execute(
-                    "INSERT INTO plugins (name, version, active) VALUES "
-                    "(?, ?, 1)",
+                    "INSERT INTO plugins (name, version, active) VALUES " "(?, ?, 1)",
                     (name, version),
                 )
                 self.conn.commit()
@@ -133,8 +129,8 @@ class PluginManager:
         if module and hasattr(module, "unregister"):
             try:
                 module.unregister(self.task_manager)
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to unregister plugin", plugin=name, error=str(exc))
         self.conn.execute(
             "UPDATE plugins SET active=0 WHERE name=?",
             (name,),
