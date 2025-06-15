@@ -21,8 +21,18 @@ from .decision_log import log_decision
 from .patch_utils import split_diff_by_file, apply_patch
 import re
 
+"""Task execution utilities used by DevAI.
+
+This module defines :class:`TaskManager`, responsible for loading task
+definitions and executing them. It also exposes several helper methods used
+internally when running quality checks such as lint, tests and static
+analysis.
+"""
+
 
 class TaskManager:
+    """Manage task execution and persistence for DevAI."""
+
     def __init__(
         self,
         task_file: str,
@@ -30,6 +40,7 @@ class TaskManager:
         memory: MemoryManager,
         ai_model: Optional[AIModel] = None,
     ):
+        """Initialize the manager and load built-in tasks."""
         self.tasks = self._load_tasks(task_file)
         self.code_analyzer = code_analyzer
         self.memory = memory
@@ -49,12 +60,14 @@ class TaskManager:
         return self.history[-n:]
 
     def _load_tasks(self, task_file: str) -> Dict:
+        """Load task definitions from ``task_file`` if it exists."""
         if os.path.exists(task_file):
             with open(task_file, "r", encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         return {}
 
     def _setup_default_tasks(self):
+        """Ensure core tasks are present in ``self.tasks`` dictionary."""
         if "impact_analysis" not in self.tasks:
             self.tasks["impact_analysis"] = {
                 "name": "Análise de Impacto",
@@ -127,6 +140,7 @@ class TaskManager:
             }
 
     async def run_task(self, task_name: str, *args, progress=None, ui=None) -> Any:
+        """Execute a named task with optional UI confirmations."""
         if task_name not in self.tasks:
             logger.error("Tarefa não encontrada", task=task_name)
             return {"error": f"Tarefa '{task_name}' não encontrada"}
@@ -250,6 +264,7 @@ class TaskManager:
         return result
 
     async def _perform_analysis_task(self, task: Dict, *args) -> List[Dict]:
+        """Run a static impact analysis on the given code chunks."""
         target = args[0] if args else None
         findings = []
         if task["scope"] == "all":
@@ -305,6 +320,7 @@ class TaskManager:
     def _evaluate_custom_condition(
         self, condition: str, chunk: Dict, args: Tuple
     ) -> List[str]:
+        """Evaluate a user-defined condition using ``asteval``."""
         findings = []
         try:
             if self.aeval(
@@ -318,6 +334,7 @@ class TaskManager:
         return findings
 
     async def _perform_verification_task(self, task: Dict, *args) -> List[str]:
+        """Check project code against learned rules and dependencies."""
         findings = []
         if task["scope"] == "all":
             chunks = list(self.code_analyzer.code_chunks.values())
@@ -338,6 +355,7 @@ class TaskManager:
         return findings if findings else ["✅ Nenhum problema encontrado"]
 
     async def _perform_learning_task(self, task: Dict, *args) -> Dict:
+        """Handle symbolic learning operations for custom rules."""
         if task["operation"] == "add_rule":
             rule_name = args[0]
             condition = args[1]
@@ -358,6 +376,7 @@ class TaskManager:
         return {"status": "error", "message": "Operação de aprendizado não reconhecida"}
 
     async def _perform_lint_task(self, task: Dict, *args) -> List[Dict]:
+        """Run the basic project linter and return any TODO findings."""
         from .lint import Linter
 
         linter = Linter(self.code_analyzer.code_root)
@@ -370,6 +389,7 @@ class TaskManager:
     async def _perform_test_task(
         self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
+        """Execute the project's test suite using ``pytest``."""
         if requires_approval("shell"):
             if ui:
                 approved = await ui.confirm("Executar testes?")
@@ -400,6 +420,7 @@ class TaskManager:
     async def _perform_static_analysis_task(
         self, task: Dict, *args, ui=None
     ) -> List[str]:
+        """Run flake8 on the code base inside a sandbox."""
         if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar análise estática?")
@@ -435,6 +456,7 @@ class TaskManager:
     async def _perform_security_analysis_task(
         self, task: Dict, *args, ui=None
     ) -> List[str]:
+        """Execute bandit to look for security issues."""
         if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar análise de segurança?")
@@ -468,6 +490,7 @@ class TaskManager:
             return [f"Erro na análise de segurança: {e}"]
 
     async def _perform_pylint_task(self, task: Dict, *args, ui=None) -> List[str]:
+        """Run pylint over the project in a sandbox environment."""
         if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar pylint?")
@@ -501,6 +524,7 @@ class TaskManager:
             return [f"Erro no pylint: {e}"]
 
     async def _perform_type_check_task(self, task: Dict, *args, ui=None) -> List[str]:
+        """Execute ``mypy`` to ensure static type correctness."""
         if requires_approval("shell_safe"):
             if ui:
                 approved = await ui.confirm("Executar verificação de tipos?")
@@ -536,6 +560,7 @@ class TaskManager:
     async def _perform_coverage_task(
         self, task: Dict, *args, progress_cb=None, ui=None
     ) -> List[str]:
+        """Run ``coverage.py`` to measure test coverage."""
         if requires_approval("shell"):
             if ui:
                 approved = await ui.confirm("Executar cobertura de testes?")
@@ -576,6 +601,7 @@ class TaskManager:
             return [f"Erro na cobertura: {e}"]
 
     async def _perform_auto_refactor_task(self, task: Dict, *args, ui=None) -> Dict:
+        """Use the AI model to suggest and apply a code refactor."""
         if not self.ai_model:
             return {"error": "Modelo de IA não configurado"}
         file_path = args[0] if args else None
@@ -718,6 +744,7 @@ class TaskManager:
     async def _perform_quality_suite_task(
         self, task: Dict, *args, ui=None
     ) -> Dict[str, List[str]]:
+        """Run lint, static analysis, security checks and tests in parallel."""
         lint_t = self._perform_lint_task(self.tasks["lint"])
         static_t = self._perform_static_analysis_task(
             self.tasks["static_analysis"], ui=ui
@@ -739,6 +766,7 @@ class TaskManager:
         return out
 
     def _check_dependencies(self, chunk_name: str) -> List[str]:
+        """Return dependency issues for the specified code chunk."""
         issues = []
         if chunk_name not in self.code_analyzer.code_graph:
             return issues
@@ -757,6 +785,7 @@ class TaskManager:
         return issues
 
     def _apply_learned_rules(self, chunk: Dict) -> List[str]:
+        """Apply learned symbolic rules to a code chunk."""
         findings = []
         for rule, condition in self.code_analyzer.learned_rules.items():
             try:

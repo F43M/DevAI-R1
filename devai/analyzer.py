@@ -54,6 +54,7 @@ class CodeAnalyzer:
             await f.write(json.dumps(status))
 
     async def deep_scan_app(self, progress_cb=None):
+        """Perform a full scan of the code base building graphs and patterns."""
         logger.info("Iniciando varredura profunda do aplicativo")
         self.scan_progress = 0.0
         await self._save_scan_status()
@@ -85,6 +86,7 @@ class CodeAnalyzer:
         )
 
     async def scan_app(self, progress_cb=None):
+        """Scan all source files supported by this analyzer."""
         patterns = [
             "*.py",
             "*.js",
@@ -116,6 +118,7 @@ class CodeAnalyzer:
         logger.info("Aplicativo escaneado", files_processed=total)
 
     async def parse_file(self, file_path: Path):
+        """Parse a single source file and update internal structures."""
         try:
             async with aiofiles.open(
                 file_path, "r", encoding="utf-8", errors="ignore"
@@ -138,6 +141,7 @@ class CodeAnalyzer:
             logger.error("Erro ao analisar arquivo", file=str(file_path), error=str(e))
 
     async def _parse_python(self, content: str, file_path: Path, file_hash: str):
+        """Parse Python source code using ``ast`` and update the graph."""
         try:
             tree = ast.parse(content)
             chunks = []
@@ -202,6 +206,7 @@ class CodeAnalyzer:
             logger.error("Erro ao analisar arquivo", file=str(file_path), error=str(e))
 
     async def _parse_generic(self, content: str, file_path: Path, file_hash: str):
+        """Parse non-Python files and extract function-like definitions."""
         chunks = []
         pattern = None
         ftype = file_path.suffix.lower().lstrip(".")
@@ -278,6 +283,7 @@ class CodeAnalyzer:
             )
 
     def _get_dependencies(self, node):
+        """Return identifier names referenced by ``node``."""
         deps = set()
         for child in ast.walk(node):
             if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
@@ -287,6 +293,7 @@ class CodeAnalyzer:
         return list(deps)
 
     def _get_function_calls(self, node):
+        """Return functions called within ``node``."""
         calls = []
         for child in ast.walk(node):
             if isinstance(child, ast.Call):
@@ -298,6 +305,7 @@ class CodeAnalyzer:
         return calls
 
     def _get_external_dependencies(self, node):
+        """List external modules imported by ``node``."""
         deps = set()
         for child in ast.walk(node):
             if isinstance(child, ast.Import):
@@ -318,6 +326,7 @@ class CodeAnalyzer:
         return complexity
 
     async def _build_semantic_relations(self):
+        """Populate memory with edges derived from the code graph."""
         logger.info("Construindo relações semânticas")
         cursor = self.memory.conn.cursor()
         cursor.execute(
@@ -352,11 +361,13 @@ class CodeAnalyzer:
         )
 
     def _name_similarity(self, name1: str, name2: str) -> float:
+        """Return fuzzy similarity ratio between two identifiers."""
         from difflib import SequenceMatcher
 
         return SequenceMatcher(None, name1.lower(), name2.lower()).ratio()
 
     async def _analyze_patterns(self):
+        """Derive new symbolic rules by inspecting parsed chunks."""
         logger.info("Analisando padrões para regras aprendidas")
         for chunk in self.code_chunks.values():
             try:
@@ -407,6 +418,7 @@ class CodeAnalyzer:
         return await asyncio.to_thread(self.graph_summary, limit)
 
     async def watch_app_directory(self, interval: int = 5):
+        """Continuously monitor the project directory for changes."""
         logger.info(
             "Iniciando monitoramento da pasta de código", path=str(self.code_root)
         )
@@ -482,6 +494,7 @@ class CodeAnalyzer:
         return True
 
     async def create_file(self, file_path: Path | str, content: str = "") -> bool:
+        """Create a new file inside the project and parse it if needed."""
         path = (self.code_root / Path(file_path)).resolve()
         if not str(path).startswith(str(self.code_root.resolve())):
             raise ValueError("⛔ Caminho de arquivo fora do projeto.")
@@ -501,6 +514,7 @@ class CodeAnalyzer:
         return True
 
     async def delete_file(self, file_path: Path | str) -> bool:
+        """Remove a file from the project and update analysis state."""
         path = (self.code_root / Path(file_path)).resolve()
         if not path.is_file() or not str(path).startswith(
             str(self.code_root.resolve())
@@ -519,6 +533,7 @@ class CodeAnalyzer:
         return True
 
     async def create_directory(self, dir_path: Path | str) -> bool:
+        """Create a new directory within the project root."""
         path = (self.code_root / Path(dir_path)).resolve()
         if not str(path).startswith(str(self.code_root.resolve())):
             raise ValueError("⛔ Caminho de diretório fora do projeto.")
@@ -530,6 +545,7 @@ class CodeAnalyzer:
         return True
 
     async def delete_directory(self, dir_path: Path | str) -> bool:
+        """Recursively delete a directory from the project."""
         path = (self.code_root / Path(dir_path)).resolve()
         if not path.is_dir() or not str(path).startswith(str(self.code_root.resolve())):
             raise ValueError("⛔ Caminho de diretório fora do projeto ou inválido.")
@@ -541,6 +557,7 @@ class CodeAnalyzer:
         return True
 
     async def get_history(self, file_path: str):
+        """Return stored history entries for ``file_path``."""
         if self.history:
             return self.history.history(file_path)
         return []
