@@ -124,7 +124,7 @@ class CodeAnalyzer:
                 file_path, "r", encoding="utf-8", errors="ignore"
             ) as f:
                 content = await f.read()
-            file_hash = hashlib.md5(content.encode()).hexdigest()
+            file_hash = hashlib.sha256(content.encode()).hexdigest()
             if (
                 str(file_path) in self.file_hashes
                 and self.file_hashes[str(file_path)] == file_hash

@@ -2,7 +2,9 @@ import os
 import logging
 import logging.handlers
 from dataclasses import dataclass, field, fields, MISSING
-from typing import Dict, Any
+from typing import Any, Dict, Optional
+from types import ModuleType
+from config_utils import load_config
 
 try:
     from dotenv import load_dotenv  # type: ignore
@@ -10,15 +12,21 @@ try:
     load_dotenv()
 except Exception:
     pass
+
+psutil: Optional[ModuleType]
 try:
-    import psutil  # type: ignore
+    import psutil as psutil_module  # type: ignore
+
+    psutil = psutil_module
 except Exception:  # pragma: no cover - optional dependency
     psutil = None
+structlog: Optional[ModuleType]
 try:
-    import structlog
+    import structlog as structlog_module
+
+    structlog = structlog_module
 except Exception:  # pragma: no cover - optional
     structlog = None
-from config_utils import load_config
 
 
 @dataclass(init=False)
@@ -183,9 +191,11 @@ class Config:
                 raise ValueError(
                     "AUTO_APPROVAL_RULES entries require 'action', 'path', 'approve'"
                 )
-            if not isinstance(rule["action"], str) or not isinstance(
-                rule["path"], str
-            ) or not isinstance(rule["approve"], bool):
+            if (
+                not isinstance(rule["action"], str)
+                or not isinstance(rule["path"], str)
+                or not isinstance(rule["approve"], bool)
+            ):
                 raise ValueError("Invalid AUTO_APPROVAL_RULES entry")
 
     @property
