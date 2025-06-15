@@ -12,6 +12,8 @@ from .ui import CLIUI
 from .feedback import FeedbackDB
 from .command_router import COMMANDS, handle_default
 
+"""Simple Textual user interface for interacting with DevAI."""
+
 
 class TUIApp(App):
     """Simple Textual-based UI for DevAI."""
@@ -25,6 +27,7 @@ class TUIApp(App):
         *,
         log: bool = True,
     ) -> None:
+        """Initialize the TUI and underlying CLI components."""
         super().__init__()
         self.ai = ai or CodeMemoryAI()
         cmds = [f"/{c}" for c in COMMANDS]
@@ -43,6 +46,7 @@ class TUIApp(App):
         self.completion_index = 0
 
     def compose(self) -> ComposeResult:
+        """Create application layout with history, progress and diff panels."""
         self.history_panel = TextLog(highlight=False, name="history")
         self.progress_panel = TextLog(highlight=False, name="progress", height=3)
         self.input = Input(placeholder="Digite um comando...", name="input")
@@ -53,6 +57,7 @@ class TUIApp(App):
         yield Horizontal(left, self.diff_panel)
 
     def _progress_update(self, message: str) -> None:
+        """Write progress messages to the UI panel."""
         try:
             if message == "done":
                 self.progress_panel.clear()
@@ -62,6 +67,7 @@ class TUIApp(App):
             pass
 
     async def on_mount(self) -> None:
+        """Populate command history and prepare completion list."""
         self.cli.load_history()
         if self.cli.session and getattr(self.cli.session, "completer", None):
             words = getattr(self.cli.session.completer, "words", [])
@@ -73,6 +79,7 @@ class TUIApp(App):
         self.history_index = len(self.command_history)
 
     async def action_submit(self) -> None:
+        """Handle user input submission from the prompt."""
         text = self.input.value.strip()
         if not text:
             return
@@ -104,6 +111,7 @@ class TUIApp(App):
         )
 
     async def on_key(self, event) -> None:
+        """Provide basic history navigation and completion."""
         if self.focused is not self.input:
             return
         key = getattr(event, "key", "")
@@ -113,7 +121,10 @@ class TUIApp(App):
                 self.input.value = self.command_history[self.history_index]
             event.stop()
         elif key == "down":
-            if self.command_history and self.history_index < len(self.command_history) - 1:
+            if (
+                self.command_history
+                and self.history_index < len(self.command_history) - 1
+            ):
                 self.history_index += 1
                 self.input.value = self.command_history[self.history_index]
             else:
@@ -122,12 +133,18 @@ class TUIApp(App):
             event.stop()
         elif key == "tab":
             prefix = self.input.value
-            if not self.completion_matches or not all(m.startswith(prefix) for m in self.completion_matches):
-                self.completion_matches = [c for c in self.commands if c.startswith(prefix)]
+            if not self.completion_matches or not all(
+                m.startswith(prefix) for m in self.completion_matches
+            ):
+                self.completion_matches = [
+                    c for c in self.commands if c.startswith(prefix)
+                ]
                 self.completion_index = 0
             if self.completion_matches:
                 self.input.value = self.completion_matches[self.completion_index]
-                self.completion_index = (self.completion_index + 1) % len(self.completion_matches)
+                self.completion_index = (self.completion_index + 1) % len(
+                    self.completion_matches
+                )
                 event.stop()
 
     async def action_quit(self) -> None:
@@ -137,4 +154,3 @@ class TUIApp(App):
         result = method()
         if inspect.isawaitable(result):
             await result
-
