@@ -4,8 +4,10 @@ Este arquivo fornece instruções ao agente Codex sobre como executar, testar e 
 
 ## Comandos de Configuração e Execução
 
-- **Instalar dependências**: `pip install -r requirements.txt`  
+- **Instalar dependências**: `pip install -r requirements.txt`
   (Instala todas as bibliotecas Python necessárias listadas em requirements.txt)
+- **Instalar ferramentas de desenvolvimento**: `pip install -r requirements-dev.txt`
+  (Instala flake8, pylint, mypy, bandit, pre-commit e demais utilitários.)
 
 - **Executar todos os testes**: `pytest`
   (Roda a suíte completa de testes automatizados. Todos os testes devem passar antes de considerar uma tarefa concluída.)
