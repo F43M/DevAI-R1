@@ -1,4 +1,6 @@
 import subprocess
+import shutil
+
 try:  # 'resource' is unavailable on Windows
     import resource
 except ImportError:  # pragma: no cover - Windows compatibility
@@ -37,9 +39,7 @@ def _parse_output(output: str) -> str:
 def _preexec(cpu: int, mem: int) -> None:
     """Apply resource limits before executing the child process."""
     if resource is None:
-        logger.warning(
-            "Módulo 'resource' indisponível; limites não serão aplicados."
-        )
+        logger.warning("Módulo 'resource' indisponível; limites não serão aplicados.")
         return
     if cpu > 0:
         resource.setrlimit(resource.RLIMIT_CPU, (cpu, cpu))
@@ -52,7 +52,8 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
     cwd = Path(path)
     if config.TESTS_USE_ISOLATION:
         try:
-            out = run_in_sandbox(["pytest", "-q"], timeout)
+            pytest_path = shutil.which("pytest") or "pytest"
+            out = run_in_sandbox([pytest_path, "-q"], timeout)
             log_dir = Path(config.LOG_DIR)
             log_dir.mkdir(exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -77,8 +78,9 @@ def run_pytest(path: str | Path, timeout: int = 30) -> Tuple[bool, str]:
 
         try:
             # shell: run pytest
+            pytest_path = shutil.which("pytest") or "pytest"
             proc = subprocess.run(
-                ["pytest", "-q"],
+                [pytest_path, "-q"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=cwd,

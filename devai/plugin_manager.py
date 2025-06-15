@@ -1,7 +1,9 @@
+"""Plugin management utilities for optional extensions."""
+
 import importlib.util
 import pathlib
 import sqlite3
-from typing import Dict, Set, Any, List
+from typing import Any, Dict, List, Set
 
 from .config import logger
 
@@ -19,13 +21,16 @@ class PluginManager:
         self.load_plugins()
 
     def _init_db(self) -> None:
+        """Initialize the plugin database table."""
         cur = self.conn.cursor()
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS plugins (name TEXT PRIMARY KEY, version TEXT, active INTEGER)"
+            "CREATE TABLE IF NOT EXISTS plugins ("
+            "name TEXT PRIMARY KEY, version TEXT, active INTEGER)"
         )
         self.conn.commit()
 
     def list_plugins(self) -> List[Dict[str, Any]]:
+        """Return metadata for all installed plugins."""
         cur = self.conn.cursor()
         cur.execute("SELECT name, version, active FROM plugins")
         return [
@@ -33,6 +38,7 @@ class PluginManager:
         ]
 
     def _register_module(self, name: str, module: Any) -> None:
+        """Register plugin tasks and metadata."""
         before = set(self.task_manager.tasks.keys())
         if hasattr(module, "register"):
             module.register(self.task_manager)
@@ -41,6 +47,7 @@ class PluginManager:
         self.plugin_tasks[name] = added
 
     def load_plugins(self, path: str = "plugins") -> None:
+        """Discover and load plugins from the given folder."""
         plugin_dir = pathlib.Path(path)
         if not plugin_dir.exists():
             return
@@ -51,10 +58,15 @@ class PluginManager:
             module = importlib.util.module_from_spec(spec)
             try:
                 spec.loader.exec_module(module)
-            except Exception as e:  # pragma: no cover - plugin errors should not crash
+            except Exception as e:
+                # pragma: no cover - plugin errors should not crash
                 logger.error("Erro ao carregar plugin", plugin=str(file), error=str(e))
                 continue
-            info = getattr(module, "PLUGIN_INFO", {"name": file.stem, "version": "0.0"})
+            info = getattr(
+                module,
+                "PLUGIN_INFO",
+                {"name": file.stem, "version": "0.0"},
+            )
             name = info.get("name", file.stem)
             version = info.get("version", "0.0")
             self.plugin_paths[name] = file
@@ -63,21 +75,28 @@ class PluginManager:
             row = cur.fetchone()
             if row is None:
                 cur.execute(
-                    "INSERT INTO plugins (name, version, active) VALUES (?, ?, 1)",
+                    "INSERT INTO plugins (name, version, active) VALUES " "(?, ?, 1)",
                     (name, version),
                 )
                 self.conn.commit()
                 active = True
             else:
                 active = bool(row[0])
-                cur.execute("UPDATE plugins SET version=? WHERE name=?", (version, name))
+                cur.execute(
+                    "UPDATE plugins SET version=? WHERE name=?",
+                    (version, name),
+                )
                 self.conn.commit()
             if active:
                 self._register_module(name, module)
 
     def enable_plugin(self, name: str) -> bool:
+        """Dynamically enable a plugin by name."""
         if name in self.plugins:
-            self.conn.execute("UPDATE plugins SET active=1 WHERE name=?", (name,))
+            self.conn.execute(
+                "UPDATE plugins SET active=1 WHERE name=?",
+                (name,),
+            )
             self.conn.commit()
             return True
         path = self.plugin_paths.get(name)
@@ -89,15 +108,20 @@ class PluginManager:
         module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
-        except Exception as e:  # pragma: no cover - plugin errors should not crash
+        except Exception as e:
+            # pragma: no cover - plugin errors should not crash
             logger.error("Erro ao ativar plugin", plugin=name, error=str(e))
             return False
         self._register_module(name, module)
-        self.conn.execute("UPDATE plugins SET active=1 WHERE name=?", (name,))
+        self.conn.execute(
+            "UPDATE plugins SET active=1 WHERE name=?",
+            (name,),
+        )
         self.conn.commit()
         return True
 
     def disable_plugin(self, name: str) -> bool:
+        """Disable a previously loaded plugin."""
         module = self.plugins.pop(name, None)
         tasks = self.plugin_tasks.pop(name, set())
         for t in tasks:
@@ -105,8 +129,11 @@ class PluginManager:
         if module and hasattr(module, "unregister"):
             try:
                 module.unregister(self.task_manager)
-            except Exception:
-                pass
-        self.conn.execute("UPDATE plugins SET active=0 WHERE name=?", (name,))
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to unregister plugin", plugin=name, error=str(exc))
+        self.conn.execute(
+            "UPDATE plugins SET active=0 WHERE name=?",
+            (name,),
+        )
         self.conn.commit()
         return module is not None
