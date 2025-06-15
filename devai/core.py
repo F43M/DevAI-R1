@@ -149,7 +149,7 @@ class CodeMemoryAI:
         last_time = getattr(self.analyzer, "last_analysis_time", datetime.now())
         idx_len = len(getattr(self.memory, "indexed_ids", []))
         state = f"{last_time.isoformat()}-{idx_len}"
-        return hashlib.md5(f"{query}-{state}".encode()).hexdigest()
+        return hashlib.sha256(f"{query}-{state}".encode()).hexdigest()
 
     async def _prefetch_related(self, query: str) -> None:
         """Preload memories and suggestions in background."""
@@ -591,7 +591,7 @@ class CodeMemoryAI:
             )
             evaluation = await evaluate_change_with_ia(diff)
             status = "shadow_failed" if not tests_ok else "shadow_declined"
-            patch_hash = hashlib.sha1(diff.encode("utf-8")).hexdigest()
+            patch_hash = hashlib.sha256(diff.encode("utf-8")).hexdigest()
             log_simulation(
                 sim_id,
                 file_path,

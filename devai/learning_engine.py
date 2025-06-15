@@ -39,6 +39,7 @@ def _write_progress(progress: float) -> None:
     except Exception:
         logger.warning("Nao foi possivel atualizar learning_progress.json")
 
+
 def _learning_log_file() -> Path:
     return Path(config.LOG_DIR) / "learning_log.json"
 
@@ -60,6 +61,8 @@ def _save_learning_log(data: Dict[str, str]) -> None:
         file.write_text(json.dumps(data, indent=2))
     except Exception:
         logger.warning("Nao foi possivel atualizar learning_log")
+
+
 from .memory import MemoryManager
 from .ai_model import AIModel
 from .analyzer import CodeAnalyzer
@@ -165,7 +168,7 @@ class LearningEngine:
                 "tags": ["rule", "learning"],
             }
         )
-        h = hashlib.sha1(rule.encode("utf-8")).hexdigest()
+        h = hashlib.sha256(rule.encode("utf-8")).hexdigest()
         self.learning_log[h] = datetime.now().isoformat()
         _save_learning_log(self.learning_log)
 
@@ -199,7 +202,6 @@ class LearningEngine:
         )
         self.memory.conn.commit()
 
-
     async def learn_from_codebase(self, block_size: int = 10):
         """Scan analyzed chunks and record explanations and best practices."""
         sem = asyncio.Semaphore(self.rate_limit)
@@ -228,15 +230,17 @@ class LearningEngine:
                 file_path = chunk.get("file") or ""
                 mtime = Path(file_path).stat().st_mtime if file_path else 0.0
                 state = self._get_processing_state(file_path)
-                if state and (state[0] == chunk.get("hash") or float(state[1]) == mtime):
+                if state and (
+                    state[0] == chunk.get("hash") or float(state[1]) == mtime
+                ):
                     continue
 
                 async def process(c=chunk, mt=mtime):
                     meta = {"function": c["name"], "file": c.get("file")}
                     resp1, resp2, resp3 = await asyncio.gather(
-                        limited_call(f"Explique o que essa funcao faz:\n{c['code']}") ,
-                        limited_call(f"Ha algum risco ou ambiguidade?\n{c['code']}") ,
-                        limited_call(f"Essa estrutura esta otimizada?\n{c['code']}")
+                        limited_call(f"Explique o que essa funcao faz:\n{c['code']}"),
+                        limited_call(f"Ha algum risco ou ambiguidade?\n{c['code']}"),
+                        limited_call(f"Essa estrutura esta otimizada?\n{c['code']}"),
                     )
                     self.memory.save(
                         {
@@ -275,8 +279,8 @@ class LearningEngine:
             logger.info("Progresso do aprendizado", progress=round(progress, 2))
 
         logger.info("Aprendizado do codigo concluido", calls=self.call_count)
-    async def learn_from_errors(self):
 
+    async def learn_from_errors(self):
         """Analyze recent log files and capture lessons from failures."""
         log_dir = Path(config.LOG_DIR)
         if not log_dir.exists():
@@ -312,7 +316,7 @@ class LearningEngine:
                     return
                 resp1, resp2 = await asyncio.gather(
                     limited_call(f"Explique esse erro e como evita-lo:\n{text}"),
-                    limited_call(f"O que causou esse comportamento?\n{text}")
+                    limited_call(f"O que causou esse comportamento?\n{text}"),
                 )
                 self.memory.save(
                     {

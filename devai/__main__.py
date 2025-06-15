@@ -5,6 +5,7 @@ import difflib
 import tempfile
 import subprocess
 import hashlib
+import shutil
 from pathlib import Path
 
 from .config import config
@@ -157,7 +158,7 @@ def main():
                 diff, tests_ok, test_out, sim_id, patch_path = simulate_update(
                     file_path, new_code
                 )
-                patch_hash = hashlib.sha1(diff.encode("utf-8")).hexdigest()
+                patch_hash = hashlib.sha256(diff.encode("utf-8")).hexdigest()
                 evaluation = await evaluate_change_with_ia(diff)
 
                 if side_by_side:
@@ -186,8 +187,11 @@ def main():
                     )
                     if not success and rollback:
                         # shell: rollback patch
+                        git_path = shutil.which("git") or "git"
                         subprocess.run(
-                            ["git", "apply", "-R", patch_path], cwd=config.CODE_ROOT
+                            [git_path, "apply", "-R", patch_path],
+                            cwd=config.CODE_ROOT,
+                            check=True,
                         )
                     action = "shadow_approved" if success else "shadow_failed"
                 else:

@@ -38,20 +38,25 @@ def simulate_update(
         )
     )
 
-    patch_file = tempfile.NamedTemporaryFile(delete=False, prefix="change_", suffix=".patch")
+    patch_file = tempfile.NamedTemporaryFile(
+        delete=False, prefix="change_", suffix=".patch"
+    )
     patch_file.write(diff.encode("utf-8"))
     patch_file.close()
 
     # shell_safe: git apply --check only validates the patch
-    proc = subprocess.run(
-        ["git", "apply", "--check", patch_file.name],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
+    git_path = shutil.which("git") or "git"
+    try:
+        subprocess.run(
+            [git_path, "apply", "--check", patch_file.name],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
         Path(patch_file.name).unlink(missing_ok=True)
-        raise RuntimeError(f"Patch conflict: {proc.stderr.strip()}")
+        raise RuntimeError(f"Patch conflict: {exc.stderr.strip()}") from exc
 
     sim_id = uuid4().hex
     SHADOW_BASE.mkdir(parents=True, exist_ok=True)

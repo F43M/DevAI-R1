@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, List, Dict
+from typing import Any, Dict, List, Tuple
 
 import yaml  # type: ignore
 
@@ -26,7 +26,7 @@ def log_decision(
 ) -> Tuple[str, str]:
     """Register a decision entry in ``decision_log.yaml`` and ``decision_log.md``."""
     path = Path("decision_log.yaml")
-    data = []
+    data: List[dict[str, Any]] = []
     if path.exists():
         try:
             data = yaml.safe_load(path.read_text()) or []
@@ -36,7 +36,7 @@ def log_decision(
             data = []
     entry_id = f"{len(data) + 1:03d}"
     h = hashlib.sha256(resultado.encode()).hexdigest()[:8]
-    entry = {
+    entry: dict[str, Any] = {
         "id": entry_id,
         "tipo": tipo,
         "modulo": modulo,
@@ -72,7 +72,7 @@ def is_remembered(action: str, path: str) -> bool:
     if not log_path.exists():
         return False
     try:
-        data = yaml.safe_load(log_path.read_text()) or []
+        data: List[dict[str, Any]] = yaml.safe_load(log_path.read_text()) or []
     except Exception:
         return False
     for entry in reversed(data):
@@ -94,7 +94,7 @@ def is_remembered(action: str, path: str) -> bool:
     return False
 
 
-def suggest_rules(threshold: int) -> List[Dict[str, str]]:
+def suggest_rules(threshold: int) -> List[Dict[str, Any]]:
     """Return candidate auto approval rules based on the decision log."""
     if threshold <= 0:
         return []
@@ -102,7 +102,7 @@ def suggest_rules(threshold: int) -> List[Dict[str, str]]:
     if not log_path.exists():
         return []
     try:
-        data = yaml.safe_load(log_path.read_text()) or []
+        data: List[dict[str, Any]] = yaml.safe_load(log_path.read_text()) or []
     except Exception:
         return []
     counts: Dict[tuple[str, str], int] = {}
