@@ -213,7 +213,8 @@ Valores negativos de `trend` indicam redução da complexidade média do projeto
 
 ## Testes
 
-Instale as dependências de desenvolvimento com:
+Instale as dependências de desenvolvimento (que incluem `flake8`, `pylint`,
+`mypy`, `bandit` e `pre-commit`) com:
 
 ```bash
 pip install -r requirements-dev.txt
@@ -236,6 +237,8 @@ pip install pre-commit  # já incluído em requirements-dev.txt
 pre-commit install
 # opcional: roda todos os checks de uma vez
 pre-commit run --all-files
+# ou execute o script auxiliar
+./scripts/dev_checks.sh
 ```
 
 ## Plugins
