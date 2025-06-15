@@ -49,10 +49,11 @@ API_SECRET: "sua-chave"
    variável diretamente no ambiente. O DevAI carrega esse arquivo
    automaticamente se o pacote `python-dotenv` estiver instalado.
 
-3. Instale as dependências do projeto para habilitar a comunicação real com o OpenRouter. A nova interface interativa usa `rich` e `prompt_toolkit`:
+3. Instale as dependências do projeto para habilitar a comunicação real com o OpenRouter e as ferramentas de desenvolvimento (linters, testes etc.):
 
 ```bash
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 O índice vetorial utilizado na busca é salvo automaticamente em `faiss.index` e
@@ -209,7 +210,13 @@ Valores negativos de `trend` indicam redução da complexidade média do projeto
 
 ## Testes
 
-Instale as dependências de desenvolvimento e execute:
+Instale as dependências de desenvolvimento com:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Em seguida execute:
 
 ```bash
 pytest
@@ -218,7 +225,7 @@ pytest
 O projeto inclui um arquivo `pyproject.toml` para facilitar a instalação das dependências e um arquivo `.pre-commit-config.yaml` com linters automáticos. Para habilitar as verificações locais instale e configure o `pre-commit`:
 
 ```bash
-pip install pre-commit
+pip install pre-commit  # já incluído em requirements-dev.txt
 pre-commit install
 # opcional: roda todos os checks de uma vez
 pre-commit run --all-files
