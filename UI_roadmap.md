@@ -8,3 +8,4 @@ ser revertida até que a IA tenha comportamento estável.
 - DONE: relatório do /deep_analysis agora colore linhas conforme severidade.
 - DONE: marcação `===RESPOSTA===` interpretada mesmo com espaços extras.
 - Se `rich` falhar ou não estiver instalado, a CLI automaticamente usa o modo `--plain`.
+- Consulte `performance_roadmap.md` para metas de desempenho relacionadas.

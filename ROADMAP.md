@@ -2,11 +2,13 @@
 
 Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para contribuir adicionando novas ideias.
 
+Consulte tambem `performance_roadmap.md` e `UI_roadmap.md` para direcoes especificas de desempenho e interface.
+
 ## Melhorias identificadas
 
 - **Expansão dos módulos**: implementar novas funcionalidades nos módulos existentes e criar outros conforme necessário.
 - **Cobertura de testes**: incluir testes para `tasks.py`, `core.py`, `cli.py` e demais componentes.
-- **Dependências opcionais**: oferecer fallback ou mensagens de erro mais amigáveis caso `sentence_transformers` ou `faiss` não estejam instalados. *(implementado)*
+- **Dependências opcionais**: oferecer fallback ou mensagens de erro mais amigáveis caso `sentence_transformers` ou `faiss` não estejam instalados (implementado; ver `UI_roadmap.md`).
 - **Exemplos de configuração**: disponibilizar modelos de `config.yaml` e `tasks.yaml` para facilitar o uso.
 - (adicione novos itens aqui)
 - **Persistência de histórico via localStorage**
@@ -36,6 +38,7 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 - **Integração contínua**: rodar tarefas de teste e análise estática automaticamente em um pipeline CI.
 - **Métricas avançadas**: monitorar uso de CPU e memória do assistente.
 - **Sistema de plugins** para extensões de tarefas. *(implementado)*
+- **Refatoração dos plugins**: simplificar registro e testes das extensões.
 - **Suporte a múltiplos backends de IA**.
 - **Notificações automáticas** ao concluir tarefas longas.
 - **Refatoração automática validada por testes** *(implementado)*
@@ -60,7 +63,10 @@ Este arquivo lista sugestões de melhorias para o DevAI. Sinta-se livre para con
 
 ## Melhoria pendente – Análise Explicada (/analyze_deep)
 - Avaliar estabilidade da divisão plano/resposta e ajustar a UI conforme necessário.
-\n## Melhoria pendente – Análise de Projeto\n- Aprimorar visualização colorida do relatório gerado.\n- Permitir execução assíncrona do deep_scan_app.
+
+## Melhoria pendente – Análise de Projeto
+- DONE: Aprimorar visualização colorida do relatório gerado (ver `UI_roadmap.md`).
+- Permitir execução assíncrona do deep_scan_app. (ver `performance_roadmap.md`)
 - Controle de modo de inicialização do DevAI
 
 ## Melhoria pendente – Aprendizado Simbólico
