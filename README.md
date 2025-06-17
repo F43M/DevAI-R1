@@ -61,12 +61,20 @@ pip install -r requirements-dev.txt
 pip install transformers trl rich prompt_toolkit textual
 ```
 
+Caso pretenda utilizar a interface web incluída em `static/`, instale também as
+dependências JavaScript:
+
+```bash
+npm install --prefix static
+```
+
 O índice vetorial utilizado na busca é salvo automaticamente em `faiss.index` e
 `faiss_ids.json`. Mantenha esses arquivos para preservar o histórico de
 consultas entre execuções. Caminhos customizados podem ser definidos no
 `config.yaml` usando `INDEX_FILE` e `INDEX_IDS_FILE`.
 
-4. (Opcional) Descreva comandos de build e testes adicionais em `PROJECT_GUIDE.md`.
+4. Consulte `PROJECT_GUIDE.md` para uma lista de comandos extras, incluindo
+   instruções de build para a UI e dicas de testes isolados via Docker.
 
 Para executar a suíte de testes em ambiente isolado, configure no `config.yaml`:
 
