@@ -46,6 +46,9 @@ Consulte tambem `performance_roadmap.md` e `UI_roadmap.md` para direcoes especif
 - **Integração com IDEs (VSCode, etc.)** *(futuro)*
 - **Treinamento incremental com dados do histórico** *(futuro)*
 - **Fine-tuning com RLHF** *(experimental)* – use `python -m devai.rlhf <modelo> <saida>`
+- **Avaliar modularização das dependências pesadas** (TRL, Transformers, Textual)
+  movendo `rlhf.py`, `ui.py` e `tui.py` para `plugins/` ou repositório separado,
+  reduzindo o peso da instalação padrão.
 - **Sandbox de execução com containers** *(implementado)*
 - **Prompts com Chain-of-Thought** *(parcialmente implementado)*
 - **Planejamento multi-turn interativo** *(futuro)*
