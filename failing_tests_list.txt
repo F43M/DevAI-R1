@@ -1,0 +1,13 @@
+tests/test_cli.py::test_cli_patch_apply_accept
+tests/test_dynamic_prompt.py::test_dynamic_prompt_logs_reasons
+tests/test_functional_completeness.py::test_shutdown_cleans_tasks
+tests/test_patch_utils.py::test_apply_patch_multi_file
+tests/test_rlhf.py::test_cli_main_runs
+tests/test_rlhf.py::test_collect_examples_returns_content
+tests/test_rlhf.py::test_collect_log_examples
+tests/test_rlhf.py::test_fine_tune_creates_output
+tests/test_rlhf.py::test_run_scheduled_rlhf
+tests/test_rlhf.py::test_run_scheduled_rlhf_skips_if_same
+tests/test_rlhf.py::test_train_from_memory_empty
+tests/test_shutdown.py::test_shutdown_closes_session
+tests/test_startup_mode.py::test_startup_custom
