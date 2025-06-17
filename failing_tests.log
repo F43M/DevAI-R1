@@ -1,0 +1,653 @@
+.........................................................F.............. [ 35%]
+....................F..........F..............................F....ss... [ 71%]
+..FFFFFFF...............F....F..s......
+=================================== FAILURES ===================================
+_________________________ test_cli_patch_apply_accept __________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955047e4b0>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_cli_patch_apply_accept0')
+
+    def test_cli_patch_apply_accept(monkeypatch, tmp_path):
+        diff = """diff --git a/x.txt b/x.txt
+    --- a/x.txt
+    +++ b/x.txt
+    @@ -1 +1 @@
+    -old
+    +new
+    """
+    
+        class DiffAI(DummyAI):
+            async def generate_response(self, q):
+                return diff
+    
+            async def generate_response_stream(self, q):
+                for ch in diff:
+                    yield ch
+    
+        file = tmp_path / "x.txt"
+        file.write_text("old\n")
+    
+        monkeypatch.setattr(cli, "CodeMemoryAI", DiffAI)
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(cli, "log_decision", lambda *a, **k: None)
+    
+        applied = []
+    
+        def fake_apply_patch(diff):
+            applied.append(diff)
+            command_router.apply_patch(diff)
+    
+        monkeypatch.setattr(command_router, "apply_patch", fake_apply_patch)
+    
+        def make_ui(*a, **k):
+            k.pop("commands", None)
+            ui = DummyUI(["hello", "/sair"], **k)
+    
+            async def confirm(msg: str) -> bool:
+                ui.remember_choice = False
+                return True
+    
+            ui.confirm = confirm
+            return ui
+    
+        monkeypatch.setattr(cli, "CLIUI", make_ui)
+        asyncio.run(cli.cli_main())
+>       assert file.read_text().strip() == "new"
+E       AssertionError: assert 'old' == 'new'
+E         
+E         - new
+E         + old
+
+/workspace/DevAI-R1/tests/test_cli.py:555: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Inicializando CodeMemoryAI com DeepSeek-R1...
+Deep scan adiado para /deep_analysis
+
+Dev IA Avançado Pronto!
+Comandos disponíveis:
+/memoria tipo:<tag> [filtro] --detalhado - Busca memórias
+/lembrar <conteúdo> tipo:<tag> - Armazena memória
+/esquecer <termo> - Desativa memórias
+/ajustar estilo:<param> valor:<opcao> - Ajusta preferência
+/rastrear <arquivo|tarefa> - Mostra histórico
+/decisoes [lembrar|esquecer <id>] [acao:<tipo>] [arquivo:<arq>] - Mostra últimas decisões
+/tarefa <nome> [args] - Executa uma tarefa
+/analisar <função> - Analisa impacto de mudanças
+/verificar - Verifica conformidade com especificação
+/grafo - Mostra grafo de dependências
+/ls [caminho] - Lista arquivos e pastas
+/abrir <arquivo> [ini] [fim] - Mostra linhas do arquivo
+/editar <arquivo> <linha> <novo> - Edita linha do arquivo
+/novoarq <arquivo> [conteudo] - Cria novo arquivo
+/novapasta <caminho> - Cria nova pasta
+/deletar <caminho> - Remove arquivo ou pasta
+/historia [sessao] - Exibe histórico de conversa
+/historico <arquivo> - Mostra histórico de mudanças
+/historico_cli [N] - Exibe N linhas do log da CLI (ou tudo)
+/erros [N] - Mostra mensagens recentes de log
+/modo <suggest|auto_edit|full_auto> - Altera modo de aprovação
+/ajuda - Mostra documentação dos comandos
+/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo
+/refatorar <arquivo> - Refatora o arquivo informado
+/rever <arquivo> - Executa revisão de código
+/resetar - Limpa o histórico de conversa
+/tests_local - Alterna execução isolada dos testes
+/sair - Encerra
+
+Resposta:
+
+------------------------------ Captured log call -------------------------------
+INFO     _pytest.compat:decision_log.py:65 {"id": "001", "tipo": "patch", "event": "Decisao registrada", "timestamp": "2025-06-17T01:17:59.576403Z", "level": "info"}
+_______________________ test_dynamic_prompt_logs_reasons _______________________
+
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7f955042ab10>
+
+    def test_dynamic_prompt_logs_reasons(caplog):
+        context = {
+            "logs": "trace",
+            "actions": [{"task": "run"}],
+            "graph": "g",
+            "memories": [],
+        }
+        with caplog.at_level(logging.INFO):
+            build_dynamic_prompt("Por que deu erro?", context, "normal", intent="debug")
+>       assert any("reasons=" in r.message for r in caplog.records)
+E       assert False
+E        +  where False = any(<generator object test_dynamic_prompt_logs_reasons.<locals>.<genexpr> at 0x7f9550462e90>)
+
+tests/test_dynamic_prompt.py:35: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     _pytest.compat:prompt_engine.py:254 {"included_blocks": ["logs_recentes", "ultima_acao"], "reasons": ["logs_recentes:pergunta de erro", "ultima_acao:pergunta de erro"], "mode": "normal", "event": "Prompt din\u00e2mico", "timestamp": "2025-06-17T01:18:00.319559Z", "level": "info"}
+__________________________ test_shutdown_cleans_tasks __________________________
+
+    def test_shutdown_cleans_tasks():
+        ai = object.__new__(CodeMemoryAI)
+>       ai.ai_model = CodeMemoryAI.__init__.__globals__["AIModel"]()
+
+tests/test_functional_completeness.py:65: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+devai/ai_model.py:97: in __init__
+    self.session = aiohttp.ClientSession()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <aiohttp.client.ClientSession object at 0x7f9550471af0>, base_url = None
+
+    def __init__(
+        self,
+        base_url: Optional[StrOrURL] = None,
+        *,
+        connector: Optional[BaseConnector] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        json_serialize: JSONEncoder = json.dumps,
+        request_class: Type[ClientRequest] = ClientRequest,
+        response_class: Type[ClientResponse] = ClientResponse,
+        ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
+        version: HttpVersion = http.HttpVersion11,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        connector_owner: bool = True,
+        raise_for_status: Union[
+            bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = False,
+        read_timeout: Union[float, _SENTINEL] = sentinel,
+        conn_timeout: Optional[float] = None,
+        timeout: Union[object, ClientTimeout] = sentinel,
+        auto_decompress: bool = True,
+        trust_env: bool = False,
+        requote_redirect_url: bool = True,
+        trace_configs: Optional[List[TraceConfig]] = None,
+        read_bufsize: int = 2**16,
+        max_line_size: int = 8190,
+        max_field_size: int = 8190,
+        fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
+        middlewares: Sequence[ClientMiddlewareType] = (),
+        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
+    ) -> None:
+        # We initialise _connector to None immediately, as it's referenced in __del__()
+        # and could cause issues if an exception occurs during initialisation.
+        self._connector: Optional[BaseConnector] = None
+    
+        if loop is None:
+            if connector is not None:
+                loop = connector._loop
+    
+>       loop = loop or asyncio.get_running_loop()
+E       RuntimeError: no running event loop
+
+/root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/aiohttp/client.py:316: RuntimeError
+_________________________ test_apply_patch_multi_file __________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_apply_patch_multi_file0')
+
+    def test_apply_patch_multi_file(tmp_path):
+        a = tmp_path / "a.txt"
+        b = tmp_path / "b.txt"
+        a.write_text("oldA\n")
+        b.write_text("oldB\n")
+        diff = (
+            "diff --git a/a.txt b/a.txt\n"
+            "--- a/a.txt\n"
+            "+++ b/a.txt\n"
+            "@@ -1 +1 @@\n"
+            "-oldA\n"
+            "+newA\n"
+            "diff --git a/b.txt b/b.txt\n"
+            "--- a/b.txt\n"
+            "+++ b/b.txt\n"
+            "@@ -1 +1 @@\n"
+            "-oldB\n"
+            "+newB\n"
+        )
+>       patch_utils.apply_patch(diff)
+
+tests/test_patch_utils.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+devai/patch_utils.py:112: in apply_patch
+    apply_patch_to_file(path, patch)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/tmp/pytest-of-root/pytest-0/test_apply_patch_rollback0/b.txt')
+diff_text = 'diff --git a/b.txt b/b.txt\n--- a/b.txt\n+++ b/b.txt\n@@ -1 +1 @@\n-oldB\n+newB\n'
+
+    def apply_patch_to_file(path: str | Path, diff_text: str) -> None:
+        """Apply a unified diff chunk to a single file.
+    
+        Raises
+        ------
+        RuntimeError
+            If the patch context does not match the file contents.
+        """
+        from unidiff import PatchSet
+    
+        file_path = Path(path)
+        patch_set = PatchSet(diff_text)
+        if not patch_set:
+            raise ValueError("Patch must contain at least one file")
+        patched_file = patch_set[0]
+    
+        lines = file_path.read_text().splitlines(keepends=True)
+        result: list[str] = []
+        idx = 0
+    
+        for hunk in patched_file:
+            start = hunk.source_start - 1
+            expected = [
+                line_obj.value for line_obj in hunk if not line_obj.is_added
+            ]
+            end = start + len(expected)
+            actual = lines[start:end]
+            if actual != expected:
+>               raise RuntimeError("patch context mismatch")
+E               RuntimeError: patch context mismatch
+
+devai/patch_utils.py:72: RuntimeError
+____________________ test_collect_examples_returns_content _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_collect_examples_returns_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955049d610>
+
+    def test_collect_examples_returns_content(tmp_path, monkeypatch):
+        mem = _create_memory(tmp_path)
+        # duplicate entry should be removed
+        mem.save(
+            {
+                "type": "dialog",
+                "memory_type": "dialog_summary",
+                "content": "answer",
+                "metadata": {"prompt": "question"},
+                "feedback_score": 1,
+            }
+        )
+>       monkeypatch.setattr(rlhf.config, "LOG_DIR", str(tmp_path))
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'config'
+
+tests/test_rlhf.py:74: AttributeError
+------------------------------ Captured log call -------------------------------
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
+WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
+WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.107787Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.110623Z", "level": "info"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.128449Z", "level": "info"}
+__________________________ test_collect_log_examples ___________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_collect_log_examples0')
+
+    def test_collect_log_examples(tmp_path):
+        log = tmp_path / "run.log"
+        log.write_text("User: hi\nAssistant: hello\n")
+        mem = _create_memory(tmp_path)
+        tuner = rlhf.RLFineTuner(mem)
+>       data = tuner._collect_from_logs(str(tmp_path))
+E       AttributeError: 'NoneType' object has no attribute '_collect_from_logs'
+
+tests/test_rlhf.py:89: AttributeError
+------------------------------ Captured log call -------------------------------
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
+WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
+WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.230665Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.233860Z", "level": "info"}
+________________________ test_fine_tune_creates_output _________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_fine_tune_creates_output0')
+
+    def test_fine_tune_creates_output(tmp_path):
+        mem = _create_memory(tmp_path)
+        model_dir = tmp_path / "tiny"
+        base = _create_tiny_model(model_dir)
+        tuner = rlhf.RLFineTuner(mem)
+        out = tmp_path / "model"
+>       result = asyncio.run(tuner.fine_tune(base, str(out)))
+E       AttributeError: 'NoneType' object has no attribute 'fine_tune'
+
+tests/test_rlhf.py:99: AttributeError
+------------------------------ Captured log call -------------------------------
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
+WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
+WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.382233Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.386888Z", "level": "info"}
+______________________________ test_cli_main_runs ______________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_cli_main_runs0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f9550475550>
+capsys = <_pytest.capture.CaptureFixture object at 0x7f9550477c80>
+
+    def test_cli_main_runs(tmp_path, monkeypatch, capsys):
+        _create_memory(tmp_path)
+        model_dir = tmp_path / "tiny"
+        base = _create_tiny_model(model_dir)
+        out = tmp_path / "model"
+        import devai.memory as memory_module
+        monkeypatch.setattr(memory_module, "MemoryManager", DummyMemory)
+>       monkeypatch.setattr(rlhf.config, "MEMORY_DB", str(tmp_path / "mem.sqlite"))
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'config'
+
+tests/test_rlhf.py:111: AttributeError
+------------------------------ Captured log call -------------------------------
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
+WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
+WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.482404Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.485170Z", "level": "info"}
+_________________________ test_train_from_memory_empty _________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_train_from_memory_empty0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955047f3e0>
+
+    def test_train_from_memory_empty(tmp_path, monkeypatch):
+        import devai.memory as memory_module
+        monkeypatch.setattr(memory_module, "MemoryManager", DummyMemory)
+>       monkeypatch.setattr(rlhf.config, "MEMORY_DB", str(tmp_path / "mem.sqlite"))
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'config'
+
+tests/test_rlhf.py:121: AttributeError
+___________________________ test_run_scheduled_rlhf ____________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_run_scheduled_rlhf0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955049f620>
+
+    def test_run_scheduled_rlhf(tmp_path, monkeypatch):
+        mem = _create_memory(tmp_path)
+        monkeypatch.setattr(core.config, "RLHF_THRESHOLD", 1)
+        monkeypatch.setattr(core.config, "RLHF_OUTPUT_DIR", str(tmp_path / "out"))
+        monkeypatch.setattr(core.config, "LOG_DIR", str(tmp_path))
+        monkeypatch.setattr(core.config, "MODELS", {"default": {"name": "base"}})
+    
+        async def fake_train(base, out):
+            Path(out).mkdir(parents=True, exist_ok=True)
+            return {"status": "ok"}
+    
+>       monkeypatch.setattr(core.rlhf, "train_from_memory", fake_train)
+E       AttributeError: None has no attribute 'train_from_memory'
+
+tests/test_rlhf.py:138: AttributeError
+------------------------------ Captured log call -------------------------------
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
+WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
+WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.603788Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.621153Z", "level": "info"}
+____________________ test_run_scheduled_rlhf_skips_if_same _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_run_scheduled_rlhf_skips_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955049ddf0>
+
+    def test_run_scheduled_rlhf_skips_if_same(tmp_path, monkeypatch):
+        mem = _create_memory(tmp_path)
+        monkeypatch.setattr(core.config, "RLHF_THRESHOLD", 1)
+        monkeypatch.setattr(core.config, "RLHF_OUTPUT_DIR", str(tmp_path / "out"))
+        monkeypatch.setattr(core.config, "LOG_DIR", str(tmp_path))
+        monkeypatch.setattr(core.config, "MODELS", {"default": {"name": "base"}})
+    
+        calls: list[str] = []
+    
+        async def fake_train(base, out):
+            calls.append(out)
+            Path(out).mkdir(parents=True, exist_ok=True)
+            return {"status": "ok"}
+    
+>       monkeypatch.setattr(core.rlhf, "train_from_memory", fake_train)
+E       AttributeError: None has no attribute 'train_from_memory'
+
+tests/test_rlhf.py:164: AttributeError
+------------------------------ Captured log call -------------------------------
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
+INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
+WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
+WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.722807Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.725817Z", "level": "info"}
+_________________________ test_shutdown_closes_session _________________________
+
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7f955047caa0>
+
+    def test_shutdown_closes_session(caplog):
+        ai = object.__new__(CodeMemoryAI)
+>       ai.ai_model = CodeMemoryAI.__init__.__globals__["AIModel"]()  # create real AIModel
+
+tests/test_shutdown.py:8: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+devai/ai_model.py:97: in __init__
+    self.session = aiohttp.ClientSession()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <aiohttp.client.ClientSession object at 0x7f955047dfa0>, base_url = None
+
+    def __init__(
+        self,
+        base_url: Optional[StrOrURL] = None,
+        *,
+        connector: Optional[BaseConnector] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        json_serialize: JSONEncoder = json.dumps,
+        request_class: Type[ClientRequest] = ClientRequest,
+        response_class: Type[ClientResponse] = ClientResponse,
+        ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
+        version: HttpVersion = http.HttpVersion11,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        connector_owner: bool = True,
+        raise_for_status: Union[
+            bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = False,
+        read_timeout: Union[float, _SENTINEL] = sentinel,
+        conn_timeout: Optional[float] = None,
+        timeout: Union[object, ClientTimeout] = sentinel,
+        auto_decompress: bool = True,
+        trust_env: bool = False,
+        requote_redirect_url: bool = True,
+        trace_configs: Optional[List[TraceConfig]] = None,
+        read_bufsize: int = 2**16,
+        max_line_size: int = 8190,
+        max_field_size: int = 8190,
+        fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
+        middlewares: Sequence[ClientMiddlewareType] = (),
+        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
+    ) -> None:
+        # We initialise _connector to None immediately, as it's referenced in __del__()
+        # and could cause issues if an exception occurs during initialisation.
+        self._connector: Optional[BaseConnector] = None
+    
+        if loop is None:
+            if connector is not None:
+                loop = connector._loop
+    
+>       loop = loop or asyncio.get_running_loop()
+E       RuntimeError: no running event loop
+
+/root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/aiohttp/client.py:316: RuntimeError
+_____________________________ test_startup_custom ______________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955045a3f0>
+
+    def test_startup_custom(monkeypatch):
+        global calls
+        calls = []
+        monkeypatch.setattr(config, 'START_MODE', 'custom')
+        monkeypatch.setattr(config, 'START_TASKS', ['scan', 'monitor'])
+        import devai.metacognition as metacog
+        monkeypatch.setattr(metacog, 'MetacognitionLoop', DummyMeta)
+    
+        class DummyTask:
+            def add_done_callback(self, fn):
+                pass
+    
+        tasks = []
+    
+        def fake_create_task(coro, *a, **k):
+            tasks.append(coro)
+            coro.close()
+            return DummyTask()
+    
+        monkeypatch.setattr(asyncio, 'create_task', fake_create_task)
+    
+        ai = object.__new__(CodeMemoryAI)
+        ai.memory = DummyMemory()
+        ai.analyzer = DummyAnalyzer()
+        ai.log_monitor = DummyLogMonitor()
+        ai.background_tasks = {}
+        ai._learning_loop = lambda: dummy_coroutine('learn')
+    
+        CodeMemoryAI._start_background_tasks(ai)
+    
+>       assert any(
+            getattr(c, 'cr_code', None) and c.cr_code.co_name == 'deep_scan_app'
+            for c in tasks
+        )
+E       assert False
+E        +  where False = any(<generator object test_startup_custom.<locals>.<genexpr> at 0x7f95503d1380>)
+
+tests/test_startup_mode.py:116: AssertionError
+=============================== warnings summary ===============================
+../../root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/faiss/loader.py:49
+  /root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/faiss/loader.py:49: DeprecationWarning: numpy.core._multiarray_umath is deprecated and has been renamed to numpy._core._multiarray_umath. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core._multiarray_umath.__cpu_features__.
+    from numpy.core._multiarray_umath import __cpu_features__
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+devai/api_schemas.py:22
+tests/test_api_schemas.py::test_validate_path_within_and_outside
+tests/test_api_schemas.py::test_file_edit_request_validation
+tests/test_api_schemas.py::test_other_schema_validations
+  /workspace/DevAI-R1/devai/api_schemas.py:22: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    _file_validator = validator("file", allow_reuse=True)(_validate_path)
+
+../../root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/pydantic/deprecated/class_validators.py:121: 5 warnings
+tests/test_api_schemas.py: 15 warnings
+  /root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/pydantic/deprecated/class_validators.py:121: PydanticDeprecatedSince20: `allow_reuse` is deprecated and will be ignored; it should no longer be necessary. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warn(_ALLOW_REUSE_WARNING_MESSAGE, DeprecationWarning)
+
+devai/api_schemas.py:24
+tests/test_api_schemas.py::test_validate_path_within_and_outside
+tests/test_api_schemas.py::test_file_edit_request_validation
+tests/test_api_schemas.py::test_other_schema_validations
+  /workspace/DevAI-R1/devai/api_schemas.py:24: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator("content")
+
+devai/api_schemas.py:35
+tests/test_api_schemas.py::test_validate_path_within_and_outside
+tests/test_api_schemas.py::test_file_edit_request_validation
+tests/test_api_schemas.py::test_other_schema_validations
+  /workspace/DevAI-R1/devai/api_schemas.py:35: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    _file_validator = validator("file", allow_reuse=True)(_validate_path)
+
+devai/api_schemas.py:41
+tests/test_api_schemas.py::test_validate_path_within_and_outside
+tests/test_api_schemas.py::test_file_edit_request_validation
+tests/test_api_schemas.py::test_other_schema_validations
+  /workspace/DevAI-R1/devai/api_schemas.py:41: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    _file_validator = validator("file", allow_reuse=True)(_validate_path)
+
+devai/api_schemas.py:47
+tests/test_api_schemas.py::test_validate_path_within_and_outside
+tests/test_api_schemas.py::test_file_edit_request_validation
+tests/test_api_schemas.py::test_other_schema_validations
+  /workspace/DevAI-R1/devai/api_schemas.py:47: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    _path_validator = validator("path", allow_reuse=True)(_validate_path)
+
+devai/api_schemas.py:54
+tests/test_api_schemas.py::test_validate_path_within_and_outside
+tests/test_api_schemas.py::test_file_edit_request_validation
+tests/test_api_schemas.py::test_other_schema_validations
+  /workspace/DevAI-R1/devai/api_schemas.py:54: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    _file_validator = validator("file_path", allow_reuse=True)(_validate_path)
+
+devai/api_schemas.py:56
+tests/test_api_schemas.py::test_validate_path_within_and_outside
+tests/test_api_schemas.py::test_file_edit_request_validation
+tests/test_api_schemas.py::test_other_schema_validations
+  /workspace/DevAI-R1/devai/api_schemas.py:56: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator("diff")
+
+tests/test_progress_ui.py:33
+  /workspace/DevAI-R1/tests/test_progress_ui.py:33: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_progress_ui.py:45
+  /workspace/DevAI-R1/tests/test_progress_ui.py:45: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_stub_removal.py:17
+  /workspace/DevAI-R1/tests/test_stub_removal.py:17: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_tui.py:19
+  /workspace/DevAI-R1/tests/test_tui.py:19: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_tui.py:29
+  /workspace/DevAI-R1/tests/test_tui.py:29: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_tui.py:44
+  /workspace/DevAI-R1/tests/test_tui.py:44: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_tui.py:58
+  /workspace/DevAI-R1/tests/test_tui.py:58: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_conversation_search.py::test_search_history
+tests/test_conversation_search.py::test_search_history
+  /workspace/DevAI-R1/devai/conversation_handler.py:261: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+    "score": 1 - float(dist),
+
+tests/test_core.py::test_infer_return_type
+tests/test_core.py::test_infer_return_type
+  /workspace/DevAI-R1/devai/core.py:1190: DeprecationWarning: ast.Num is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    if isinstance(node.value, ast.Num):
+
+tests/test_full_conversation.py::test_full_conversation
+  /workspace/DevAI-R1/devai/core.py:162: RuntimeWarning: coroutine 'test_full_conversation.<locals>.run.<locals>.run_task' was never awaited
+    pass
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_progress_ui.py::test_cliui_progress_updates
+tests/test_progress_ui.py::test_tui_task_progress
+tests/test_stub_removal.py::test_safe_api_call_real_response
+  /root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/_pytest/python.py:148: PytestUnhandledCoroutineWarning: async def functions are not natively supported and have been skipped.
+  You need to install a suitable plugin for your async framework, for example:
+    - anyio
+    - pytest-asyncio
+    - pytest-tornasync
+    - pytest-trio
+    - pytest-twisted
+    warnings.warn(PytestUnhandledCoroutineWarning(msg.format(nodeid)))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_cli.py::test_cli_patch_apply_accept - AssertionError: asser...
+FAILED tests/test_dynamic_prompt.py::test_dynamic_prompt_logs_reasons - asser...
+FAILED tests/test_functional_completeness.py::test_shutdown_cleans_tasks - Ru...
+FAILED tests/test_patch_utils.py::test_apply_patch_multi_file - RuntimeError:...
+FAILED tests/test_rlhf.py::test_collect_examples_returns_content - AttributeE...
+FAILED tests/test_rlhf.py::test_collect_log_examples - AttributeError: 'NoneT...
+FAILED tests/test_rlhf.py::test_fine_tune_creates_output - AttributeError: 'N...
+FAILED tests/test_rlhf.py::test_cli_main_runs - AttributeError: 'types.Simple...
+FAILED tests/test_rlhf.py::test_train_from_memory_empty - AttributeError: 'ty...
+FAILED tests/test_rlhf.py::test_run_scheduled_rlhf - AttributeError: None has...
+FAILED tests/test_rlhf.py::test_run_scheduled_rlhf_skips_if_same - AttributeE...
+FAILED tests/test_shutdown.py::test_shutdown_closes_session - RuntimeError: n...
+FAILED tests/test_startup_mode.py::test_startup_custom - assert False
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+/root/.pyenv/versions/3.12.10/lib/python3.12/asyncio/runners.py:123: KeyboardInterrupt
+(to show a full traceback on KeyboardInterrupt use --full-trace)
