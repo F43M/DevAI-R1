@@ -57,6 +57,8 @@ API_SECRET: "sua-chave"
 ```bash
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
+# dependências extras para UI e RLHF (opcional)
+pip install transformers trl rich prompt_toolkit textual
 ```
 
 O índice vetorial utilizado na busca é salvo automaticamente em `faiss.index` e

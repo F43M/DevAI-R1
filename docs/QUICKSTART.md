@@ -13,6 +13,8 @@ Este guia resume os passos iniciais para rodar o DevAI-R1.
    ```bash
    pip install -r requirements.txt
    pip install -r requirements-dev.txt
+   # dependências extras para UI e RLHF (opcional)
+   pip install transformers trl rich prompt_toolkit textual
    ```
 3. **Copie e ajuste a configuração**
    ```bash
