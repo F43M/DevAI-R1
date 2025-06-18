@@ -1,11 +1,66 @@
-.........................................................F.............. [ 35%]
-....................F..........F..............................F....ss... [ 71%]
+.FF......................................................F.............. [ 35%]
+....................F.........................................F....ss... [ 71%]
 ..FFFFFFF...............F....F..s......
 =================================== FAILURES ===================================
+_______________________ test_retry_timeout_then_failure ________________________
+
+    def test_retry_timeout_then_failure():
+        gen = GenCounter([asyncio.TimeoutError(), asyncio.TimeoutError()])
+        ai = object.__new__(AIModel)
+        ai.generate = gen
+        async def run():
+            return await AIModel.safe_api_call(ai, "q", 50)
+        result = asyncio.run(run())
+        assert gen.calls == 2
+>       assert result.startswith("❌")
+E       AssertionError: assert False
+E        +  where False = <built-in method startswith of str object at 0x7f4fae88e130>('❌')
+E        +    where <built-in method startswith of str object at 0x7f4fae88e130> = '⏱️ A IA demorou para responder. Pode estar ocupada.'.startswith
+
+tests/test_ai_model_retry.py:37: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     _pytest.compat:ai_model.py:231 {"event": "Retry attempt triggered after error...", "timestamp": "2025-06-18T16:06:18.049352Z", "level": "info"}
+ERROR    _pytest.compat:error_handler.py:64 {"event": "[ERRO SIMB\u00d3LICO] TimeoutError em safe_api_call: ", "timestamp": "2025-06-18T16:06:20.065685Z", "level": "error"}
+________________________ test_timeout_then_unauthorized ________________________
+
+    def test_timeout_then_unauthorized():
+        gen = GenCounter([asyncio.TimeoutError(), "401 Unauthorized"])
+        ai = object.__new__(AIModel)
+        ai.generate = gen
+        async def run():
+            return await AIModel.safe_api_call(ai, "q", 50)
+>       result = asyncio.run(run())
+
+tests/test_ai_model_retry.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/root/.pyenv/versions/3.12.10/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/root/.pyenv/versions/3.12.10/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/root/.pyenv/versions/3.12.10/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_ai_model_retry.py:44: in run
+    return await AIModel.safe_api_call(ai, "q", 50)
+devai/ai_model.py:254: in safe_api_call
+    continuation = await self.generate(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.test_ai_model_retry.GenCounter object at 0x7f4fa9052390>
+a = ('\nContinue exatamente de onde você parou. Não repita partes da resposta anterior.',)
+kw = {'max_length': 49, 'temperature': 0.7}
+
+    async def __call__(self, *a, **kw):
+        self.calls += 1
+>       resp = self.responses[self.calls - 1]
+E       IndexError: list index out of range
+
+tests/test_ai_model_retry.py:12: IndexError
+------------------------------ Captured log call -------------------------------
+INFO     _pytest.compat:ai_model.py:231 {"event": "Retry attempt triggered after error...", "timestamp": "2025-06-18T16:06:20.200870Z", "level": "info"}
 _________________________ test_cli_patch_apply_accept __________________________
 
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955047e4b0>
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_cli_patch_apply_accept0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4fa8c12b10>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_cli_patch_apply_accept0')
 
     def test_cli_patch_apply_accept(monkeypatch, tmp_path):
         diff = """diff --git a/x.txt b/x.txt
@@ -97,10 +152,10 @@ Comandos disponíveis:
 Resposta:
 
 ------------------------------ Captured log call -------------------------------
-INFO     _pytest.compat:decision_log.py:65 {"id": "001", "tipo": "patch", "event": "Decisao registrada", "timestamp": "2025-06-17T01:17:59.576403Z", "level": "info"}
+INFO     _pytest.compat:decision_log.py:65 {"id": "001", "tipo": "patch", "event": "Decisao registrada", "timestamp": "2025-06-18T16:06:23.901035Z", "level": "info"}
 _______________________ test_dynamic_prompt_logs_reasons _______________________
 
-caplog = <_pytest.logging.LogCaptureFixture object at 0x7f955042ab10>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7f4fa8c72cf0>
 
     def test_dynamic_prompt_logs_reasons(caplog):
         context = {
@@ -113,76 +168,14 @@ caplog = <_pytest.logging.LogCaptureFixture object at 0x7f955042ab10>
             build_dynamic_prompt("Por que deu erro?", context, "normal", intent="debug")
 >       assert any("reasons=" in r.message for r in caplog.records)
 E       assert False
-E        +  where False = any(<generator object test_dynamic_prompt_logs_reasons.<locals>.<genexpr> at 0x7f9550462e90>)
+E        +  where False = any(<generator object test_dynamic_prompt_logs_reasons.<locals>.<genexpr> at 0x7f4fa8dc25a0>)
 
 tests/test_dynamic_prompt.py:35: AssertionError
 ------------------------------ Captured log call -------------------------------
-INFO     _pytest.compat:prompt_engine.py:254 {"included_blocks": ["logs_recentes", "ultima_acao"], "reasons": ["logs_recentes:pergunta de erro", "ultima_acao:pergunta de erro"], "mode": "normal", "event": "Prompt din\u00e2mico", "timestamp": "2025-06-17T01:18:00.319559Z", "level": "info"}
-__________________________ test_shutdown_cleans_tasks __________________________
-
-    def test_shutdown_cleans_tasks():
-        ai = object.__new__(CodeMemoryAI)
->       ai.ai_model = CodeMemoryAI.__init__.__globals__["AIModel"]()
-
-tests/test_functional_completeness.py:65: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-devai/ai_model.py:97: in __init__
-    self.session = aiohttp.ClientSession()
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-self = <aiohttp.client.ClientSession object at 0x7f9550471af0>, base_url = None
-
-    def __init__(
-        self,
-        base_url: Optional[StrOrURL] = None,
-        *,
-        connector: Optional[BaseConnector] = None,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        cookies: Optional[LooseCookies] = None,
-        headers: Optional[LooseHeaders] = None,
-        proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
-        skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
-        json_serialize: JSONEncoder = json.dumps,
-        request_class: Type[ClientRequest] = ClientRequest,
-        response_class: Type[ClientResponse] = ClientResponse,
-        ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
-        version: HttpVersion = http.HttpVersion11,
-        cookie_jar: Optional[AbstractCookieJar] = None,
-        connector_owner: bool = True,
-        raise_for_status: Union[
-            bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = False,
-        read_timeout: Union[float, _SENTINEL] = sentinel,
-        conn_timeout: Optional[float] = None,
-        timeout: Union[object, ClientTimeout] = sentinel,
-        auto_decompress: bool = True,
-        trust_env: bool = False,
-        requote_redirect_url: bool = True,
-        trace_configs: Optional[List[TraceConfig]] = None,
-        read_bufsize: int = 2**16,
-        max_line_size: int = 8190,
-        max_field_size: int = 8190,
-        fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
-        middlewares: Sequence[ClientMiddlewareType] = (),
-        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
-    ) -> None:
-        # We initialise _connector to None immediately, as it's referenced in __del__()
-        # and could cause issues if an exception occurs during initialisation.
-        self._connector: Optional[BaseConnector] = None
-    
-        if loop is None:
-            if connector is not None:
-                loop = connector._loop
-    
->       loop = loop or asyncio.get_running_loop()
-E       RuntimeError: no running event loop
-
-/root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/aiohttp/client.py:316: RuntimeError
+INFO     _pytest.compat:prompt_engine.py:254 {"included_blocks": ["logs_recentes", "ultima_acao"], "reasons": ["logs_recentes:pergunta de erro", "ultima_acao:pergunta de erro"], "mode": "normal", "event": "Prompt din\u00e2mico", "timestamp": "2025-06-18T16:06:24.433484Z", "level": "info"}
 _________________________ test_apply_patch_multi_file __________________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_apply_patch_multi_file0')
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_apply_patch_multi_file0')
 
     def test_apply_patch_multi_file(tmp_path):
         a = tmp_path / "a.txt"
@@ -248,8 +241,8 @@ E               RuntimeError: patch context mismatch
 devai/patch_utils.py:72: RuntimeError
 ____________________ test_collect_examples_returns_content _____________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_collect_examples_returns_0')
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955049d610>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_collect_examples_returns_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4fa8c75580>
 
     def test_collect_examples_returns_content(tmp_path, monkeypatch):
         mem = _create_memory(tmp_path)
@@ -271,12 +264,12 @@ tests/test_rlhf.py:74: AttributeError
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
 WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
-WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.107787Z", "level": "warning"}
-INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.110623Z", "level": "info"}
-INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.128449Z", "level": "info"}
+WARNING  _pytest.compat:memory.py:69 {"error": "(MaxRetryError(\"HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/dummy/resolve/main/adapter_config.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))\"), '(Request ID: 4579108d-95d5-4d04-81aa-ba6dad71a8e7)')", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-18T16:06:28.189103Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-18T16:06:28.192999Z", "level": "info"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-18T16:06:28.205534Z", "level": "info"}
 __________________________ test_collect_log_examples ___________________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_collect_log_examples0')
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_collect_log_examples0')
 
     def test_collect_log_examples(tmp_path):
         log = tmp_path / "run.log"
@@ -291,11 +284,11 @@ tests/test_rlhf.py:89: AttributeError
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
 WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
-WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.230665Z", "level": "warning"}
-INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.233860Z", "level": "info"}
+WARNING  _pytest.compat:memory.py:69 {"error": "(MaxRetryError(\"HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/dummy/resolve/main/adapter_config.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))\"), '(Request ID: 3f4582af-e3ab-4e77-9151-1c525bff79e4)')", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-18T16:06:28.432775Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-18T16:06:28.436389Z", "level": "info"}
 ________________________ test_fine_tune_creates_output _________________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_fine_tune_creates_output0')
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_fine_tune_creates_output0')
 
     def test_fine_tune_creates_output(tmp_path):
         mem = _create_memory(tmp_path)
@@ -311,13 +304,13 @@ tests/test_rlhf.py:99: AttributeError
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
 WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
-WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.382233Z", "level": "warning"}
-INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.386888Z", "level": "info"}
+WARNING  _pytest.compat:memory.py:69 {"error": "(MaxRetryError(\"HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/dummy/resolve/main/adapter_config.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))\"), '(Request ID: 9b72e04f-1f3d-42e4-82db-7fc9979940e5)')", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-18T16:06:28.568711Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-18T16:06:28.573546Z", "level": "info"}
 ______________________________ test_cli_main_runs ______________________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_cli_main_runs0')
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f9550475550>
-capsys = <_pytest.capture.CaptureFixture object at 0x7f9550477c80>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_cli_main_runs0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4fa8cda720>
+capsys = <_pytest.capture.CaptureFixture object at 0x7f4fa8cda7b0>
 
     def test_cli_main_runs(tmp_path, monkeypatch, capsys):
         _create_memory(tmp_path)
@@ -334,12 +327,12 @@ tests/test_rlhf.py:111: AttributeError
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
 WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
-WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.482404Z", "level": "warning"}
-INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.485170Z", "level": "info"}
+WARNING  _pytest.compat:memory.py:69 {"error": "(MaxRetryError(\"HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/dummy/resolve/main/adapter_config.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))\"), '(Request ID: 5633fe83-1641-4ca6-95a1-fd4cbffa4617)')", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-18T16:06:28.779519Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-18T16:06:28.787059Z", "level": "info"}
 _________________________ test_train_from_memory_empty _________________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_train_from_memory_empty0')
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955047f3e0>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_train_from_memory_empty0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4fa8cda5a0>
 
     def test_train_from_memory_empty(tmp_path, monkeypatch):
         import devai.memory as memory_module
@@ -350,8 +343,8 @@ E       AttributeError: 'types.SimpleNamespace' object has no attribute 'config'
 tests/test_rlhf.py:121: AttributeError
 ___________________________ test_run_scheduled_rlhf ____________________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_run_scheduled_rlhf0')
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955049f620>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_run_scheduled_rlhf0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4fa894c8c0>
 
     def test_run_scheduled_rlhf(tmp_path, monkeypatch):
         mem = _create_memory(tmp_path)
@@ -372,12 +365,12 @@ tests/test_rlhf.py:138: AttributeError
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
 WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
-WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.603788Z", "level": "warning"}
-INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.621153Z", "level": "info"}
+WARNING  _pytest.compat:memory.py:69 {"error": "(MaxRetryError(\"HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/dummy/resolve/main/adapter_config.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))\"), '(Request ID: 1e182ff2-e874-43a6-b118-03d233db73df)')", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-18T16:06:28.918937Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-18T16:06:28.921863Z", "level": "info"}
 ____________________ test_run_scheduled_rlhf_skips_if_same _____________________
 
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_run_scheduled_rlhf_skips_0')
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955049ddf0>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-2/test_run_scheduled_rlhf_skips_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4fa894f350>
 
     def test_run_scheduled_rlhf_skips_if_same(tmp_path, monkeypatch):
         mem = _create_memory(tmp_path)
@@ -401,75 +394,27 @@ tests/test_rlhf.py:164: AttributeError
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: cpu
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Load pretrained SentenceTransformer: dummy
 WARNING  sentence_transformers.SentenceTransformer:SentenceTransformer.py:1592 No sentence-transformers model found with name sentence-transformers/dummy. Creating a new one with mean pooling.
-WARNING  _pytest.compat:memory.py:69 {"error": "We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.\nCheckout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-17T01:18:04.722807Z", "level": "warning"}
-INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-17T01:18:04.725817Z", "level": "info"}
+WARNING  _pytest.compat:memory.py:69 {"error": "(MaxRetryError(\"HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /sentence-transformers/dummy/resolve/main/adapter_config.json (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))\"), '(Request ID: 23c3c42a-7801-4b18-bf1a-5c9564859f2b)')", "event": "falha ao carregar modelo de embeddings", "timestamp": "2025-06-18T16:06:29.049394Z", "level": "warning"}
+INFO     _pytest.compat:memory.py:330 {"entry_type": "dialog", "event": "Mem\u00f3ria salva", "timestamp": "2025-06-18T16:06:29.055761Z", "level": "info"}
 _________________________ test_shutdown_closes_session _________________________
 
-caplog = <_pytest.logging.LogCaptureFixture object at 0x7f955047caa0>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7f4fa8995d90>
 
     def test_shutdown_closes_session(caplog):
         ai = object.__new__(CodeMemoryAI)
->       ai.ai_model = CodeMemoryAI.__init__.__globals__["AIModel"]()  # create real AIModel
+        ai.ai_model = CodeMemoryAI.__init__.__globals__["AIModel"]()  # create real AIModel
+        ai.background_tasks = {}
+        with caplog.at_level(logging.INFO):
+            asyncio.run(CodeMemoryAI.shutdown(ai))
+>       assert getattr(ai.ai_model.session, "closed", True)
+E       AttributeError: 'AIModel' object has no attribute 'session'
 
-tests/test_shutdown.py:8: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-devai/ai_model.py:97: in __init__
-    self.session = aiohttp.ClientSession()
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-self = <aiohttp.client.ClientSession object at 0x7f955047dfa0>, base_url = None
-
-    def __init__(
-        self,
-        base_url: Optional[StrOrURL] = None,
-        *,
-        connector: Optional[BaseConnector] = None,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        cookies: Optional[LooseCookies] = None,
-        headers: Optional[LooseHeaders] = None,
-        proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
-        skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
-        json_serialize: JSONEncoder = json.dumps,
-        request_class: Type[ClientRequest] = ClientRequest,
-        response_class: Type[ClientResponse] = ClientResponse,
-        ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
-        version: HttpVersion = http.HttpVersion11,
-        cookie_jar: Optional[AbstractCookieJar] = None,
-        connector_owner: bool = True,
-        raise_for_status: Union[
-            bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = False,
-        read_timeout: Union[float, _SENTINEL] = sentinel,
-        conn_timeout: Optional[float] = None,
-        timeout: Union[object, ClientTimeout] = sentinel,
-        auto_decompress: bool = True,
-        trust_env: bool = False,
-        requote_redirect_url: bool = True,
-        trace_configs: Optional[List[TraceConfig]] = None,
-        read_bufsize: int = 2**16,
-        max_line_size: int = 8190,
-        max_field_size: int = 8190,
-        fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
-        middlewares: Sequence[ClientMiddlewareType] = (),
-        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
-    ) -> None:
-        # We initialise _connector to None immediately, as it's referenced in __del__()
-        # and could cause issues if an exception occurs during initialisation.
-        self._connector: Optional[BaseConnector] = None
-    
-        if loop is None:
-            if connector is not None:
-                loop = connector._loop
-    
->       loop = loop or asyncio.get_running_loop()
-E       RuntimeError: no running event loop
-
-/root/.pyenv/versions/3.12.10/lib/python3.12/site-packages/aiohttp/client.py:316: RuntimeError
+tests/test_shutdown.py:12: AttributeError
+------------------------------ Captured log call -------------------------------
+INFO     _pytest.compat:core.py:1307 {"event": "\ud83d\uded1 DevAI finalizado com limpeza simb\u00f3lica de recursos.", "timestamp": "2025-06-18T16:06:29.611031Z", "level": "info"}
 _____________________________ test_startup_custom ______________________________
 
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955045a3f0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f4fa8996360>
 
     def test_startup_custom(monkeypatch):
         global calls
@@ -506,7 +451,7 @@ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f955045a3f0>
             for c in tasks
         )
 E       assert False
-E        +  where False = any(<generator object test_startup_custom.<locals>.<genexpr> at 0x7f95503d1380>)
+E        +  where False = any(<generator object test_startup_custom.<locals>.<genexpr> at 0x7f4fa8aad1c0>)
 
 tests/test_startup_mode.py:116: AssertionError
 =============================== warnings summary ===============================
@@ -635,9 +580,10 @@ tests/test_stub_removal.py::test_safe_api_call_real_response
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 =========================== short test summary info ============================
+FAILED tests/test_ai_model_retry.py::test_retry_timeout_then_failure - Assert...
+FAILED tests/test_ai_model_retry.py::test_timeout_then_unauthorized - IndexEr...
 FAILED tests/test_cli.py::test_cli_patch_apply_accept - AssertionError: asser...
 FAILED tests/test_dynamic_prompt.py::test_dynamic_prompt_logs_reasons - asser...
-FAILED tests/test_functional_completeness.py::test_shutdown_cleans_tasks - Ru...
 FAILED tests/test_patch_utils.py::test_apply_patch_multi_file - RuntimeError:...
 FAILED tests/test_rlhf.py::test_collect_examples_returns_content - AttributeE...
 FAILED tests/test_rlhf.py::test_collect_log_examples - AttributeError: 'NoneT...
@@ -646,7 +592,7 @@ FAILED tests/test_rlhf.py::test_cli_main_runs - AttributeError: 'types.Simple...
 FAILED tests/test_rlhf.py::test_train_from_memory_empty - AttributeError: 'ty...
 FAILED tests/test_rlhf.py::test_run_scheduled_rlhf - AttributeError: None has...
 FAILED tests/test_rlhf.py::test_run_scheduled_rlhf_skips_if_same - AttributeE...
-FAILED tests/test_shutdown.py::test_shutdown_closes_session - RuntimeError: n...
+FAILED tests/test_shutdown.py::test_shutdown_closes_session - AttributeError:...
 FAILED tests/test_startup_mode.py::test_startup_custom - assert False
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 /root/.pyenv/versions/3.12.10/lib/python3.12/asyncio/runners.py:123: KeyboardInterrupt
