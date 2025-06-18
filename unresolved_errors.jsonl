@@ -1,0 +1,13 @@
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_cli.py::test_cli_patch_apply_accept","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_dynamic_prompt.py::test_dynamic_prompt_logs_reasons","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_functional_completeness.py::test_shutdown_cleans_tasks","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_patch_utils.py::test_apply_patch_multi_file","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_rlhf.py::test_cli_main_runs","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_rlhf.py::test_collect_examples_returns_content","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_rlhf.py::test_collect_log_examples","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_rlhf.py::test_fine_tune_creates_output","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_rlhf.py::test_run_scheduled_rlhf","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_rlhf.py::test_run_scheduled_rlhf_skips_if_same","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_rlhf.py::test_train_from_memory_empty","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_shutdown.py::test_shutdown_closes_session","funcao":"pytest"}
+{"timestamp":"2025-06-18T16:07:41.308020Z","tipo":"TestFailure","mensagem":"tests/test_startup_mode.py::test_startup_custom","funcao":"pytest"}
