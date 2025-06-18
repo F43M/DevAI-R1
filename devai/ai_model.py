@@ -11,17 +11,11 @@ SYSTEM_MESSAGE = (
     "com foco em qualidade, segurança e aprendizado simbólico."
 )
 
-import aiohttp
-from aiohttp import ClientError, ClientConnectionError
-
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    AutoModelForCausalLM = None
-    AutoTokenizer = None
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from scripts.setup_local_model import setup_local_model
 
 from .config import config, logger, metrics
-from .error_handler import with_retry_async, friendly_message, log_error
+from .error_handler import friendly_message, log_error
 import re
 from pathlib import Path
 from .memory import MemoryManager
@@ -94,50 +88,19 @@ class PromptCache:
 
 class AIModel:
     def __init__(self):
-        self.session = aiohttp.ClientSession()
-        self.models = config.MODELS or {
-            "default": {
-                "name": config.model_name,
-                "api_key": config.OPENROUTER_API_KEY,
-                "url": config.OPENROUTER_URL,
-            }
-        }
-        if config.LOCAL_MODEL:
-            self.models.setdefault("local", {"name": config.LOCAL_MODEL, "local": True})
-        self.current = "default"
-        self.cache = PromptCache()
-        if not any(
-            m.get("api_key") for m in self.models.values() if not m.get("local")
-        ):
-            logger.error("Nenhuma chave de modelo configurada")
-        logger.info("Modelos disponíveis", models=list(self.models.keys()))
+        """Initialize and load a local language model."""
 
-        if config.LOCAL_MODEL and AutoModelForCausalLM:
-            try:
-                self.local_tokenizer = AutoTokenizer.from_pretrained(config.LOCAL_MODEL)
-                self.local_model = AutoModelForCausalLM.from_pretrained(
-                    config.LOCAL_MODEL
-                )
-            except Exception as e:  # pragma: no cover - heavy dep
-                logger.error("Erro ao carregar modelo local", error=str(e))
-                self.local_model = None
-                self.local_tokenizer = None
-        else:
-            self.local_model = None
-            self.local_tokenizer = None
+        self.cache = PromptCache()
+        model_dir = Path(config.LOCAL_MODEL or "DevAI-Model")
+        self.local_model, self.local_tokenizer = setup_local_model(out_dir=model_dir)
+        self.current = "local"
 
     async def shutdown(self):
-        """Fecha a sessão HTTP e limpa recursos associados ao AIModel."""
-        if self.session and not getattr(self.session, "closed", False):
-            await self.session.close()
-            logger.info("🔒 Sessão HTTP do AIModel encerrada com sucesso.")
+        """Placeholder for compatibility."""
+        return
 
     def set_model(self, name: str) -> None:
-        if name in self.models:
-            self.current = name
-            logger.info("Modelo selecionado", model=name)
-        else:
-            logger.error("Modelo não encontrado", model=name)
+        self.current = "local"
 
     async def generate(
         self,
@@ -163,130 +126,32 @@ class AIModel:
 
         prompt_id = uuid4().hex
 
-        if self.current == "local" and self.local_model and self.local_tokenizer:
-            try:
-                input_ids = self.local_tokenizer.encode(
-                    messages[-1]["content"], return_tensors="pt"
-                )
-                output = self.local_model.generate(
-                    input_ids, max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH)
-                )
-                text = self.local_tokenizer.decode(output[0], skip_special_tokens=True)
-                self.cache.add(key, text)
-                metrics.record_call(0)
-                return text
-            except Exception as e:  # pragma: no cover - heavy dep
-                logger.error("Erro no modelo local", error=str(e))
-
-        async def _call(model_name: str):
-            cfg = self.models.get(model_name, {})
-            if cfg.get("local") and self.local_model and self.local_tokenizer:
-                try:
-                    input_ids = self.local_tokenizer.encode(
-                        messages[-1]["content"], return_tensors="pt"
-                    )
-                    output = self.local_model.generate(
-                        input_ids,
-                        max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH),
-                    )
-                    return self.local_tokenizer.decode(
-                        output[0], skip_special_tokens=True
-                    )
-                except Exception as e:  # pragma: no cover - heavy dep
-                    log_error("local_model", e)
-                    return friendly_message(e)
-
-            headers = {
-                "Authorization": f"Bearer {cfg.get('api_key', '')}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": cfg.get("name", config.model_name),
-                "messages": messages,
-                "max_tokens": min(max_length, config.MAX_CONTEXT_LENGTH),
-                "temperature": temperature,
-            }
+        try:
+            input_ids = self.local_tokenizer.encode(
+                messages[-1]["content"], return_tensors="pt"
+            )
+            output = self.local_model.generate(
+                input_ids,
+                max_new_tokens=min(max_length, config.MAX_CONTEXT_LENGTH),
+                do_sample=True,
+                temperature=temperature,
+            )
+            response_text = self.local_tokenizer.decode(
+                output[0], skip_special_tokens=True
+            )
+            used_model = "local"
             if stream:
-                payload["stream"] = True
-
-            async def _request() -> str:
-                resp = await self.session.post(
-                    cfg.get("url", config.OPENROUTER_URL),
-                    headers=headers,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=config.MODEL_TIMEOUT),
-                )
-                if resp.status == 200:
-                    data = await resp.json()
-                    return data["choices"][0]["message"]["content"]
-                text = await resp.text()
-                err = Exception(f"HTTP {resp.status}: {text}")
-                setattr(err, "status", resp.status)
-                raise err
-
-            async def _request_stream():
-                resp = await self.session.post(
-                    cfg.get("url", config.OPENROUTER_URL),
-                    headers=headers,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=config.MODEL_TIMEOUT),
-                )
-                if resp.status != 200:
-                    text = await resp.text()
-                    err = Exception(f"HTTP {resp.status}: {text}")
-                    setattr(err, "status", resp.status)
-                    raise err
-                async for line in resp.content:
-                    if not line:
-                        continue
-                    text = line.decode().strip()
-                    if text.startswith("data:"):
-                        text = text[5:].strip()
-                    if text and text != "[DONE]":
-                        try:
-                            data = json.loads(text)
-                            token = data["choices"][0]["delta"].get("content")
-                            if token:
-                                yield token
-                        except Exception:
-                            continue
-
-            start = datetime.now()
-            try:
-                if stream:
-                    return _request_stream()
-                return await with_retry_async(_request)
-            except Exception as e:
-                log_error("api_call", e)
-                return friendly_message(e)
-            finally:
-                metrics.record_call((datetime.now() - start).total_seconds())
-
-        model_order = [self.current] + [m for m in self.models if m != self.current]
-        if stream:
-
-            async def _stream():
-                used = self.current
-                for name in model_order:
-                    async for token in _call(name):
-                        used = name
-                        yield token
-                    break
+                async def _stream() -> AsyncGenerator[str, None]:
+                    for tok in response_text.split():
+                        yield tok + " "
                 metrics.record_call(0)
-
-            return _stream()
-
-        response_text = ""
-        for name in model_order:
-            text = await _call(name)
-            if text and not text.startswith(("⏱️", "📡", "🧱", "⚠️")):
-                response_text = text
-                used_model = name
-                break
-        if not response_text:
+                return _stream()
+        except Exception as e:  # pragma: no cover - heavy dep
+            log_error("local_model", e)
             metrics.record_error()
-            used_model = "none"
-            response_text = "# Falha geral – requires human input"
+            return friendly_message(e)
+
+        metrics.record_call(0)
 
         response_id = uuid4().hex
         annotation = f"# IA usada: {used_model}\n# PromptID: {prompt_id}\n# RespostaID: {response_id}\n"
@@ -362,8 +227,8 @@ class AIModel:
             response = await self.generate(
                 prompt, max_length=available, temperature=temperature
             )
-        except (asyncio.TimeoutError, ClientConnectionError, ClientError) as e:
-            logger.info("Retry attempt triggered after timeout...")
+        except Exception as e:
+            logger.info("Retry attempt triggered after error...")
             note = "⚠️ O modelo demorou para responder. Tentando novamente…\n"
             await asyncio.sleep(2)
             try:
@@ -371,24 +236,8 @@ class AIModel:
                     prompt, max_length=available, temperature=temperature
                 )
             except Exception:
-                return "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
-        except Exception as e:
-            if getattr(e, "status", 0) in (408, 504):
-                logger.info("Retry attempt triggered after timeout...")
-                note = "⚠️ O modelo demorou para responder. Tentando novamente…\n"
-                await asyncio.sleep(2)
-                try:
-                    response = await self.generate(
-                        prompt, max_length=available, temperature=temperature
-                    )
-                except Exception:
-                    return "❌ Não foi possível obter resposta do modelo após tentativa adicional. Verifique sua conexão ou limite do provedor."
-            else:
                 log_error("safe_api_call", e)
                 return friendly_message(e)
-
-        if "401" in response or "Unauthorized" in response:
-            return "🚫 A chave de API foi rejeitada. Verifique se está correta no config.OPENROUTER_API_KEY."
         while attempts < 3 and (
             is_response_incomplete(response) or len(response.split()) >= available - 1
         ):
