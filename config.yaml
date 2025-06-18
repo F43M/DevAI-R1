@@ -1,0 +1,5 @@
+SANDBOX_NETWORK: none
+SANDBOX_ALLOWED_HOSTS:
+  - huggingface.co
+  - openrouter.ai
+LOCAL_MODEL: './DevAI-Model'
