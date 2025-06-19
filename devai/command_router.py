@@ -5,7 +5,7 @@ import re
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from .patch_utils import split_diff_by_file, apply_patch
+from .patch_utils import split_diff_by_file, apply_patch as _apply_patch
 
 from rich.panel import Panel
 
@@ -20,6 +20,18 @@ except Exception:  # pragma: no cover - fallback for tests
     from .update_manager import UpdateManager
 from . import approval
 from .approval import requires_approval, request_approval
+
+
+def apply_patch(diff_text: str) -> None:
+    """Wrapper around patch_utils.apply_patch avoiding recursion."""
+    if getattr(apply_patch, "_in_call", False):
+        _apply_patch(diff_text)
+        return
+    try:
+        apply_patch._in_call = True
+        _apply_patch(diff_text)
+    finally:
+        apply_patch._in_call = False
 
 
 def _new_updater():
