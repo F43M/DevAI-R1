@@ -141,9 +141,11 @@ class AIModel:
             )
             used_model = "local"
             if stream:
+
                 async def _stream() -> AsyncGenerator[str, None]:
                     for tok in response_text.split():
                         yield tok + " "
+
                 metrics.record_call(0)
                 return _stream()
         except Exception as e:  # pragma: no cover - heavy dep
@@ -237,7 +239,9 @@ class AIModel:
                 )
             except Exception:
                 log_error("safe_api_call", e)
-                return friendly_message(e)
+                return "❌ " + friendly_message(e)
+        if isinstance(response, str) and "401" in response:
+            return "🚫 Token inválido ou sem autorização"
         while attempts < 3 and (
             is_response_incomplete(response) or len(response.split()) >= available - 1
         ):
