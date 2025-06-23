@@ -9,10 +9,41 @@ from .config import logger, config
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
 import transformers
+import torch
+
 if not hasattr(transformers, "top_k_top_p_filtering"):
-    from transformers.generation.logits_process import (
-        top_k_top_p_filtering as _top_k_top_p_filtering,
-    )
+    try:  # older versions exposed in generation.logits_process
+        from transformers.generation.logits_process import (
+            top_k_top_p_filtering as _top_k_top_p_filtering,
+        )
+    except Exception:  # pragma: no cover - fallback for latest versions
+
+        def _top_k_top_p_filtering(
+            logits,
+            top_k: int = 0,
+            top_p: float = 1.0,
+            filter_value: float = -float("Inf"),
+        ):
+            """Basic top-k/top-p filtering used by earlier Transformers releases."""
+
+            top_k = min(top_k, logits.size(-1))
+            if top_k > 0:
+                indices_to_remove = logits < torch.topk(logits, top_k)[0][..., -1, None]
+                logits[indices_to_remove] = filter_value
+            if top_p < 1.0:
+                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+                cumulative_probs = torch.cumsum(
+                    torch.softmax(sorted_logits, dim=-1), dim=-1
+                )
+                sorted_indices_to_remove = cumulative_probs > top_p
+                sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
+                    ..., :-1
+                ].clone()
+                sorted_indices_to_remove[..., 0] = 0
+                indices_to_remove = sorted_indices[sorted_indices_to_remove]
+                logits[indices_to_remove] = filter_value
+            return logits
+
     transformers.top_k_top_p_filtering = _top_k_top_p_filtering
 from trl import SFTTrainer
 from datasets import Dataset
@@ -45,11 +76,13 @@ class RLFineTuner:
                 meta = {}
             prompt = meta.get("prompt")
             if prompt:
-                examples.append({
-                    "prompt": prompt,
-                    "response": content,
-                    "score": score,
-                })
+                examples.append(
+                    {
+                        "prompt": prompt,
+                        "response": content,
+                        "score": score,
+                    }
+                )
         return examples
 
     def _collect_from_logs(self, log_dir: str | None = None) -> list[dict]:
@@ -65,18 +98,19 @@ class RLFineTuner:
                 continue
             lines = text.splitlines()
             for i in range(len(lines) - 1):
-                if (
-                    lines[i].startswith("User:")
-                    and lines[i + 1].startswith("Assistant:")
+                if lines[i].startswith("User:") and lines[i + 1].startswith(
+                    "Assistant:"
                 ):
                     q = lines[i].split("User:", 1)[1].strip()
                     a = lines[i + 1].split("Assistant:", 1)[1].strip()
                     if q and a:
-                        examples.append({
-                            "prompt": q,
-                            "response": a,
-                            "score": 1,
-                        })
+                        examples.append(
+                            {
+                                "prompt": q,
+                                "response": a,
+                                "score": 1,
+                            }
+                        )
         return examples
 
     def collect_examples(
