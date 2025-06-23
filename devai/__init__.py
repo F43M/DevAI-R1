@@ -2,6 +2,7 @@ from .conversation_handler import ConversationHandler
 from .dialog_summarizer import DialogSummarizer
 from .patch_utils import apply_patch_to_file, split_diff_by_file, apply_patch
 from .generation_chain import generate_long_code
+from .context_manager import CodeContext
 
 __all__ = [
     "ConversationHandler",
@@ -10,4 +11,5 @@ __all__ = [
     "apply_patch_to_file",
     "split_diff_by_file",
     "generate_long_code",
+    "CodeContext",
 ]
