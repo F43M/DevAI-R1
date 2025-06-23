@@ -54,3 +54,12 @@ Use `grep -Rn "pattern"` para localizar trechos problemáticos no código ou `lo
 - ... *(adicione breves descrições se necessário dos outros diretórios ou arquivos importantes).* ...
 
 Para detalhes extras consulte também `README.md`, `PROJECT_GUIDE.md` e os documentos em `docs/`.
+
+## Resolução e Registro de Erros
+
+Sempre que manipular o projeto, siga o fluxo abaixo:
+
+1. Rode os testes (`pytest`) e as verificações de estilo (`./scripts/dev_checks.sh` ou comandos individuais).
+2. Caso alguma falha seja encontrada, tente corrigi-la imediatamente. Priorize deixar a suíte de testes passando.
+3. Se algum erro persistir e não for possível resolvê-lo na mesma tarefa, registre as informações no arquivo `unresolved_errors.jsonl` no formato JSONL, incluindo `timestamp`, `tipo`, `mensagem` e `funcao`/`arquivo` relacionado.
+4. Mantenha esse log versionado para que outros desenvolvedores saibam o que ainda precisa ser tratado.
