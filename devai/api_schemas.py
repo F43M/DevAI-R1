@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from .config import config
 
@@ -19,9 +19,13 @@ class FileEditRequest(BaseModel):
     line: int = Field(..., ge=1)
     content: str
 
-    _file_validator = validator("file", allow_reuse=True)(_validate_path)
+    @field_validator("file")
+    @classmethod
+    def _file_validator(cls, v: str) -> str:
+        return _validate_path(v)
 
-    @validator("content")
+    @field_validator("content")
+    @classmethod
     def _content_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Conteúdo vazio não permitido.")
@@ -32,28 +36,41 @@ class FileCreateRequest(BaseModel):
     file: str
     content: str = ""
 
-    _file_validator = validator("file", allow_reuse=True)(_validate_path)
+    @field_validator("file")
+    @classmethod
+    def _file_validator(cls, v: str) -> str:
+        return _validate_path(v)
 
 
 class FileDeleteRequest(BaseModel):
     file: str
 
-    _file_validator = validator("file", allow_reuse=True)(_validate_path)
+    @field_validator("file")
+    @classmethod
+    def _file_validator(cls, v: str) -> str:
+        return _validate_path(v)
 
 
 class DirRequest(BaseModel):
     path: str
 
-    _path_validator = validator("path", allow_reuse=True)(_validate_path)
+    @field_validator("path")
+    @classmethod
+    def _path_validator(cls, v: str) -> str:
+        return _validate_path(v)
 
 
 class ApplyRefactorRequest(BaseModel):
     file_path: str
     diff: str
 
-    _file_validator = validator("file_path", allow_reuse=True)(_validate_path)
+    @field_validator("file_path")
+    @classmethod
+    def _file_validator(cls, v: str) -> str:
+        return _validate_path(v)
 
-    @validator("diff")
+    @field_validator("diff")
+    @classmethod
     def _diff_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Patch vazio não permitido.")
