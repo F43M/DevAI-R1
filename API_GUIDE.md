@@ -11,6 +11,10 @@ A aplicação expõe uma API FastAPI para interação com a IA e operações de 
   ```bash
   curl "http://localhost:8000/analyze_stream?query=exemplo"
   ```
+- `POST /generate` – gera código longo em partes. Envie `cont=true` para receber o próximo trecho.
+  ```bash
+  curl -X POST http://localhost:8000/generate -d "prompt=def func(): pass"
+  ```
 - `POST /reset_conversation` – reinicia o histórico de uma sessão.
   ```bash
   curl -X POST http://localhost:8000/reset_conversation -d "session_id=default"

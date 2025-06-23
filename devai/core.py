@@ -125,6 +125,7 @@ class CodeMemoryAI:
         self.conv_handler = ConversationHandler(memory=self.memory)
         self.conversation: List[Dict[str, str]] = self.conv_handler.history("default")
         self.double_check = config.DOUBLE_CHECK
+        self.codegen_sessions: Dict[str, Dict[str, Any]] = {}
         self._start_background_tasks()
         logger.info(
             "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter",
@@ -390,6 +391,14 @@ class CodeMemoryAI:
                     yield f"data: {token}\n\n"
 
             return StreamingResponse(event_gen(), media_type="text/event-stream")
+
+        @self.app.post("/generate")
+        async def generate(prompt: str = "", session_id: str = "default", cont: bool = False):
+            return await self.generate_code(
+                prompt if not cont else None,
+                session_id=session_id,
+                continue_session=cont,
+            )
 
         @self.app.post("/reset_conversation")
         async def reset_conversation(session_id: str):
@@ -1198,6 +1207,35 @@ class CodeMemoryAI:
         except Exception as e:
             logger.error("Erro ao inferir tipo de retorno", error=str(e))
         return None
+
+    async def generate_code(
+        self,
+        prompt: str | None,
+        *,
+        session_id: str = "default",
+        continue_session: bool = False,
+    ) -> Dict[str, Any]:
+        """Generate long code split into chunks and keep state."""
+
+        if not continue_session:
+            if not prompt:
+                return {"chunk": "", "done": True}
+            code = await generate_long_code(prompt, self.ai_model)
+            lines = code.splitlines()
+            chunks = [
+                "\n".join(lines[i : i + 50]) for i in range(0, len(lines), 50)
+            ] or [""]
+            self.codegen_sessions[session_id] = {"chunks": chunks, "index": 0}
+        state = self.codegen_sessions.get(session_id)
+        if not state:
+            return {"chunk": "", "done": True}
+        idx = state["index"]
+        chunk = state["chunks"][idx]
+        state["index"] += 1
+        done = state["index"] >= len(state["chunks"])
+        if done:
+            self.codegen_sessions.pop(session_id, None)
+        return {"chunk": chunk, "done": done}
 
     def get_session_context(
         self, session_id: str = "default", n: int = 3
