@@ -19,7 +19,7 @@ class CodeContext:
 
         self.history.append(text)
         try:
-            tree = ast.parse(text)
+            tree = ast.parse(self.text())
         except SyntaxError:
             return
 
