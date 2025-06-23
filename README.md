@@ -383,3 +383,6 @@ Cada arquivo em `devai/` possui uma responsabilidade específica:
 - `tui.py` – interface textual opcional.
 - `ui.py` – pequena interface web.
 - `update_manager.py` – aplicação de mudanças com rollback.
+- `generation_chain.py` – geração incremental de código em janelas.
+- `context_manager.py` – gerenciamento de contexto de código produzido.
+- `post_processor.py` – validação e formatação do código gerado.
