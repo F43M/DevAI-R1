@@ -93,6 +93,7 @@ async def cli_main(
     print("/feedback <arquivo> <tag> <motivo> - Registrar feedback negativo")
     print("/refatorar <arquivo> - Refatora o arquivo informado")
     print("/rever <arquivo> - Executa revisão de código")
+    print("/gerar <prompt> - Gera código longo em partes")
     print("/resetar - Limpa o histórico de conversa")
     print("/tests_local - Alterna execução isolada dos testes")
     print("/sair - Encerra")

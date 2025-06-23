@@ -554,6 +554,20 @@ async def handle_rever(ai, ui, args, *, plain, feedback_db):
             print(json.dumps(item, indent=2))
 
 
+async def handle_gerar(ai, ui, args, *, plain, feedback_db):
+    cont = args.strip().lower() == "continuar"
+    if cont:
+        res = await ai.generate_code(None, continue_session=True)
+    else:
+        if not args:
+            print("Uso: /gerar <prompt>")
+            return
+        res = await ai.generate_code(args)
+    print(res["chunk"])
+    if not res["done"]:
+        print("Digite /gerar continuar para mais.")
+
+
 async def handle_resetar(ai, ui, args, *, plain, feedback_db):
     ai.conv_handler.reset("default")
     print("Conversa resetada.")
@@ -806,6 +820,7 @@ COMMANDS = {
     "feedback": handle_feedback,
     "refatorar": handle_refatorar,
     "rever": handle_rever,
+    "gerar": handle_gerar,
     "aprovar_proxima": handle_aprovar_proxima,
     "aprovar_durante": handle_aprovar_durante,
     "modo": handle_modo,
