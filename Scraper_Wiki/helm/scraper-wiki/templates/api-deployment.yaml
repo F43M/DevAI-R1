@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scraper-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scraper-api
+  template:
+    metadata:
+      labels:
+        app: scraper-api
+    spec:
+      containers:
+      - name: api
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command: ["uvicorn", "api.api_app:app", "--host", "0.0.0.0", "--port", "8000"]
+        env:
+        - name: QUEUE_URL
+          value: {{ .Values.queueUrl | quote }}
+        ports:
+        - containerPort: 8000

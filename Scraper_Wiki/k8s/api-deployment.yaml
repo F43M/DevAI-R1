@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scraper-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scraper-api
+  template:
+    metadata:
+      labels:
+        app: scraper-api
+    spec:
+      containers:
+      - name: api
+        image: myrepo/scraper-wiki:latest
+        command: ["uvicorn", "api.api_app:app", "--host", "0.0.0.0", "--port", "8000"]
+        env:
+        - name: QUEUE_URL
+          value: amqp://guest:guest@rabbitmq:5672/
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: cluster-config
+          mountPath: /config
+      volumes:
+      - name: cluster-config
+        configMap:
+          name: cluster-config

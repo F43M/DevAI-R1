@@ -1,0 +1,56 @@
+version: '3.9'
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    environment:
+      - QUEUE_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - rabbitmq
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - QUEUE_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - rabbitmq
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command: --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+  dashboard:
+    build: .
+    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      - API_BASE=http://api:8000
+      - PROMETHEUS_URL=http://prometheus:9090
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+      - prometheus
+  mlflow:
+    image: mlflow/mlflow:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow
+    command: mlflow server --backend-store-uri /mlflow --default-artifact-root /mlflow --host 0.0.0.0

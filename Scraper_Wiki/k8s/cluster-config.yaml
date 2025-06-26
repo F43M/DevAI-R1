@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config
+data:
+  cluster.yaml: |
+    cluster:
+      backend: dask
+      scheduler: tcp://scheduler:8786
+      workers: 4
+    crawler:
+      crawl_delay: 1.0
+      max_pages: 100
+      start_urls: []
+      user_agent: ScraperWikiBot

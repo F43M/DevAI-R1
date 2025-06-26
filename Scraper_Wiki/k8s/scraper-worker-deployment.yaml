@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scraper-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scraper-worker
+  template:
+    metadata:
+      labels:
+        app: scraper-worker
+    spec:
+      containers:
+      - name: worker
+        image: myrepo/scraper-wiki-worker:latest
+        command: ["python", "worker.py"]
+        env:
+        - name: QUEUE_URL
+          value: amqp://guest:guest@rabbitmq:5672/
+        - name: METRICS_PORT
+          value: "8001"
+        ports:
+        - containerPort: 8001
+        volumeMounts:
+        - name: cluster-config
+          mountPath: /config
+      volumes:
+      - name: cluster-config
+        configMap:
+          name: cluster-config

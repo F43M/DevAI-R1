@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scraper-worker
+spec:
+  replicas: {{ .Values.workers }}
+  selector:
+    matchLabels:
+      app: scraper-worker
+  template:
+    metadata:
+      labels:
+        app: scraper-worker
+    spec:
+      containers:
+      - name: worker
+        image: {{ .Values.workerImage.repository }}:{{ .Values.workerImage.tag }}
+        command: ["python", "worker.py"]
+        env:
+        - name: QUEUE_URL
+          value: {{ .Values.queueUrl | quote }}
+        - name: METRICS_PORT
+          value: "8001"
+        ports:
+        - containerPort: 8001
