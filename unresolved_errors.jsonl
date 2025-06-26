@@ -1,1 +1,2 @@
 {"timestamp": "2025-06-23T13:20:10Z", "tipo": "TestFailure", "mensagem": "tests/test_cli.py::test_cli_patch_apply_accept", "funcao": "pytest"}
+{"timestamp": "2025-06-26T17:45:04Z", "tipo": "StyleError", "mensagem": "flake8 devai produced errors", "funcao": "scripts/dev_checks.sh"}
