@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config
+binaryData:
+  cluster.yaml: |-
+    {{ (.Files.Get "cluster.yaml") | b64enc }}

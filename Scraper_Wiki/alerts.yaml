@@ -1,0 +1,60 @@
+# Example Prometheus alert rules
+# Alerta se a taxa de erros ultrapassar 20% nas últimas 5 minutos
+- alert: HighScrapeErrorRate
+  expr: rate(scrape_error_total[5m]) / (rate(scrape_success_total[5m]) + rate(scrape_error_total[5m])) > 0.2
+  for: 10m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Taxa alta de erros de scraping"
+    description: "Mais de 20% das requisições resultaram em erro por 10 minutos"
+
+# Alerta se nenhum scraping bem sucedido for registrado
+- alert: ScrapeStalled
+  expr: rate(scrape_success_total[10m]) == 0
+  for: 15m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Scraping sem sucesso"
+    description: "Nenhuma página foi raspada com sucesso nas últimas 15 minutos"
+
+# Alerta se a cobertura de idiomas estiver baixa
+- alert: MissingLanguages
+  expr: dataset_language_coverage < 0.5
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Cobertura de idiomas baixa"
+    description: "Menos de 50% dos idiomas definidos estão presentes no dataset"
+
+# Alerta se os parsers não forem atualizados há mais de 7 dias
+- alert: OutdatedParsers
+  expr: time() - scraper_parser_update_timestamp > 7 * 24 * 3600
+  for: 10m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Parsers desatualizados"
+    description: "Faz mais de 7 dias desde a última atualização dos parsers"
+
+# Alerta de uso elevado de CPU
+- alert: HighCPUUsage
+  expr: cpu_usage_percent > 90
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Uso de CPU elevado"
+    description: "O uso de CPU do worker está acima de 90% por 5 minutos"
+
+# Alerta de uso elevado de memória
+- alert: HighMemoryUsage
+  expr: memory_usage_percent > 90
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Uso de memória elevado"
+    description: "O uso de memória do worker está acima de 90% por 5 minutos"

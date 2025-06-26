@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dask-worker
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: dask-worker
+  template:
+    metadata:
+      labels:
+        app: dask-worker
+    spec:
+      containers:
+      - name: worker
+        image: daskdev/dask:latest
+        args: ["dask-worker", "scheduler:8786"]
+        env:
+        - name: EXTRA_APT_PACKAGES
+          value: ""

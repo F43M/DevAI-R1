@@ -1,0 +1,6 @@
+outs:
+- md5: 00000000000000000000000000000000.dir
+  size: 0
+  nfiles: 0
+  hash: md5
+  path: datasets/raw

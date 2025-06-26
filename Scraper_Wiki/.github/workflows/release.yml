@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pdoc huggingface_hub dvc
+
+      - name: Pull dataset
+        run: dvc pull || true
+
+      - name: Read version
+        id: version
+        run: echo "version=$(grep -m1 '^version =\"' pyproject.toml | cut -d '"' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate dataset metadata
+        run: |
+          VERSION=${{ steps.version.outputs.version }} scripts/generate_dataset_metadata.py datasets_wikipedia_pro dataset_metadata.json
+
+      - name: Generate docs
+        run: |
+          pdoc -o docs -d google integrations core plugins utils api
+          tar -czf docs.tar.gz docs
+
+      - name: Upload dataset to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ secrets.HF_REPO }}
+        run: |
+          python - <<'PY'
+from pathlib import Path
+from training.formats import publish_hf_dataset
+import json, os
+records = []
+if Path('datasets_wikipedia_pro').exists():
+    for file in Path('datasets_wikipedia_pro').rglob('*.json'):
+        try:
+            records.extend(json.load(open(file)))
+        except Exception:
+            pass
+if records:
+    publish_hf_dataset(records, os.environ['HF_REPO'], token=os.environ.get('HF_TOKEN'))
+PY
+        continue-on-error: true
+
+      - uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          files: |
+            dataset_metadata.json
+            docs.tar.gz

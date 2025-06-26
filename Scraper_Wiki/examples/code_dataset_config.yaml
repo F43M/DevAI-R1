@@ -1,0 +1,23 @@
+# Example configuration for building a code dataset from multiple sources
+languages:
+  - en
+  - pt
+categories:
+  - machine-learning
+  - algorithms
+format: jsonl
+plugins:
+  stackoverflow:
+    site: stackoverflow
+    api_key: YOUR_STACKEXCHANGE_API_KEY
+    min_score: 5
+  github_scraper:
+    token: YOUR_GITHUB_TOKEN
+    api_url: https://api.github.com
+  gitlab_scraper:
+    token: YOUR_GITLAB_TOKEN
+    api_url: https://gitlab.com/api/v4
+  api_docs:
+    allowed_domains:
+      - docs.python.org
+      - developer.mozilla.org

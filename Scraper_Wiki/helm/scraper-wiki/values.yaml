@@ -1,0 +1,8 @@
+image:
+  repository: myrepo/scraper-wiki
+  tag: latest
+workerImage:
+  repository: myrepo/scraper-wiki-worker
+  tag: latest
+queueUrl: amqp://guest:guest@rabbitmq:5672/
+workers: 1

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: scraper-wiki
+version: 0.1.0
+appVersion: "1.0"
