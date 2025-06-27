@@ -22,16 +22,20 @@ from . import approval
 from .approval import requires_approval, request_approval
 
 
+_apply_patch_lock = False
+
+
 def apply_patch(diff_text: str) -> None:
     """Wrapper around patch_utils.apply_patch avoiding recursion."""
-    if getattr(apply_patch, "_in_call", False):
+    global _apply_patch_lock
+    if _apply_patch_lock:
         _apply_patch(diff_text)
         return
     try:
-        apply_patch._in_call = True
+        _apply_patch_lock = True
         _apply_patch(diff_text)
     finally:
-        apply_patch._in_call = False
+        _apply_patch_lock = False
 
 
 def _new_updater():

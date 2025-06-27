@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 
 from .config import config
 
@@ -19,12 +19,12 @@ class FileEditRequest(BaseModel):
     line: int = Field(..., ge=1)
     content: str
 
-    @field_validator("file")
+    @validator("file")
     @classmethod
     def _file_validator(cls, v: str) -> str:
         return _validate_path(v)
 
-    @field_validator("content")
+    @validator("content")
     @classmethod
     def _content_not_empty(cls, v: str) -> str:
         if not v.strip():
@@ -36,7 +36,7 @@ class FileCreateRequest(BaseModel):
     file: str
     content: str = ""
 
-    @field_validator("file")
+    @validator("file")
     @classmethod
     def _file_validator(cls, v: str) -> str:
         return _validate_path(v)
@@ -45,7 +45,7 @@ class FileCreateRequest(BaseModel):
 class FileDeleteRequest(BaseModel):
     file: str
 
-    @field_validator("file")
+    @validator("file")
     @classmethod
     def _file_validator(cls, v: str) -> str:
         return _validate_path(v)
@@ -54,7 +54,7 @@ class FileDeleteRequest(BaseModel):
 class DirRequest(BaseModel):
     path: str
 
-    @field_validator("path")
+    @validator("path")
     @classmethod
     def _path_validator(cls, v: str) -> str:
         return _validate_path(v)
@@ -64,12 +64,12 @@ class ApplyRefactorRequest(BaseModel):
     file_path: str
     diff: str
 
-    @field_validator("file_path")
+    @validator("file_path")
     @classmethod
     def _file_validator(cls, v: str) -> str:
         return _validate_path(v)
 
-    @field_validator("diff")
+    @validator("diff")
     @classmethod
     def _diff_not_empty(cls, v: str) -> str:
         if not v.strip():

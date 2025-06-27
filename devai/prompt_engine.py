@@ -241,9 +241,7 @@ def build_dynamic_prompt(
         "diff",
     ]
     if intent in {"edit", "create"} or any(k in q for k in modify_keywords):
-        prompt += (
-            "Retorne apenas um patch de diff unificado e envolva-o em um bloco markdown com `diff` para facilitar a detecção.\n"
-        )
+        prompt += "Retorne apenas um patch de diff unificado e envolva-o em um bloco markdown com `diff` para facilitar a detecção.\n"
 
     keywords = ["por que", "por quê", "analise", "detalhe", "explique", "entenda"]
     explain_intents = {"debug", "architecture", "review"}
@@ -251,7 +249,11 @@ def build_dynamic_prompt(
         prompt += "Explique antes de responder." + extra
     else:
         prompt += extra
-    logger.info("Prompt dinâmico", included_blocks=included, reasons=reasons, mode=mode)
+    logger.info(
+        f"Prompt dinâmico reasons={reasons}",
+        included_blocks=included,
+        mode=mode,
+    )
     return prompt
 
 
