@@ -1,2 +1,7 @@
 {"timestamp": "2025-06-23T13:20:10Z", "tipo": "TestFailure", "mensagem": "tests/test_cli.py::test_cli_patch_apply_accept", "funcao": "pytest"}
 {"timestamp": "2025-06-26T17:45:04Z", "tipo": "StyleError", "mensagem": "flake8 devai produced errors", "funcao": "scripts/dev_checks.sh"}
+{"timestamp": "2025-06-26T23:10:09Z", "tipo": "TestFailure", "mensagem": "ImportPathMismatchError during pytest collection", "funcao": "pytest"}
+{"timestamp": "2025-06-26T23:10:10Z", "tipo": "StyleError", "mensagem": "flake8 devai produced errors", "funcao": "flake8"}
+{"timestamp": "2025-06-26T23:10:12Z", "tipo": "StyleError", "mensagem": "pylint devai returned messages", "funcao": "pylint"}
+{"timestamp": "2025-06-26T23:10:14Z", "tipo": "StyleError", "mensagem": "mypy devai produced errors", "funcao": "mypy"}
+{"timestamp": "2025-06-26T23:10:15Z", "tipo": "SecurityIssue", "mensagem": "bandit found issues", "funcao": "bandit"}

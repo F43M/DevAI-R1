@@ -5,3 +5,6 @@ logs/
 **/__pycache__/
 prompt_log.jsonl
 .env
+Scraper-Wiki-main (5).zip
+complexity_history.json
+complexity_trend.json
