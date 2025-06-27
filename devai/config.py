@@ -78,6 +78,8 @@ class Config:
     APPROVAL_MODE: str = "suggest"
     DIFF_STYLE: str = "inline"
     AUTO_APPROVAL_RULES: list[dict] = field(default_factory=list)
+    SCRAPER_CLUSTER_CONFIG: str = "Scraper_Wiki/cluster.yaml"
+    SCRAPER_SCHEDULE: str = ""
 
     def __init__(self, path: str = "config.yaml") -> None:
         self._load(path)
@@ -183,10 +185,16 @@ class Config:
                 raise ValueError(
                     "AUTO_APPROVAL_RULES entries require 'action', 'path', 'approve'"
                 )
-            if not isinstance(rule["action"], str) or not isinstance(
-                rule["path"], str
-            ) or not isinstance(rule["approve"], bool):
+            if (
+                not isinstance(rule["action"], str)
+                or not isinstance(rule["path"], str)
+                or not isinstance(rule["approve"], bool)
+            ):
                 raise ValueError("Invalid AUTO_APPROVAL_RULES entry")
+        if not isinstance(self.SCRAPER_CLUSTER_CONFIG, str):
+            raise ValueError("SCRAPER_CLUSTER_CONFIG must be string")
+        if not isinstance(self.SCRAPER_SCHEDULE, str):
+            raise ValueError("SCRAPER_SCHEDULE must be string")
 
     @property
     def model_name(self) -> str:

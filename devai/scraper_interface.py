@@ -30,6 +30,21 @@ async def run_scrape(
 
     plugin = opts.get("plugin", "wikipedia")
 
+    distributed = bool(opts.get("distributed"))
+    client = opts.get("client")
+    if distributed and client is None:
+        try:
+            from .config import config
+            from Scraper_Wiki import cluster
+
+            cfg = cluster.load_config(config.SCRAPER_CLUSTER_CONFIG)
+            client = cluster.get_client(cfg)
+        except Exception as exc:  # pragma: no cover - optional cluster
+            import logging
+
+            logging.getLogger(__name__).error("cluster_unavailable", error=str(exc))
+            client = None
+
     if plugin == "github":
         from Scraper_Wiki.cli import auto_scrape
 
@@ -61,6 +76,7 @@ async def run_scrape(
         revisions=revisions,
         rev_limit=rev_limit,
         translate_to=translate_to,
+        client=client,
         incremental=incremental,
     )
 

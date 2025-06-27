@@ -2,4 +2,7 @@ SANDBOX_NETWORK: none
 SANDBOX_ALLOWED_HOSTS:
   - huggingface.co
   - openrouter.ai
-LOCAL_MODEL: './DevAI-Model'
+LOCAL_MODEL: ''
+SCRAPER_CLUSTER_CONFIG: Scraper_Wiki/cluster.yaml
+# Cron expression for automatic scraping jobs
+SCRAPER_SCHEDULE: ""
