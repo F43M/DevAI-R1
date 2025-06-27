@@ -1,0 +1,3 @@
+rich
+prompt_toolkit
+textual<0.31

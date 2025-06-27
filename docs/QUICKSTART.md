@@ -11,10 +11,10 @@ Este guia resume os passos iniciais para rodar o DevAI-R1.
    Os utilitários de desenvolvimento (`flake8`, `pylint`, `mypy`, `bandit` e
    `pre-commit`) estão listados em `requirements-dev.txt`.
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements-core.txt
+   pip install -r requirements-ml.txt
+   pip install -r requirements-ui.txt
    pip install -r requirements-dev.txt
-   # dependências extras para UI e RLHF (opcional)
-   pip install transformers trl rich prompt_toolkit textual
    ```
 3. **Copie e ajuste a configuração**
    ```bash

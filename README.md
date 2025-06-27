@@ -52,13 +52,13 @@ API_SECRET: "sua-chave"
    variável diretamente no ambiente. O DevAI carrega esse arquivo
    automaticamente se o pacote `python-dotenv` estiver instalado.
 
-3. Instale as dependências do projeto para habilitar a comunicação real com o OpenRouter e as ferramentas de desenvolvimento (linters, testes etc.):
+3. Instale as dependências do projeto em etapas. Isso evita baixar todos os pacotes pesados de uma só vez:
 
 ```bash
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-# dependências extras para UI e RLHF (opcional)
-pip install transformers trl rich prompt_toolkit textual
+pip install -r requirements-core.txt      # núcleo do DevAI
+pip install -r requirements-ml.txt        # bibliotecas de IA avançada
+pip install -r requirements-ui.txt        # interface web e TUI
+pip install -r requirements-dev.txt       # ferramentas de desenvolvimento
 ```
 
 Caso pretenda utilizar a interface web incluída em `static/`, instale também as
