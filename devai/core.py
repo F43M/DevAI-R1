@@ -133,6 +133,7 @@ class CodeMemoryAI:
             code_root=config.CODE_ROOT,
         )
         self.external_data_needed = False
+        self.new_ingested_data = False
 
     @property
     def conversation_history(self) -> List[Dict[str, str]]:
@@ -867,6 +868,9 @@ class CodeMemoryAI:
 
     async def _run_scheduled_tasks(self):
         now = datetime.now()
+        if self.new_ingested_data:
+            await run_scheduled_rlhf(self.memory)
+            self.new_ingested_data = False
         if now.hour == 3:
             await self.tasks.run_task("code_review")
             self.memory.cleanup()
