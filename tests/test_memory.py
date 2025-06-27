@@ -48,7 +48,15 @@ def test_save_and_search():
         model = DummyModel()
         index = DummyIndex(model.dim)
         mem = MemoryManager(db, "dummy", model=model, index=index)
-        mem.save({"type": "note", "content": "hello", "metadata": {}, "tags": ["t"], "memory_type": "explicacao"})
+        mem.save(
+            {
+                "type": "note",
+                "content": "hello",
+                "metadata": {},
+                "tags": ["t"],
+                "memory_type": "explicacao",
+            }
+        )
         results = mem.search("hello")
         assert results
         assert results[0]["content"] == "hello"
@@ -105,17 +113,31 @@ def test_compress_and_prune_memory(tmp_path, monkeypatch):
     db = f"{tmp_path}/mem.sqlite"
     monkeypatch.setattr(config, "LOG_DIR", str(tmp_path))
     mem = MemoryManager(db, "dummy", model=None, index=None)
-    mem.save({"type": "n", "memory_type": "explicacao", "content": "dup", "metadata": {}})
-    mem.save({"type": "n", "memory_type": "explicacao", "content": "dup", "metadata": {}})
+    mem.save(
+        {"type": "n", "memory_type": "explicacao", "content": "dup", "metadata": {}}
+    )
+    mem.save(
+        {"type": "n", "memory_type": "explicacao", "content": "dup", "metadata": {}}
+    )
     comp = mem.compress_memory()
     assert comp == 1
-    active = mem.conn.execute("SELECT id, metadata FROM memory WHERE disabled=0").fetchone()
+    active = mem.conn.execute(
+        "SELECT id, metadata FROM memory WHERE disabled=0"
+    ).fetchone()
     meta = json.loads(active[1])
     assert meta.get("merged_ids")
 
-    old_entry = {"type": "n", "memory_type": "explicacao", "content": "old", "metadata": {}}
+    old_entry = {
+        "type": "n",
+        "memory_type": "explicacao",
+        "content": "old",
+        "metadata": {},
+    }
     mem.save(old_entry)
-    mem.conn.execute("UPDATE memory SET created_at = ? WHERE id = ?", ("2000-01-01T00:00:00", old_entry["id"]))
+    mem.conn.execute(
+        "UPDATE memory SET created_at = ? WHERE id = ?",
+        ("2000-01-01T00:00:00", old_entry["id"]),
+    )
     pruned = mem.prune_old_memories(threshold_days=1)
     assert pruned == 1
     latent = Path(str(tmp_path)) / "latent_memory.json"
@@ -174,3 +196,16 @@ def test_tag_stats(tmp_path):
     assert a == 2
     assert b == 1
 
+
+def test_ttl_expiration(tmp_path):
+    db = str(tmp_path / "mem.sqlite")
+    mem = MemoryManager(db, "dummy", model=None, index=None)
+    entry = {"type": "n", "content": "temp", "metadata": {}, "tags": []}
+    mem.save(entry, ttl_seconds=1)
+    mem.conn.execute(
+        "UPDATE memory SET expires_at = ? WHERE id = ?",
+        ("2000-01-01T00:00:00", entry["id"]),
+    )
+    pruned = mem.prune_old_memories()
+    assert pruned == 1
+    assert not mem.search("temp")

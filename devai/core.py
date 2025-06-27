@@ -118,6 +118,7 @@ class CodeMemoryAI:
         # Rastreamento de loops e watchers em execução
         self.watchers: Dict[str, asyncio.Task] = {}
         self.last_average_complexity = 0.0
+        self.temp_memory_hours: int | None = None
         self.reason_stack = []
         self.response_cache: "OrderedDict[str, Dict]" = OrderedDict()
         self.response_cache_size = 32

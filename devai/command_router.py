@@ -66,6 +66,12 @@ async def handle_ajuda(ai, ui, args, *, plain, feedback_db):
 
 
 async def handle_memoria(ai, ui, args, *, plain, feedback_db):
+    m_tmp = re.search(r"temporaria\s+(\d+)", args)
+    if m_tmp:
+        ai.temp_memory_hours = int(m_tmp.group(1))
+        print(f"Tempo de retenção temporária definido para {m_tmp.group(1)} horas")
+        return
+
     detailed = "--detalhado" in args
     if detailed:
         args = args.replace("--detalhado", "").strip()
