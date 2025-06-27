@@ -131,6 +131,7 @@ class CodeMemoryAI:
             "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter",
             code_root=config.CODE_ROOT,
         )
+        self.external_data_needed = False
 
     @property
     def conversation_history(self) -> List[Dict[str, str]]:
@@ -161,6 +162,43 @@ class CodeMemoryAI:
             )
         except Exception:
             pass
+
+    def _looks_uncertain(self, text: str) -> bool:
+        """Heuristic detection of uncertain answers."""
+        patterns = [
+            r"desculp",
+            r"n\u00e3o sei",
+            r"n\u00e3o possuo",
+            r"n\u00e3o tenho informa",
+        ]
+        lower = text.lower()
+        return any(re.search(p, lower) for p in patterns)
+
+    def needs_external_data(self, prompt: str) -> bool:
+        """Check if external scraping is recommended for ``prompt``."""
+        results = self.memory.search(prompt, top_k=3)
+        top_score = max((r.get("similarity_score", 0.0) for r in results), default=0.0)
+        last_resp = ""
+        for msg in reversed(self.conv_handler.history("default")):
+            if msg.get("role") == "assistant":
+                last_resp = msg.get("content", "")
+                break
+        from .symbolic_verification import evaluate_ai_response
+
+        score, _ = evaluate_ai_response(last_resp)
+        digits = [int(d) for d in re.findall(r"\d", score)]
+        avg = sum(digits) / len(digits) if digits else 0.0
+        low_conf = avg < 2.5
+        return top_score < 0.3 or low_conf
+
+    async def start_scrape(self, query: str) -> None:
+        """Trigger an external Scraper Wiki search."""
+        try:
+            from Scraper_Wiki.cli import search_cli
+
+            await asyncio.to_thread(search_cli, query)
+        except Exception as exc:  # pragma: no cover - scraper optional
+            logger.error("scraper_failed", error=str(exc))
 
     def _build_history_messages(
         self, session_id: str, buffer: int = 1000
@@ -393,7 +431,9 @@ class CodeMemoryAI:
             return StreamingResponse(event_gen(), media_type="text/event-stream")
 
         @self.app.post("/generate")
-        async def generate(prompt: str = "", session_id: str = "default", cont: bool = False):
+        async def generate(
+            prompt: str = "", session_id: str = "default", cont: bool = False
+        ):
             return await self.generate_code(
                 prompt if not cont else None,
                 session_id=session_id,
@@ -969,6 +1009,9 @@ class CodeMemoryAI:
                 history,
                 intent,
             )
+            self.external_data_needed = False
+            if self._looks_uncertain(result):
+                self.external_data_needed = self.needs_external_data(query)
             if session_id:
                 self.conv_handler.append(session_id, "user", query)
                 self.conv_handler.append(session_id, "assistant", result)
@@ -1012,9 +1055,13 @@ class CodeMemoryAI:
         ):
             collected.append(token)
             yield token
+        response_text = "".join(collected)
+        self.external_data_needed = False
+        if self._looks_uncertain(response_text):
+            self.external_data_needed = self.needs_external_data(query)
         if session_id:
             self.conv_handler.append(session_id, "user", query)
-            self.conv_handler.append(session_id, "assistant", "".join(collected))
+            self.conv_handler.append(session_id, "assistant", response_text)
 
     @staticmethod
     def _split_plan_response(text: str) -> tuple[str, str]:
