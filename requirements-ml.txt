@@ -1,0 +1,4 @@
+sentence-transformers
+faiss-cpu
+transformers
+trl==0.7.11

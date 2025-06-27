@@ -4,7 +4,8 @@ Este arquivo permite descrever comandos e convenções específicas do projeto. 
 
 ## Comandos principais
 
-- **Instalar dependências:** `pip install -r requirements.txt`
+- **Instalar dependências:**
+  `pip install -r requirements-core.txt && pip install -r requirements-ml.txt && pip install -r requirements-ui.txt`
 - **Executar testes:** `pytest`
 - **Verificar estilo:** `flake8 devai`
 - **Análise estática:** `pylint devai && mypy devai`
