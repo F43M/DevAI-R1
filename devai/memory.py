@@ -65,7 +65,9 @@ class MemoryManager:
             else:
                 try:
                     self.embedding_model = SentenceTransformer(embedding_model)
-                except Exception as e:  # pragma: no cover - optional model fetch failure
+                except (
+                    Exception
+                ) as e:  # pragma: no cover - optional model fetch failure
                     logger.warning(
                         "falha ao carregar modelo de embeddings", error=str(e)
                     )
@@ -118,7 +120,8 @@ class MemoryManager:
                 last_accessed TEXT,
                 access_count INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT
             )
             """
         )
@@ -173,17 +176,27 @@ class MemoryManager:
             )
             """
         )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_feedback ON memory(feedback_score)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_access ON memory(access_count)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_type ON memory(memory_type)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_memory_feedback ON memory(feedback_score)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_memory_access ON memory(access_count)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_memory_type ON memory(memory_type)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag)")
         cursor.execute("PRAGMA table_info(memory)")
         cols = [r[1] for r in cursor.fetchall()]
         if "disabled" not in cols:
             cursor.execute("ALTER TABLE memory ADD COLUMN disabled INTEGER DEFAULT 0")
+        if "expires_at" not in cols:
+            cursor.execute("ALTER TABLE memory ADD COLUMN expires_at TEXT")
         self.conn.commit()
 
-    def _load_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+    def _load_index(
+        self, index_file: str | None = None, ids_file: str | None = None
+    ) -> None:
         if not faiss:
             return
         index_file = index_file or self.index_file
@@ -214,7 +227,9 @@ class MemoryManager:
         with open(ids_file, "w") as f:
             json.dump(self.indexed_ids, f)
 
-    def _persist_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+    def _persist_index(
+        self, index_file: str | None = None, ids_file: str | None = None
+    ) -> None:
         if not faiss or self.index is None:
             return
         index_file = index_file or self.index_file
@@ -222,11 +237,15 @@ class MemoryManager:
         self._write_index_file(index_file)
         self._write_ids_file(ids_file)
 
-    def persist_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+    def persist_index(
+        self, index_file: str | None = None, ids_file: str | None = None
+    ) -> None:
         """Public wrapper to persist the current index to disk."""
         self._persist_index(index_file, ids_file)
 
-    def load_index(self, index_file: str | None = None, ids_file: str | None = None) -> None:
+    def load_index(
+        self, index_file: str | None = None, ids_file: str | None = None
+    ) -> None:
         """Public wrapper to load index and ids if files exist."""
         self._load_index(index_file, ids_file)
 
@@ -241,7 +260,9 @@ class MemoryManager:
         for row in cursor.fetchall():
             self.indexed_ids.append(row[0])
             if np is not None:
-                embeddings.append(np.frombuffer(row[1], dtype=np.float32).reshape(1, -1))
+                embeddings.append(
+                    np.frombuffer(row[1], dtype=np.float32).reshape(1, -1)
+                )
         if embeddings and np is not None:
             self.index.add(np.concatenate(embeddings))
         self.persist_index()
@@ -266,7 +287,9 @@ class MemoryManager:
             self.embedding_cache.popitem(last=False)
         return vec
 
-    def save(self, entry: Dict, update_feedback: bool = False):
+    def save(
+        self, entry: Dict, update_feedback: bool = False, ttl_seconds: int | None = None
+    ):
         meta = entry.get("metadata", {})
         if entry.get("resposta_recomposta"):
             if not isinstance(meta, dict):
@@ -276,6 +299,11 @@ class MemoryManager:
                     meta = {"raw": str(meta)}
             meta["resposta_recomposta"] = True
         entry["metadata"] = json.dumps(meta)
+        if ttl_seconds is not None and ttl_seconds > 0:
+            entry["expires_at"] = (
+                datetime.now() + timedelta(seconds=ttl_seconds)
+            ).isoformat()
+        expires = entry.get("expires_at")
         content = self._generate_content_for_embedding(entry)
         if self.index is not None:
             embedding_vec = self._get_embedding(content)
@@ -295,8 +323,8 @@ class MemoryManager:
         else:
             cursor.execute(
                 """INSERT INTO memory
-                (type, memory_type, content, metadata, embedding, feedback_score, context_level)
-                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (type, memory_type, content, metadata, embedding, feedback_score, context_level, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     entry.get("type", "generic"),
                     entry.get("memory_type"),
@@ -305,6 +333,7 @@ class MemoryManager:
                     embedding,
                     entry.get("feedback_score", 0),
                     entry.get("context_level", "long"),
+                    expires,
                 ),
             )
             entry["id"] = cursor.lastrowid
@@ -327,7 +356,10 @@ class MemoryManager:
                 self.indexed_ids.append(entry["id"])
                 self.persist_index()
         self.conn.commit()
-        logger.info("Memória salva" if not update_feedback else "Feedback atualizado", entry_type=entry.get("type"))
+        logger.info(
+            "Memória salva" if not update_feedback else "Feedback atualizado",
+            entry_type=entry.get("type"),
+        )
 
     def _generate_content_for_embedding(self, entry: Dict) -> str:
         parts = [
@@ -378,7 +410,7 @@ class MemoryManager:
                         "metadata": json.loads(row[4]),
                         "feedback_score": row[6],
                         "context_level": row[7],
-                        "tags": row[12].split(", ") if row[12] else [],
+                        "tags": row[-1].split(", ") if row[-1] else [],
                         "similarity_score": 1.0,
                         "last_accessed": row[8],
                         "access_count": row[9],
@@ -417,7 +449,7 @@ class MemoryManager:
                                 "metadata": json.loads(row[4]),
                                 "feedback_score": row[6],
                                 "context_level": row[7],
-                                "tags": row[12].split(", ") if row[12] else [],
+                                "tags": row[-1].split(", ") if row[-1] else [],
                                 "similarity_score": 1 - distance,
                                 "last_accessed": row[8],
                                 "access_count": row[9],
@@ -442,7 +474,9 @@ class MemoryManager:
 
         return sorted(results, key=_score, reverse=True)
 
-    def add_semantic_relation(self, source_id: int, target_id: int, relation_type: str, strength: float = 1.0):
+    def add_semantic_relation(
+        self, source_id: int, target_id: int, relation_type: str, strength: float = 1.0
+    ):
         cursor = self.conn.cursor()
         cursor.execute(
             """INSERT OR REPLACE INTO semantic_relations (source_id, target_id, relation_type, strength)
@@ -450,9 +484,16 @@ class MemoryManager:
             (source_id, target_id, relation_type, strength),
         )
         self.conn.commit()
-        logger.info("Relação semântica adicionada", source=source_id, target=target_id, type=relation_type)
+        logger.info(
+            "Relação semântica adicionada",
+            source=source_id,
+            target=target_id,
+            type=relation_type,
+        )
 
-    def get_related_memories(self, memory_id: int, relation_type: Optional[str] = None) -> List[Dict]:
+    def get_related_memories(
+        self, memory_id: int, relation_type: Optional[str] = None
+    ) -> List[Dict]:
         cursor = self.conn.cursor()
         query = """
             SELECT m.*, r.relation_type, r.strength, GROUP_CONCAT(t.tag, ', ') as tags
@@ -475,9 +516,9 @@ class MemoryManager:
                     "type": row[1],
                     "content": row[2],
                     "metadata": json.loads(row[3]),
-                    "relation_type": row[12],
-                    "strength": row[13],
-                    "tags": row[14].split(", ") if row[14] else [],
+                    "relation_type": row[-3],
+                    "strength": row[-2],
+                    "tags": row[-1].split(", ") if row[-1] else [],
                 }
             )
         return results
@@ -608,16 +649,37 @@ class MemoryManager:
         ]
 
     def prune_old_memories(self, threshold_days: int = 30) -> int:
-        """Archive old memories to latent_memory.json with a symbolic reference."""
-        cutoff = datetime.now() - timedelta(days=threshold_days)
+        """Archive old memories and remove expired entries."""
         cursor = self.conn.cursor()
+
+        expired_ids: list[int] = []
+        now = datetime.now().isoformat()
+        cursor.execute(
+            "SELECT id FROM memory WHERE expires_at IS NOT NULL AND expires_at < ?",
+            (now,),
+        )
+        expired_ids = [r[0] for r in cursor.fetchall()]
+        if expired_ids:
+            placeholders = ",".join(["?"] * len(expired_ids))
+            cursor.execute(
+                f"DELETE FROM memory WHERE id IN ({placeholders})", expired_ids
+            )
+            cursor.execute(
+                f"DELETE FROM tags WHERE memory_id IN ({placeholders})", expired_ids
+            )
+            cursor.execute(
+                f"DELETE FROM semantic_relations WHERE source_id IN ({placeholders}) OR target_id IN ({placeholders})",
+                expired_ids * 2,
+            )
+
+        cutoff = datetime.now() - timedelta(days=threshold_days)
         cursor.execute(
             "SELECT id, type, memory_type, content, metadata, created_at FROM memory "
             "WHERE disabled = 0 AND access_count = 0 AND created_at < ?",
             (cutoff.isoformat(),),
         )
         rows = cursor.fetchall()
-        if not rows:
+        if not rows and not expired_ids:
             return 0
 
         latent_file = Path(config.LOG_DIR) / "latent_memory.json"
@@ -648,8 +710,15 @@ class MemoryManager:
 
         latent_file.write_text(json.dumps(data, indent=2))
         self.conn.commit()
-        logger.info("Memorias antigas arquivadas", count=len(rows))
-        return len(rows)
+        if expired_ids:
+            self._rebuild_index()
+            self.persist_index()
+        logger.info(
+            "Memorias antigas arquivadas",
+            count=len(rows),
+            expired=len(expired_ids),
+        )
+        return len(rows) + len(expired_ids)
 
     def close(self) -> None:
         """Persist index and close database connection."""
