@@ -33,3 +33,17 @@ The pipeline will run according to ``AIRFLOW_SCHEDULE``. For a daily run at 3 AM
 set::
 
     export AIRFLOW_SCHEDULE="0 3 * * *"
+
+Production Deployment
+---------------------
+
+For a production setup copy ``Scraper_Wiki/airflow/dags/scraper_pipeline.py``
+to your Airflow ``dags/`` directory and install the package on all workers::
+
+    pip install -r requirements.txt
+    pip install -e .
+
+Define Airflow Variables ``languages``, ``categories`` and ``storage_backend``
+through the UI or CLI. Start the scheduler with the ``AIRFLOW_SCHEDULE``
+environment variable configured for the desired cron expression. DAG runs and
+logs can then be monitored in the Airflow web UI.

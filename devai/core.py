@@ -127,6 +127,8 @@ class CodeMemoryAI:
         self.conversation: List[Dict[str, str]] = self.conv_handler.history("default")
         self.double_check = config.DOUBLE_CHECK
         self.codegen_sessions: Dict[str, Dict[str, Any]] = {}
+        self._scraper_iter = None
+        self._next_scraper = None
         self._start_background_tasks()
         logger.info(
             "CodeMemoryAI inicializado com DeepSeek-R1 via OpenRouter",
@@ -880,6 +882,34 @@ class CodeMemoryAI:
             await run_autoreview(self.analyzer, self.memory)
         if now.hour == 4:
             await run_scheduled_rlhf(self.memory)
+
+        if config.SCRAPER_SCHEDULE:
+            from logging import getLogger
+
+            logger_ = getLogger(__name__)
+            try:
+                from croniter import croniter  # type: ignore
+            except Exception:
+                logger_.error("croniter_missing")
+                return
+
+            if self._scraper_iter is None:
+                try:
+                    self._scraper_iter = croniter(config.SCRAPER_SCHEDULE, now)
+                    self._next_scraper = self._scraper_iter.get_next(datetime)
+                except Exception as exc:
+                    logger_.error("invalid_scraper_schedule", error=str(exc))
+                    self._scraper_iter = None
+                    self._next_scraper = None
+
+            if self._next_scraper and now >= self._next_scraper:
+                try:
+                    from .scraper_interface import run_scrape
+
+                    await run_scrape("Programação", lang="pt", distributed=True)
+                except Exception as exc:  # pragma: no cover - scraper failures
+                    logger_.error("scheduled_scraper_failed", error=str(exc))
+                self._next_scraper = self._scraper_iter.get_next(datetime)
 
     async def _generate_automatic_insights(self):
         complex_functions = []
