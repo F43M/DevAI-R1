@@ -790,6 +790,14 @@ async def handle_default(
         ui.console.print(response)
     ui.add_history(response)
     ui.show_history()
+    if ai.external_data_needed:
+        confirm = True
+        if ui:
+            confirm = await ui.confirm(
+                "Não possuo informações suficientes… Deseja buscar com o Scraper_Wiki?"
+            )
+        if confirm:
+            await ai.start_scrape(args)
 
 
 COMMANDS = {
