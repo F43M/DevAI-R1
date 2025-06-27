@@ -4,6 +4,7 @@ from .patch_utils import apply_patch_to_file, split_diff_by_file, apply_patch
 from .generation_chain import generate_long_code
 from .context_manager import CodeContext
 from .post_processor import is_valid_python, fix_code
+from .scraper_interface import run_scrape
 
 __all__ = [
     "ConversationHandler",
@@ -15,4 +16,5 @@ __all__ = [
     "CodeContext",
     "is_valid_python",
     "fix_code",
+    "run_scrape",
 ]

@@ -11,6 +11,7 @@ from rich.panel import Panel
 
 from .config import config, logger
 from .core import CodeMemoryAI, run_scheduled_rlhf
+from .scraper_interface import run_scrape
 from .decision_log import log_decision, suggest_rules
 from .feedback import FeedbackDB, registrar_preferencia
 
@@ -42,6 +43,13 @@ def _new_updater():
     from .cli import UpdateManager as UM
 
     return UM()
+
+
+def _parse_flags(text: str) -> tuple[str, dict[str, str]]:
+    """Extract ``--key=value`` pairs from a command string."""
+    flags = {k: v for k, v in re.findall(r"--(\w+)=([^\s]+)", text)}
+    cleaned = re.sub(r"--\w+=[^\s]+", "", text).strip()
+    return cleaned, flags
 
 
 async def handle_sair(ai, ui, args, *, plain, feedback_db):
@@ -311,6 +319,18 @@ async def handle_ajustar(ai, ui, args, *, plain, feedback_db):
     Path("PREFERENCES_STORE.json").write_text(json.dumps(prefs, indent=2))
     log_decision("comando", "ajustar", f"{param}={val}", "cli", "ok")
     print("Preferência atualizada")
+
+
+async def handle_aprender(ai, ui, args, *, plain, feedback_db):
+    """Run the Scraper Wiki on a topic."""
+    topic, flags = _parse_flags(args)
+    lang = flags.pop("lang", None)
+    depth = int(flags.pop("depth", 1))
+    try:
+        await run_scrape(topic, lang, depth, **flags)
+    except Exception as exc:  # pragma: no cover - scraper optional
+        logger.error("scraper_failed", error=str(exc))
+        print(f"Erro ao executar scraper: {exc}")
 
 
 async def handle_preferencia(ai, ui, args, *, plain, feedback_db):
@@ -817,6 +837,7 @@ COMMANDS = {
     "lembrar": handle_lembrar,
     "esquecer": handle_esquecer,
     "ajustar": handle_ajustar,
+    "aprender": handle_aprender,
     "preferencia": handle_preferencia,
     "rastrear": handle_rastrear,
     "decisoes": handle_decisoes,
