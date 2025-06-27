@@ -12,6 +12,7 @@ from rich.panel import Panel
 from .config import config, logger
 from .core import CodeMemoryAI, run_scheduled_rlhf
 from .scraper_interface import run_scrape
+from . import rlhf
 from .decision_log import log_decision, suggest_rules
 from .feedback import FeedbackDB, registrar_preferencia
 
@@ -333,7 +334,8 @@ async def handle_aprender(ai, ui, args, *, plain, feedback_db):
     lang = flags.pop("lang", None)
     depth = int(flags.pop("depth", 1))
     try:
-        await run_scrape(topic, lang, depth, **flags)
+        await run_scrape(topic, lang, depth, memory=ai.memory, **flags)
+        ai.new_ingested_data = True
     except Exception as exc:  # pragma: no cover - scraper optional
         logger.error("scraper_failed", error=str(exc))
         print(f"Erro ao executar scraper: {exc}")
@@ -619,6 +621,29 @@ async def handle_tests_local(ai, ui, args, *, plain, feedback_db):
     print(f"Execução isolada {status}")
 
 
+async def handle_integrar(ai, ui, args, *, plain, feedback_db):
+    """Ingest scraper output into the vector store."""
+    train = "--treinar" in args
+    args = args.replace("--treinar", "").strip().lower()
+    temp = args.startswith("temporario")
+    from .data_ingestion import ingest_directory
+    import scraper_wiki
+
+    ttl = ai.temp_memory_hours or 24
+    count = ingest_directory(
+        ai.memory,
+        scraper_wiki.Config.OUTPUT_DIR,
+        temporary=temp,
+        ttl_hours=ttl if temp else None,
+    )
+    print(f"Registros integrados: {count}")
+    ai.new_ingested_data = True
+    if train and rlhf and not temp and count:
+        out_dir = str(Path(config.RLHF_OUTPUT_DIR) / "manual")
+        result = await rlhf.train_from_memory(config.model_name, out_dir)
+        print(json.dumps(result, indent=2))
+
+
 async def handle_aprovar_proxima(ai, ui, args, *, plain, feedback_db):
     """Ativar aprovações automáticas temporárias."""
     try:
@@ -867,4 +892,5 @@ COMMANDS = {
     "sugerir_regras": handle_sugerir_regras,
     "resetar": handle_resetar,
     "tests_local": handle_tests_local,
+    "integrar": handle_integrar,
 }

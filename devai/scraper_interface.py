@@ -11,7 +11,9 @@ def _run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
     return asyncio.to_thread(func, *args, **kwargs)
 
 
-async def run_scrape(topic: str, lang: Optional[str] = None, depth: int = 1, **opts: Any) -> Any:
+async def run_scrape(
+    topic: str, lang: Optional[str] = None, depth: int = 1, **opts: Any
+) -> Any:
     """Run Scraper Wiki to gather data about a topic.
 
     Parameters
@@ -35,6 +37,8 @@ async def run_scrape(topic: str, lang: Optional[str] = None, depth: int = 1, **o
         return await _run_sync(auto_scrape, [topic], depth=depth, threads=threads)
 
     import scraper_wiki
+    from .data_ingestion import ingest_directory
+    from .memory import MemoryManager
 
     fmt = opts.get("format", "all")
     rate_delay = opts.get("rate_limit_delay")
@@ -46,7 +50,7 @@ async def run_scrape(topic: str, lang: Optional[str] = None, depth: int = 1, **o
     langs = [lang] if lang else None
     categories = [topic]
 
-    return await _run_sync(
+    result = await _run_sync(
         scraper_wiki.main,
         langs,
         categories,
@@ -59,5 +63,17 @@ async def run_scrape(topic: str, lang: Optional[str] = None, depth: int = 1, **o
         translate_to=translate_to,
         incremental=incremental,
     )
+
+    try:
+        mem = opts.get("memory")
+        if isinstance(mem, MemoryManager):
+            ingest_directory(mem, scraper_wiki.Config.OUTPUT_DIR)
+    except Exception as exc:  # pragma: no cover - ingestion failures
+        import logging
+
+        logging.getLogger(__name__).error("ingestion_failed", error=str(exc))
+
+    return result
+
 
 __all__ = ["run_scrape"]
