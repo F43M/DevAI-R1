@@ -2157,6 +2157,7 @@ def test_dataset_builder_initializes_from_checkpoints(tmp_path, monkeypatch):
     assert builder.dataset == data
     assert builder.pending_pages == pages
     assert (Path(tmp_path) / "progress.json").exists()
+    assert (Path(tmp_path) / "scraper_progress.json").exists()
 
 
 def test_save_dataset_strips_credentials(tmp_path, monkeypatch):

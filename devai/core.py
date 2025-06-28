@@ -242,6 +242,16 @@ class CodeMemoryAI:
             pass
         return 0.0
 
+    def _scraper_progress(self) -> dict:
+        """Return scraping progress from status file."""
+        try:
+            path = Path(config.LOG_DIR) / "scraper_progress.json"
+            if path.exists():
+                return json.loads(path.read_text())
+        except Exception:
+            pass
+        return {}
+
     def start_deep_scan(self) -> bool:
         """Queue deep_scan_app as background task if not running."""
         if not hasattr(self, "background_tasks"):
@@ -514,6 +524,10 @@ class CodeMemoryAI:
         @self.app.get("/metrics")
         async def get_metrics():
             return metrics.summary()
+
+        @self.app.get("/stats")
+        async def get_stats():
+            return self._scraper_progress()
 
         @self.app.get("/logs/recent")
         async def recent_logs(limit: int = 20):
