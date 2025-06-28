@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Optional, Any
 
 
@@ -52,6 +53,10 @@ async def run_scrape(
         return await _run_sync(auto_scrape, [topic], depth=depth, threads=threads)
 
     import scraper_wiki
+
+    scraper_wiki.metrics.start_metrics_server(
+        int(os.environ.get("METRICS_PORT", "8001"))
+    )
     from .data_ingestion import ingest_directory
     from .memory import MemoryManager
 

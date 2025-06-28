@@ -275,6 +275,20 @@ class Metrics:
                 )
             except Exception:
                 pass
+        try:
+            from importlib import import_module
+
+            sw_metrics = import_module("Scraper_Wiki.metrics")
+            data.update(
+                {
+                    "scrape_success": sw_metrics.scrape_success._value.get(),
+                    "scrape_errors": sw_metrics.scrape_error._value.get(),
+                    "scrape_blocks": sw_metrics.scrape_block._value.get(),
+                    "pages_scraped_total": sw_metrics.pages_scraped_total._value.get(),
+                }
+            )
+        except Exception:
+            pass
         return data
 
 

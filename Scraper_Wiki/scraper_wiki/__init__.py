@@ -1998,7 +1998,9 @@ class DatasetBuilder:
         try:
             os.makedirs(Config.LOG_DIR, exist_ok=True)
             progress_file = os.path.join(Config.LOG_DIR, "progress.json")
+            scraper_file = os.path.join(Config.LOG_DIR, "scraper_progress.json")
             temp_file = progress_file + ".tmp"
+            temp_file_new = scraper_file + ".tmp"
 
             clusters = sorted(
                 {item.get("cluster") for item in self.dataset if "cluster" in item}
@@ -2026,6 +2028,10 @@ class DatasetBuilder:
             with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(progress, f, ensure_ascii=False, indent=2)
             os.replace(temp_file, progress_file)
+
+            with open(temp_file_new, "w", encoding="utf-8") as f:
+                json.dump(progress, f, ensure_ascii=False, indent=2)
+            os.replace(temp_file_new, scraper_file)
 
             data_path = os.path.join(Config.LOG_DIR, "checkpoint_data.json")
             pages_path = os.path.join(Config.LOG_DIR, "checkpoint_pages.json")
