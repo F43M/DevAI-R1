@@ -127,3 +127,28 @@ def register(task_manager):
 Esse registro adiciona a tarefa `todo_counter` ao gerenciador e vincula um método
 assíncrono. Caso o plugin seja desativado, o `PluginManager` remove a tarefa e
 chama `unregister()` se definido.
+
+## Scraper_Wiki Integration
+
+O wrapper `devai.scraper_interface.run_scrape` permite executar o projeto
+Scraper\_Wiki a partir do DevAI. A CLI expõe essa funcionalidade no comando
+`/aprender`, que dispara o scraper e integra os arquivos gerados ao
+`MemoryManager`.
+
+Exemplo de uso:
+
+```bash
+/aprender "engenharia de software" --lang=pt --depth=2
+```
+
+Memórias temporárias podem ser adicionadas com `/integrar temporario`. O
+agendamento de coletas usa a variável `SCRAPER_SCHEDULE`. Tokens como
+`API_TOKEN` ou `GITHUB_TOKEN` devem ser definidos em um `.env` e nunca
+versionados.
+
+Para gerar a documentação HTML do Scraper\_Wiki execute em seu diretório:
+
+```bash
+pdoc -o docs -d google integrations core plugins utils api
+```
+

@@ -274,6 +274,35 @@ python -m devai --cli
 /tarefa static_analysis
 ```
 
+## Scraper_Wiki Integration
+
+O comando `/aprender` integra o [Scraper\_Wiki](Scraper_Wiki/README.md) para
+buscar dados externos e incorporá-los à memória vetorial. Execute a CLI e
+chame:
+
+```bash
+/aprender "engenharia de software" --lang=pt --depth=2
+```
+
+Os arquivos gerados são processados e salvos em `memory.sqlite`,
+`faiss.index` e `faiss_ids.json`. Defina caminhos customizados no
+`config.yaml` com `INDEX_FILE` e `INDEX_IDS_FILE`. Para ingerir registros de
+forma temporária utilize `/integrar temporario`.
+
+Para agendar execuções automáticas configure a variável de ambiente
+`SCRAPER_SCHEDULE` com uma expressão cron. Plugins específicos podem exigir
+`API_TOKEN`, `GITHUB_TOKEN`, `GITLAB_TOKEN` ou `SONARQUBE_TOKEN`. Guarde esses
+segredos em um arquivo `.env` fora do controle de versão.
+
+A documentação HTML do Scraper\_Wiki pode ser gerada em
+`Scraper_Wiki/` com:
+
+```bash
+cd Scraper_Wiki
+pdoc -o docs -d google integrations core plugins utils api
+```
+
+
 ## Treinamento RLHF
 
 Depois de registrar feedback positivo via API ou CLI, é possível refinar o modelo base utilizando a biblioteca [`trl`](https://github.com/huggingface/trl) e o `SFTTrainer`.
